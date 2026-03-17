@@ -1,0 +1,25 @@
+﻿@page "/"
+
+<PageTitle>Beskid Package Manager</PageTitle>
+
+<FluentCard Class="home-card">
+    <h1>Beskid Package Manager</h1>
+    <p>Monolith server with Blazor + Fluent UI frontend and FastEndpoints API.</p>
+    <div class="home-actions">
+        <FluentButton Appearance="@Appearance.Accent" Href="/packages">Open Package Console</FluentButton>
+        <FluentButton Appearance="@Appearance.Outline" Href="/scalar">Open API Docs</FluentButton>
+    </div>
+</FluentCard>
+
+<style>
+    .home-card {
+        margin-top: 1rem;
+        padding: 1rem;
+    }
+
+    .home-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+</style>
