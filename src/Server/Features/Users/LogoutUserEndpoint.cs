@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using pckg.Data;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class LogoutUserEndpoint(SignInManager<ApplicationUser> signInManager)
     : EndpointWithoutRequest

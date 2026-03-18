@@ -1,0 +1,94 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@namespace Server.Components.Shared
+
+<div class="social-links-editor">
+    @if (Links.Count == 0)
+    {
+        <div class="social-links-empty">
+            <FluentIcon Value="@(new Icons.Regular.Size24.Link())" Color="Color.Neutral" />
+            <span class="muted">No social links added yet.</span>
+        </div>
+    }
+    else
+    {
+        <div class="social-links-list">
+            @for (var i = 0; i < Links.Count; i++)
+            {
+                var index = i;
+                var link = Links[index];
+                <div class="social-link-item">
+                    <div class="social-link-drag-handle">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Disabled="@(Disabled || index == 0)"
+                                      OnClick="@(() => MoveUp(index))"
+                                      Title="Move up"
+                                      Class="reorder-btn">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.ChevronUp())" />
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Disabled="@(Disabled || index == Links.Count - 1)"
+                                      OnClick="@(() => MoveDown(index))"
+                                      Title="Move down"
+                                      Class="reorder-btn">
+                            <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+                        </FluentButton>
+                    </div>
+
+                    <div class="social-link-content">
+                        <div class="social-link-platform">
+                            <TablerIcon Type="@SocialPlatformCatalog.GetIcon(link.Platform)" Class="social-platform-icon" />
+                            <FluentSelect TOption="SocialPlatform"
+                                          Items="@SocialPlatformCatalog.Platforms"
+                                          OptionText="@SocialPlatformCatalog.GetDisplayName"
+                                          OptionValue="@(p => p.ToString())"
+                                          SelectedOption="@link.Platform"
+                                          SelectedOptionChanged="@(p => OnPlatformChanged(index, p))"
+                                          Disabled="@Disabled"
+                                          Position="SelectPosition.Below"
+                                          Appearance="Appearance.Outline"
+                                          Style="flex: 1; min-width: 140px;">
+                                <OptionTemplate Context="platform">
+                                    <div class="social-link-option">
+                                        <TablerIcon Type="@SocialPlatformCatalog.GetIcon(platform)" Class="social-platform-icon" />
+                                        <span>@SocialPlatformCatalog.GetDisplayName(platform)</span>
+                                    </div>
+                                </OptionTemplate>
+                            </FluentSelect>
+                        </div>
+                        <FluentTextField Value="@link.Url"
+                                         ValueChanged="@(v => OnUrlChanged(index, v))"
+                                         Disabled="@Disabled"
+                                         Placeholder="@SocialPlatformCatalog.GetPlaceholder(link.Platform)"
+                                         Appearance="FluentInputAppearance.Outline"
+                                         Style="flex: 1;" />
+                    </div>
+
+                    <FluentButton Appearance="Appearance.Stealth"
+                                  Disabled="@Disabled"
+                                  OnClick="@(() => RemoveLink(index))"
+                                  Title="Remove link"
+                                  Class="social-link-remove">
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Delete())" Color="Color.Error" />
+                    </FluentButton>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Links.Count < MaxLinks)
+    {
+        <FluentButton Appearance="Appearance.Outline"
+                      Disabled="@Disabled"
+                      OnClick="AddLink"
+                      IconStart="@(new Icons.Regular.Size16.Add())"
+                      Class="social-links-add-btn">
+            Add social link
+        </FluentButton>
+    }
+    else
+    {
+        <span class="muted" style="font-size: 0.85rem;">Maximum of @MaxLinks links allowed.</span>
+    }
+</div>
+

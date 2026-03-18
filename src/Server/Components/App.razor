@@ -16,8 +16,8 @@
 </head>
 
 <body>
-    <FluentMenuProvider />
-    <FluentDialogProvider />
+    <FluentMenuProvider @rendermode="InteractiveServer" />
+    <FluentDialogProvider @rendermode="InteractiveServer" />
     <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>

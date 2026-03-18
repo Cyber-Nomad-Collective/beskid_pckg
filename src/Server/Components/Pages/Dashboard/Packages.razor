@@ -2,7 +2,6 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Forms
 @using Server.Components.Shared
 @inject HttpClient Http
 
@@ -20,13 +19,6 @@
     </header>
 
     <FluentCard Class="dashboard-card" Style="padding: 24px;">
-        <PackageVersionUploadDialog @ref="UploadDialog"
-                                    IsWorking="@IsUploadingVersion"
-                                    FeedbackMessage="@UploadFeedbackMessage"
-                                    FeedbackIsError="@UploadFeedbackIsError"
-                                    OnSubmit="UploadVersionAsync"
-                                    OnCancel="CancelVersionUploadAsync" />
-
         @if (IsLoading)
         {
             <p class="muted">Loading packages...</p>
@@ -55,7 +47,7 @@
                 <p class="feedback-message is-success" style="margin-top: 16px;">@MetadataFeedbackMessage</p>
             }
 
-            @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage) && UploadingPackageName is null)
+            @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage))
             {
                 <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
                     @UploadFeedbackMessage

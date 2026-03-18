@@ -1,0 +1,182 @@
+.board-container {
+    display: grid;
+    gap: 24px;
+}
+
+.board-header {
+    padding: 16px 20px;
+    background: var(--neutral-fill-stealth-rest);
+    border-radius: 12px;
+    border: 1px solid var(--neutral-stroke-rest);
+}
+
+.board-posts-list {
+    display: grid;
+    gap: 12px;
+}
+
+::deep .board-post-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+::deep .board-post-card:hover {
+    border-color: var(--accent-fill-rest);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+::deep .board-post-card.pinned {
+    border-left: 4px solid var(--accent-fill-rest);
+    background: var(--neutral-fill-stealth-rest);
+}
+
+.post-type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.post-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+    line-height: 1.4;
+}
+
+.post-content {
+    color: var(--neutral-foreground-hint);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.post-date {
+    font-size: 0.85rem;
+}
+
+.post-actions {
+    padding-top: 8px;
+    border-top: 1px solid var(--neutral-stroke-rest);
+}
+
+.vote-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+::deep .vote-buttons fluent-button {
+    min-width: auto;
+    padding: 6px 12px;
+    transition: all 0.15s ease;
+}
+
+::deep .vote-buttons fluent-button span {
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+::deep .vote-buttons .voted-up {
+    background-color: rgba(255, 69, 0, 0.15) !important;
+    border-color: #ff4500 !important;
+}
+
+::deep .vote-buttons .voted-down {
+    background-color: rgba(113, 147, 255, 0.15) !important;
+    border-color: #7193ff !important;
+}
+
+.vote-count-active {
+    font-weight: 700;
+}
+
+.vote-count-active.upvote {
+    color: #ff4500;
+}
+
+.vote-count-active.downvote {
+    color: #7193ff;
+}
+
+::deep .vote-btn {
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+::deep .vote-btn:hover {
+    transform: scale(1.05);
+}
+
+.fluent-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--neutral-foreground-rest);
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* Markdown content styling */
+::deep .markdown-content p {
+    margin: 0;
+}
+
+::deep .markdown-content ul,
+::deep .markdown-content ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+::deep .markdown-content code {
+    background: var(--neutral-fill-stealth-rest);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+::deep .markdown-content pre {
+    background: var(--neutral-fill-stealth-rest);
+    padding: 12px 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+::deep .markdown-content pre code {
+    background: none;
+    padding: 0;
+}
+
+::deep .markdown-content blockquote {
+    border-left: 3px solid var(--accent-fill-rest);
+    margin: 12px 0;
+    padding-left: 16px;
+    color: var(--neutral-foreground-hint);
+}
+
+::deep .markdown-content a {
+    color: var(--accent-foreground-rest);
+    text-decoration: none;
+}
+
+::deep .markdown-content a:hover {
+    text-decoration: underline;
+}
+
+::deep .markdown-content strong {
+    font-weight: 600;
+}
+
+::deep .markdown-content em {
+    font-style: italic;
+}
+

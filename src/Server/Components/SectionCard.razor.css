@@ -1,0 +1,39 @@
+.section-card {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 14px;
+    box-shadow: var(--surface-shadow);
+    background: var(--neutral-fill-rest);
+    padding: 24px;
+}
+
+.section-card h1,
+.section-card h2,
+.section-card h3 {
+    margin-top: 0;
+}
+
+.section-card-header {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.section-card-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.section-card-header p {
+    margin: 0;
+}
+
+.section-card-body {
+    display: grid;
+    gap: 16px;
+}
+
+@media (max-width: 700px) {
+    .section-card {
+        padding: 16px;
+    }
+}

@@ -1,0 +1,106 @@
+.social-links-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.social-links-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px;
+    background: var(--neutral-fill-stealth-rest);
+    border: 1px dashed var(--neutral-stroke-rest);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.social-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.social-link-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: var(--neutral-fill-stealth-rest);
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 8px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.social-link-item:hover {
+    border-color: var(--neutral-stroke-hover);
+}
+
+.social-link-drag-handle {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+::deep .reorder-btn {
+    padding: 2px;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+::deep .reorder-btn:disabled {
+    opacity: 0.3;
+}
+
+.social-link-content {
+    display: flex;
+    flex: 1;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.social-link-platform {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 180px;
+}
+
+::deep .social-platform-icon {
+    font-size: 18px;
+    line-height: 1;
+    color: var(--neutral-foreground-hint);
+    flex-shrink: 0;
+}
+
+.social-link-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+::deep .social-link-remove {
+    flex-shrink: 0;
+}
+
+::deep .social-link-remove:hover {
+    background: var(--error-fill-rest);
+}
+
+::deep .social-links-add-btn {
+    align-self: flex-start;
+}
+
+@media (max-width: 600px) {
+    .social-link-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .social-link-platform {
+        min-width: 100%;
+    }
+}
+

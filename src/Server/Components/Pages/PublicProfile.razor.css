@@ -1,0 +1,240 @@
+.public-profile-page {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+.public-profile-hero {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--neutral-fill-rest) 0%, var(--neutral-fill-stealth-rest) 100%);
+    padding: 24px;
+}
+
+.public-profile-hero-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.public-profile-avatar {
+    width: 112px;
+    height: 112px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+}
+
+.public-profile-avatar-placeholder {
+    display: grid;
+    place-items: center;
+}
+
+.public-profile-title {
+    display: grid;
+    gap: 8px;
+}
+
+.public-profile-title h1 {
+    margin: 0;
+    font-size: clamp(1.45rem, 2.2vw, 2rem);
+}
+
+.public-profile-title p {
+    margin: 0;
+}
+
+.public-profile-sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.public-profile-card {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 12px;
+    background: var(--neutral-fill-rest);
+    padding: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.public-profile-card h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.public-profile-list {
+    list-style: none;
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+}
+
+.public-profile-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.social-platform-icon {
+    font-size: 18px;
+    line-height: 1;
+    color: var(--neutral-foreground-hint);
+    flex: 0 0 auto;
+}
+
+.public-profile-list a {
+    color: var(--accent-foreground-rest);
+    text-decoration: none;
+}
+
+.public-profile-list a:hover {
+    text-decoration: underline;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-fill-rest);
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--neutral-foreground-hint);
+    margin-top: 4px;
+}
+
+.activity-list {
+    display: grid;
+    gap: 12px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--neutral-fill-layer-rest);
+}
+
+.activity-icon {
+    flex-shrink: 0;
+    color: var(--neutral-foreground-hint);
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-description {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.activity-time {
+    font-size: 0.875rem;
+    color: var(--neutral-foreground-hint);
+}
+
+.activity-detail {
+    font-size: 0.875rem;
+    margin-bottom: 4px;
+}
+
+.packages-list {
+    display: grid;
+    gap: 16px;
+}
+
+.package-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 8px;
+    background: var(--neutral-fill-layer-rest);
+}
+
+.package-info {
+    flex: 1;
+}
+
+.package-info h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.package-info h3 a {
+    color: var(--accent-fill-rest);
+    text-decoration: none;
+}
+
+.package-info h3 a:hover {
+    text-decoration: underline;
+}
+
+.package-info p {
+    margin: 0;
+}
+
+.package-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.package-stats .stat {
+    font-size: 0.875rem;
+    color: var(--neutral-foreground-hint);
+}
+
+@media (max-width: 700px) {
+    .public-profile-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .public-profile-hero-inner {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+    }
+
+    .profile-stats {
+        justify-content: center;
+    }
+
+    .package-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .package-stats {
+        align-items: flex-start;
+        flex-direction: row;
+        gap: 16px;
+    }
+}

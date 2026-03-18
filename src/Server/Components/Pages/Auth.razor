@@ -35,12 +35,11 @@
         {
             <FluentCard Class="section-card auth-card auth-pane">
                 <header class="section-card-header">
-                    <h2>Sign in</h2>
-                    <p class="muted">Continue where you left off.</p>
+                    <h2>Login</h2>
+                    <p class="muted">Welcome back! Sign in to your dashboard.</p>
                 </header>
                 <div class="section-card-body">
                     <form method="post" action="/auth/login" class="auth-form" novalidate>
-                        <AntiforgeryToken />
                         <FluentTextField Name="email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
                         <FluentTextField Name="password"
                                          Label="Password"
@@ -70,25 +69,22 @@
                     <p class="muted">Set up your account in less than a minute.</p>
                 </header>
                 <div class="section-card-body">
-                    <EditForm Model="RegisterModel" OnValidSubmit="RegisterAsync" FormName="register" class="auth-form" novalidate>
-                        <AntiforgeryToken />
-                        <FluentTextField @bind-Value="RegisterModel.Email" Name="PostedRegisterModel.Email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
-                        <FluentTextField @bind-Value="RegisterModel.Password"
-                                         Name="PostedRegisterModel.Password"
+                    <form method="post" action="/auth/register" class="auth-form" novalidate>
+                        <FluentTextField Name="email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
+                        <FluentTextField Name="password"
                                          Label="Password"
                                          TextFieldType="TextFieldType.Password"
                                          Placeholder="Create a password"
                                          Required
                                          Class="auth-form-field" />
-                        <FluentTextField @bind-Value="RegisterModel.ConfirmPassword"
-                                         Name="PostedRegisterModel.ConfirmPassword"
+                        <FluentTextField Name="confirmPassword"
                                          Label="Confirm password"
                                          TextFieldType="TextFieldType.Password"
                                          Placeholder="Repeat your password"
                                          Required
                                          Class="auth-form-field" />
                         <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Class="auth-submit">Create account</FluentButton>
-                    </EditForm>
+                    </form>
                     @if (!string.IsNullOrWhiteSpace(RegisterMessage))
                     {
                         <div class="feedback-message @(RegisterSuccess ? "is-success" : "is-error")" role="status" aria-live="polite">@RegisterMessage</div>

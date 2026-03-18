@@ -1,0 +1,54 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@namespace Server.Components.Shared
+
+<div class="profile-social-selector">
+    <div class="profile-social-platform-picker">
+        <TablerIcon Type="@SocialPlatformCatalog.GetIcon(Platform)" Class="social-platform-icon" />
+        <FluentSelect TOption="SocialPlatform"
+                      Items="@SocialPlatformCatalog.Platforms"
+                      OptionText="@SocialPlatformCatalog.GetDisplayName"
+                      OptionValue="@(p => p.ToString())"
+                      SelectedOption="@Platform"
+                      SelectedOptionChanged="@OnPlatformChanged"
+                      Disabled="@Disabled"
+                      Position="SelectPosition.Below"
+                      Appearance="Appearance.Outline"
+                      Label="@Label"
+                      Style="width: 100%;">
+            <OptionTemplate Context="platform">
+                <div class="profile-social-option">
+                    <TablerIcon Type="@SocialPlatformCatalog.GetIcon(platform)" Class="social-platform-icon" />
+                    <span>@SocialPlatformCatalog.GetDisplayName(platform)</span>
+                </div>
+            </OptionTemplate>
+        </FluentSelect>
+    </div>
+
+    <FluentTextField Value="@Url"
+                     ValueChanged="@OnUrlChanged"
+                     Disabled="@Disabled"
+                     Placeholder="@SocialPlatformCatalog.GetPlaceholder(Platform)"
+                     Label="Profile URL"
+                     Appearance="FluentInputAppearance.Outline"
+                     Style="width: 100%;" />
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Social";
+    [Parameter] public SocialPlatform Platform { get; set; } = SocialPlatform.Website;
+    [Parameter] public EventCallback<SocialPlatform> PlatformChanged { get; set; }
+    [Parameter] public string Url { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> UrlChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private Task OnPlatformChanged(SocialPlatform value)
+    {
+        return PlatformChanged.InvokeAsync(value);
+    }
+
+    private Task OnUrlChanged(string? value)
+    {
+        return UrlChanged.InvokeAsync(value?.Trim() ?? string.Empty);
+    }
+}

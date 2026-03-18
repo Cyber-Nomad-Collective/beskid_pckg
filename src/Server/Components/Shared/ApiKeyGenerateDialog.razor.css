@@ -1,0 +1,51 @@
+.app-dialog {
+    max-width: min(720px, calc(100vw - 32px));
+}
+
+.app-dialog-stack {
+    padding-top: 8px;
+    max-width: 100%;
+}
+
+.app-dialog-intro {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.app-dialog-grid-two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.app-dialog-surface {
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-stealth-rest);
+}
+
+.app-dialog-hint {
+    font-size: 0.9rem;
+}
+
+.app-dialog-file {
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+    word-break: break-word;
+}
+
+.app-dialog-code {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+    word-break: break-all;
+}
+
+@media (max-width: 700px) {
+    .app-dialog-grid-two {
+        grid-template-columns: 1fr;
+    }
+}

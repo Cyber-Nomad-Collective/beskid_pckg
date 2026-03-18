@@ -1,0 +1,124 @@
+.auth-page {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 12px 28px;
+    display: grid;
+    gap: 16px;
+}
+
+.auth-intro {
+    padding: 4px 4px 0;
+}
+
+.auth-intro h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 2.5vw, 2.1rem);
+}
+
+.auth-intro p {
+    margin: 8px 0 0;
+}
+
+.auth-stage {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: stretch;
+}
+
+.auth-pane {
+    min-height: 100%;
+    animation: auth-pane-enter 220ms ease;
+}
+
+.auth-side-panel {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 12px;
+    padding: 20px;
+    background: var(--neutral-fill-stencil-rest);
+    color: var(--neutral-foreground-rest);
+}
+
+.auth-side-panel h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.auth-side-panel p {
+    margin: 12px 0 0;
+}
+
+.auth-side-panel ul {
+    margin: 14px 0 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+}
+
+.auth-form-field {
+    width: 100%;
+}
+
+::deep .auth-form-field::part(root) {
+    width: 100%;
+}
+
+::deep .auth-form-field::part(end) {
+    padding-inline: 0;
+}
+
+::deep .auth-form-field::part(control) {
+    padding-inline-end: 0;
+}
+
+::deep .password-visibility-toggle {
+    margin-inline: 0;
+}
+
+::deep .password-visibility-toggle::part(control) {
+    min-width: 24px;
+    padding-inline: 4px;
+    margin-inline: 0;
+}
+
+.auth-submit {
+    min-width: 170px;
+    justify-self: start;
+}
+
+.auth-help {
+    width: 100%;
+}
+
+.auth-help-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.auth-switch-copy {
+    margin: 0;
+    color: var(--neutral-foreground-hint);
+    font-size: 0.94rem;
+}
+
+.auth-inline-button {
+    margin-left: 6px;
+}
+
+::deep .auth-inline-button::part(control) {
+    font-weight: 700;
+    color: var(--accent-foreground-rest);
+}
+
+@keyframes auth-pane-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

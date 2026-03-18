@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -11,14 +10,11 @@ public partial class Packages
 {
     private const long MaxUploadBytes = 64 * 1024 * 1024;
     private readonly List<PackageSummaryResponse> PackageItems = [];
-    private PackageVersionUploadDialog? UploadDialog;
     private bool IsLoading = true;
     private bool IsSavingMetadata;
-    private bool IsUploadingVersion;
     private string? FeedbackMessage;
     private string? MetadataFeedbackMessage;
     private string? EditingPackageName;
-    private string? UploadingPackageName;
     private string? UploadFeedbackMessage;
     private bool UploadFeedbackIsError;
     private readonly MetadataFormModel MetadataForm = new();
@@ -71,44 +67,51 @@ public partial class Packages
         IsSavingMetadata = false;
     }
 
-    private async Task StartVersionUpload(PackageSummaryResponse package)
+    private Task StartVersionUpload(PackageSummaryResponse package)
     {
-        UploadingPackageName = package.Name;
+        return OpenUploadDialogAsync(package.Name);
+    }
+
+    private Task OpenUploadDialogAsync() => OpenUploadDialogAsync(string.Empty);
+
+    private async Task OpenUploadDialogAsync(string packageName)
+    {
         UploadFeedbackMessage = null;
         UploadFeedbackIsError = false;
-        if (UploadDialog is not null)
+
+        var content = new PackageVersionUploadDialog.UploadVersionInput
         {
-            await UploadDialog.OpenDialogAsync(package.Name);
-        }
-    }
+            PackageName = packageName,
+            IsPackageLocked = !string.IsNullOrWhiteSpace(packageName),
+            Version = string.Empty,
+            ChecksumSha256 = string.Empty
+        };
 
-    private async Task OpenUploadDialogAsync()
-    {
-        UploadingPackageName = string.Empty;
-        UploadFeedbackMessage = null;
-        UploadFeedbackIsError = false;
-        if (UploadDialog is not null)
+        var parameters = new DialogParameters
         {
-            await UploadDialog.OpenDialogAsync(string.Empty);
+            Width = "min(620px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<PackageVersionUploadDialog>(content, parameters);
+        var result = await dialog.Result;
+
+        if (result?.Cancelled != false || result.Data is not PackageVersionUploadDialog.UploadVersionInput input)
+        {
+            return;
         }
-    }
 
-    private void CancelVersionUpload()
-    {
-        UploadingPackageName = null;
-        IsUploadingVersion = false;
-    }
-
-    private Task CancelVersionUploadAsync()
-    {
-        CancelVersionUpload();
-        return Task.CompletedTask;
+        await UploadVersionAsync(input);
     }
 
     private async Task UploadVersionAsync(PackageVersionUploadDialog.UploadVersionInput input)
     {
         if (string.IsNullOrWhiteSpace(input.PackageName))
         {
+            UploadFeedbackIsError = true;
+            UploadFeedbackMessage = "Package name is required.";
             return;
         }
 
@@ -119,7 +122,6 @@ public partial class Packages
             return;
         }
 
-        IsUploadingVersion = true;
         UploadFeedbackMessage = null;
 
         try
@@ -150,21 +152,12 @@ public partial class Packages
 
             UploadFeedbackIsError = false;
             UploadFeedbackMessage = payload.Message;
-            CancelVersionUpload();
-            if (UploadDialog is not null)
-            {
-                await UploadDialog.CloseDialogAsync();
-            }
             await LoadPackagesAsync();
         }
         catch (IOException)
         {
             UploadFeedbackIsError = true;
             UploadFeedbackMessage = "The selected file exceeds the 64 MB upload limit.";
-        }
-        finally
-        {
-            IsUploadingVersion = false;
         }
     }
 

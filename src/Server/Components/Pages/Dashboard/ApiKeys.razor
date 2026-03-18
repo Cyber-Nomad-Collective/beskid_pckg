@@ -2,9 +2,9 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using Server.Components.Shared
 @inject IJSRuntime JsRuntime
 @inject HttpClient Http
+@using pckg.Features.ApiKeys
 
 <PageTitle>API Keys - Dashboard</PageTitle>
 
@@ -19,16 +19,23 @@
         </FluentButton>
     </header>
 
-    <ApiKeyGenerateDialog @ref="GenerateDialog"
-                          LastCreatedKey="@LastCreatedKey"
-                          IsWorking="@IsWorking"
-                          OnGenerate="CreateApiKeyAsync"
-                          OnCopyKey="CopyLastKeyAsync"
-                          OnDismissKey="DismissGeneratedKey" />
-
     @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
     {
         <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(LastCreatedKey))
+    {
+        <FluentCard Class="app-dialog-surface" Style="padding: 16px;">
+            <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                <FluentLabel>Copy this key now. You will not be able to see it again.</FluentLabel>
+                <code class="app-dialog-code">@LastCreatedKey</code>
+                <FluentStack Orientation="Orientation.Horizontal" Gap="12px">
+                    <FluentButton Appearance="Appearance.Accent" OnClick="CopyLastKeyAsync" Disabled="@IsWorking">Copy key</FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" OnClick="ClearLastKey" Disabled="@IsWorking">Dismiss</FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
     }
 
     <FluentCard Class="dashboard-card" Style="padding: 24px;">
@@ -42,7 +49,7 @@
         }
         else
         {
-            <FluentDataGrid TGridItem="ApiKeyRow" Items="@ApiKeyItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+            <FluentDataGrid TGridItem="ApiKeysListResponse" Items="@ApiKeyItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
                 <ChildContent>
                     <TemplateColumn Title="Name" Context="key">@key.Name</TemplateColumn>
                     <TemplateColumn Title="Prefix" Context="key"><code>@key.Prefix</code></TemplateColumn>

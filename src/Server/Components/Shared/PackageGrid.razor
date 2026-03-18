@@ -17,8 +17,7 @@
         </TemplateColumn>
         
         <TemplateColumn Title="Downloads" Context="package">
-            @package.PendingReviewsCount <!-- Repurposed or placeholder, wait, we don't have downloads in SummaryResponse. Let's fix that later or just show Reviews for now -->
-            @package.PendingReviewsCount
+            @package.TotalDownloads.ToString("N0")
         </TemplateColumn>
 
         <TemplateColumn Title="Updated" Context="package">

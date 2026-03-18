@@ -5,7 +5,6 @@
 @using pckg.Data
 
 @inject UserManager<ApplicationUser> UserManager
-@inject RoleManager<IdentityRole> RoleManager
 @inject NavigationManager Navigation
 
 <PageTitle>Initial Setup</PageTitle>
@@ -21,18 +20,15 @@
         <div class="feedback-message @(Success ? "is-success" : "is-error")" role="status" aria-live="polite">@Message</div>
     }
 
-    <EditForm Model="Model" OnValidSubmit="CreateInitialAdminAsync" FormName="onboarding" class="auth-form" novalidate>
-        <AntiforgeryToken />
-        <FluentTextField @bind-Value="Model.Email" Name="PostedModel.Email" Label="Email" Placeholder="admin@example.com" Required Class="auth-form-field" />
-        <FluentTextField @bind-Value="Model.Password"
-                         Name="PostedModel.Password"
+    <form method="post" action="/onboarding/create" class="auth-form" novalidate>
+        <FluentTextField Name="email" Label="Email" Placeholder="admin@example.com" Required Class="auth-form-field" />
+        <FluentTextField Name="password"
                          Label="Password"
                          TextFieldType="TextFieldType.Password"
                          Placeholder="Create a strong password"
                          Required
                          Class="auth-form-field" />
-        <FluentTextField @bind-Value="Model.ConfirmPassword"
-                         Name="PostedModel.ConfirmPassword"
+        <FluentTextField Name="confirmPassword"
                          Label="Confirm password"
                          TextFieldType="TextFieldType.Password"
                          Placeholder="Repeat password"
@@ -40,5 +36,5 @@
                          Class="auth-form-field" />
 
         <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Create SuperAdmin</FluentButton>
-    </EditForm>
+    </form>
 </section>

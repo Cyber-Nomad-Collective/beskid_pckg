@@ -2,8 +2,9 @@ using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using pckg.Data;
+using Server.Components.Shared;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class UpdateProfileEndpoint(UserManager<ApplicationUser> userManager)
     : Endpoint<UpdateProfileRequest, UpdateProfileResponse>
@@ -33,11 +34,16 @@ public sealed class UpdateProfileEndpoint(UserManager<ApplicationUser> userManag
             return;
         }
 
+        var socialLinks = req.SocialLinks is null
+            ? ProfileSocialLinks.FromLegacy(req.GitHubUrl, req.WebsiteUrl, req.XUrl)
+            : ProfileSocialLinks.Normalize(req.SocialLinks);
+
         user.DisplayName = Normalize(req.DisplayName);
         user.Bio = Normalize(req.Bio);
-        user.GitHubUrl = Normalize(req.GitHubUrl);
-        user.WebsiteUrl = Normalize(req.WebsiteUrl);
-        user.XUrl = Normalize(req.XUrl);
+        user.GitHubUrl = ProfileSocialLinks.GetLegacyUrl(socialLinks, SocialPlatform.GitHub);
+        user.WebsiteUrl = ProfileSocialLinks.GetLegacyUrl(socialLinks, SocialPlatform.Website);
+        user.XUrl = ProfileSocialLinks.GetLegacyUrl(socialLinks, SocialPlatform.X);
+        user.SocialLinksJson = ProfileSocialLinks.Serialize(socialLinks);
 
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -54,12 +60,30 @@ public sealed class UpdateProfileEndpoint(UserManager<ApplicationUser> userManag
             user.GitHubUrl,
             user.WebsiteUrl,
             user.XUrl,
+            socialLinks,
             user.ProfileImageUrl)), ct);
     }
 
     private static string Normalize(string? value) => value?.Trim() ?? string.Empty;
 }
 
-public sealed record UpdateProfileRequest(string? DisplayName, string? Bio, string? GitHubUrl, string? WebsiteUrl, string? XUrl);
+public sealed class UpdateProfileRequest
+{
+    public string? DisplayName { get; init; }
+    public string? Bio { get; init; }
+    public string? GitHubUrl { get; init; }
+    public string? WebsiteUrl { get; init; }
+    public string? XUrl { get; init; }
+    public IReadOnlyList<ProfileSocialLink>? SocialLinks { get; init; }
+}
+
 public sealed record UpdateProfileResponse(bool Success, string Message, ProfilePayload? Profile);
-public sealed record ProfilePayload(string? Email, string? DisplayName, string? Bio, string? GitHubUrl, string? WebsiteUrl, string? XUrl, string? ProfileImageUrl);
+public sealed record ProfilePayload(
+    string? Email,
+    string? DisplayName,
+    string? Bio,
+    string? GitHubUrl,
+    string? WebsiteUrl,
+    string? XUrl,
+    IReadOnlyList<ProfileSocialLink> SocialLinks,
+    string? ProfileImageUrl);

@@ -4,51 +4,29 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Server.Components.Shared;
 
-public partial class PackageVersionUploadDialog : IDialogContentComponent
+public partial class PackageVersionUploadDialog : IDialogContentComponent<PackageVersionUploadDialog.UploadVersionInput>
 {
-    private bool IsHidden = true;
-    private string PackageNameInput { get; set; } = string.Empty;
-    private bool IsPackageLocked { get; set; }
-    private string Version { get; set; } = string.Empty;
-    private string ChecksumSha256 { get; set; } = string.Empty;
+    [Parameter] public UploadVersionInput Content { get; set; } = new();
+    [CascadingParameter] public FluentDialog Dialog { get; set; } = default!;
+
     private IBrowserFile? Artifact { get; set; }
     private string? SelectedArtifactName => Artifact?.Name;
-
-    [Parameter] public bool IsWorking { get; set; }
-    [Parameter] public string? FeedbackMessage { get; set; }
-    [Parameter] public bool FeedbackIsError { get; set; }
-    [Parameter] public EventCallback<UploadVersionInput> OnSubmit { get; set; }
-    [Parameter] public EventCallback OnCancel { get; set; }
-
-    public async Task OpenDialogAsync(string packageName)
-    {
-        PackageNameInput = packageName;
-        IsPackageLocked = !string.IsNullOrWhiteSpace(packageName);
-        Version = string.Empty;
-        ChecksumSha256 = string.Empty;
-        Artifact = null;
-        IsHidden = false;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public async Task CloseDialogAsync()
-    {
-        IsHidden = true;
-        await OnCancel.InvokeAsync();
-        await InvokeAsync(StateHasChanged);
-    }
 
     private void HandleArtifactSelected(InputFileChangeEventArgs args)
     {
         Artifact = args.FileCount > 0 ? args.File : null;
     }
 
-    private Task CloseAsync() => CloseDialogAsync();
+    private Task CancelAsync() => Dialog.CancelAsync();
 
-    private Task SubmitAsync()
+    private Task SubmitAsync() => Dialog.CloseAsync(Content with { Artifact = Artifact });
+
+    public sealed record UploadVersionInput
     {
-        return OnSubmit.InvokeAsync(new UploadVersionInput(PackageNameInput, Version, ChecksumSha256, Artifact));
+        public string? PackageName { get; set; }
+        public string Version { get; set; } = string.Empty;
+        public string ChecksumSha256 { get; set; } = string.Empty;
+        public bool IsPackageLocked { get; set; }
+        public IBrowserFile? Artifact { get; set; }
     }
-
-    public sealed record UploadVersionInput(string? PackageName, string Version, string ChecksumSha256, IBrowserFile? Artifact);
 }

@@ -1,0 +1,14 @@
+/* Alerts */
+.alert {
+    border: 1px dashed var(--accent-fill-rest);
+    padding: 5px;
+    margin: 10px 0;
+}
+
+.alert-danger {
+    border-color: var(--error);
+}
+
+.alert-success {
+    border-color: var(--success);
+}

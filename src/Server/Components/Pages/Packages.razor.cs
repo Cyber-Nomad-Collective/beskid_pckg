@@ -44,6 +44,7 @@ public partial class Packages
                 x.RepositoryUrl,
                 x.WebsiteUrl,
                 x.IsPublic,
+                x.TotalDownloads,
                 x.UpdatedAtUtc,
                 0,
                 0.0))

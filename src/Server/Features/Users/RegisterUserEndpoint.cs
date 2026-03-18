@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using pckg.Data;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManager)
     : Endpoint<RegisterUserRequest, AuthActionResponse>

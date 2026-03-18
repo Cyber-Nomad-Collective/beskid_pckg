@@ -1,0 +1,25 @@
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.split-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+@media (max-width: 980px) {
+    .kpi-grid,
+    .split-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .kpi-grid,
+    .split-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,20 @@
+.onboarding-shell {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+}
+
+.onboarding-main {
+    width: min(100%, 560px);
+}
+
+.onboarding-card {
+    display: grid;
+    gap: 16px;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 14px;
+    background: var(--neutral-fill-rest);
+    box-shadow: var(--surface-shadow);
+    padding: 24px;
+}

@@ -1,4 +1,5 @@
 @page "/profile/{UserId}"
+@using Server.Components.Shared
 
 <PageTitle>Public Profile</PageTitle>
 
@@ -44,35 +45,77 @@
             <FluentCard Class="public-profile-card">
                 <h2>About</h2>
                 <p class="muted">@(!string.IsNullOrWhiteSpace(Profile.Bio) ? Profile.Bio : "No profile description yet.")</p>
+
+                @if (Profile.Stats.PackageCount > 0 || Profile.Stats.TotalDownloads > 0)
+                {
+                    <div class="profile-stats">
+                        <div class="stat">
+                            <span class="stat-number">@Profile.Stats.PackageCount</span>
+                            <span class="stat-label">Packages</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">@Profile.Stats.TotalDownloads.ToString("N0")</span>
+                            <span class="stat-label">Downloads</span>
+                        </div>
+                    </div>
+                }
             </FluentCard>
+
+            @if (Profile.Packages?.Any() == true)
+            {
+                <FluentCard Class="public-profile-card">
+                    <h2>Packages (@Profile.Stats.PackageCount)</h2>
+                    <div class="packages-list">
+                        @foreach (var package in Profile.Packages)
+                        {
+                            <div class="package-item">
+                                <div class="package-info">
+                                    <h3><a href="@($"/packages/{package.Name}")">@package.Name</a></h3>
+                                    <p class="muted">@package.Description</p>
+                                </div>
+                                <div class="package-stats">
+                                    <span class="stat">@package.TotalDownloads.ToString("N0") downloads</span>
+                                    <span class="stat">@package.AverageRating.ToString("0.0")★</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </FluentCard>
+            }
+
+            @if (Profile.RecentActivity?.Any() == true)
+            {
+                <FluentCard Class="public-profile-card">
+                    <h2>Recent Activity</h2>
+                    <div class="activity-list">
+                        @foreach (var activity in Profile.RecentActivity)
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <FluentIcon Value="@GetActivityIcon(activity.Kind)" />
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-description">@activity.Label</div>
+                                    <div class="activity-detail muted">@activity.Detail</div>
+                                    <div class="activity-time">@activity.OccurredAtUtc.ToString("MMM dd, yyyy")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </FluentCard>
+            }
 
             <FluentCard Class="public-profile-card">
                 <h2>Socials</h2>
                 <ul class="public-profile-list">
-                    @if (!string.IsNullOrWhiteSpace(Profile.GitHubUrl))
+                    @foreach (var socialLink in SocialLinks)
                     {
                         <li>
-                            <FluentIcon Value="@(new Icons.Regular.Size20.Code())" Color="Color.Neutral" />
-                            <a href="@Profile.GitHubUrl" target="_blank" rel="noopener noreferrer">GitHub</a>
+                            <TablerIcon Type="@SocialPlatformCatalog.GetIcon(socialLink.Platform)" Class="social-platform-icon" />
+                            <a href="@socialLink.Url" target="_blank" rel="noopener noreferrer">@SocialPlatformCatalog.GetDisplayName(socialLink.Platform)</a>
                         </li>
                     }
-                    @if (!string.IsNullOrWhiteSpace(Profile.WebsiteUrl))
-                    {
-                        <li>
-                            <FluentIcon Value="@(new Icons.Regular.Size20.Globe())" Color="Color.Neutral" />
-                            <a href="@Profile.WebsiteUrl" target="_blank" rel="noopener noreferrer">Website</a>
-                        </li>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Profile.XUrl))
-                    {
-                        <li>
-                            <FluentIcon Value="@(new Icons.Regular.Size20.Chat())" Color="Color.Neutral" />
-                            <a href="@Profile.XUrl" target="_blank" rel="noopener noreferrer">X / Twitter</a>
-                        </li>
-                    }
-                    @if (string.IsNullOrWhiteSpace(Profile.GitHubUrl)
-                         && string.IsNullOrWhiteSpace(Profile.WebsiteUrl)
-                         && string.IsNullOrWhiteSpace(Profile.XUrl))
+                    @if (SocialLinks.Count == 0)
                     {
                         <li class="muted">No social links available.</li>
                     }

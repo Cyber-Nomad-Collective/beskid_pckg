@@ -1,0 +1,18 @@
+.feedback-message {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.feedback-message.is-success {
+    color: var(--success-foreground-rest);
+    background: var(--success-fill-subtle-rest);
+    border-color: var(--success-stroke-rest);
+}
+
+.feedback-message.is-error {
+    color: var(--error-foreground-rest);
+    background: var(--error-fill-subtle-rest);
+    border-color: var(--error-stroke-rest);
+}

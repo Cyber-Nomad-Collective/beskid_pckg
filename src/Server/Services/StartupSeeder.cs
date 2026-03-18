@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using pckg.Data;
+using Server.Features.Users;
 
 namespace Server.Services;
 
@@ -76,6 +77,33 @@ public sealed class StartupSeeder(
             await dbContext.Database.ExecuteSqlRawAsync(
                 "ALTER TABLE AspNetUsers ADD COLUMN ProfileImageUrl TEXT NOT NULL DEFAULT '';",
                 cancellationToken);
+        }
+
+        if (!existingColumns.Contains("SocialLinksJson", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN SocialLinksJson TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        var users = await dbContext.Users.ToListAsync(cancellationToken);
+        var hasChanges = false;
+
+        foreach (var user in users)
+        {
+            var normalizedJson = ProfileSocialLinks.Serialize(ProfileSocialLinks.FromUser(user));
+            if (string.Equals(user.SocialLinksJson, normalizedJson, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            user.SocialLinksJson = normalizedJson;
+            hasChanges = true;
+        }
+
+        if (hasChanges)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 

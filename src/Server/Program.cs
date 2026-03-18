@@ -23,8 +23,39 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddScoped(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-    var baseUri = new Uri($"{httpContextAccessor.HttpContext?.Request.Scheme}://{httpContextAccessor.HttpContext?.Request.Host}");
-    return new HttpClient { BaseAddress = baseUri };
+    var httpContext = httpContextAccessor.HttpContext;
+    var scheme = string.IsNullOrWhiteSpace(httpContext?.Request.Scheme) ? "http" : httpContext.Request.Scheme;
+    var host = httpContext?.Request.Host.HasValue == true
+        ? httpContext.Request.Host.Value
+        : "localhost";
+
+    var client = new HttpClient
+    {
+        BaseAddress = new Uri($"{scheme}://{host}")
+    };
+
+    if (httpContext is not null)
+    {
+        if (httpContext.Request.Headers.TryGetValue("Cookie", out var cookie)
+            && !string.IsNullOrWhiteSpace(cookie))
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookie.ToString());
+        }
+
+        if (httpContext.Request.Headers.TryGetValue("Authorization", out var authorization)
+            && !string.IsNullOrWhiteSpace(authorization))
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authorization.ToString());
+        }
+
+        if (httpContext.Request.Headers.TryGetValue("X-API-Key", out var apiKey)
+            && !string.IsNullOrWhiteSpace(apiKey))
+        {
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", apiKey.ToString());
+        }
+    }
+
+    return client;
 });
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
@@ -100,9 +131,7 @@ builder.Services.AddAuthentication(options =>
                 }
             }
 
-            return context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
-                ? IdentityConstants.BearerScheme
-                : IdentityConstants.ApplicationScheme;
+            return IdentityConstants.ApplicationScheme;
         };
     })
     .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationDefaults.Scheme, _ => { });
@@ -114,6 +143,9 @@ builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
 builder.Services.AddScoped<IStartupSeeder, StartupSeeder>();
+builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
+builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
+builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
 
 builder.Services.AddHttpLogging(logging =>
 {
@@ -153,6 +185,10 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads"
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Redirect to onboarding if no users exist (run after antiforgery is set up)
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
@@ -181,12 +217,6 @@ app.Use(async (context, next) =>
 
     await next();
 });
-
-app.UseWhen(
-    context => !context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase),
-    branch => branch.UseAntiforgery());
-app.UseAuthentication();
-app.UseAuthorization();
 app.UseFastEndpoints(c => c.Endpoints.RoutePrefix = "api");
 
 if (app.Environment.IsDevelopment())
@@ -200,7 +230,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
-app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>().DisableAntiforgery();
 app.MapPost("/auth/login", async (
     HttpContext context,
     SignInManager<ApplicationUser> signInManager) =>
@@ -228,7 +258,97 @@ app.MapPost("/auth/login", async (
     }
 
     return Results.Redirect("/dashboard/packages/my");
-});
+}).DisableAntiforgery();
+app.MapPost("/auth/register", async (
+    HttpContext context,
+    UserManager<ApplicationUser> userManager) =>
+{
+    if (!context.Request.HasFormContentType)
+    {
+        return Results.Redirect("/auth?mode=register&error=invalid_request");
+    }
+
+    var form = await context.Request.ReadFormAsync(context.RequestAborted);
+    var email = form["email"].FirstOrDefault()?.Trim() ?? string.Empty;
+    var password = form["password"].FirstOrDefault() ?? string.Empty;
+    var confirmPassword = form["confirmPassword"].FirstOrDefault() ?? string.Empty;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.Redirect("/auth?mode=register&error=register_missing_credentials");
+    }
+
+    if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+    {
+        return Results.Redirect("/auth?mode=register&error=register_password_mismatch");
+    }
+
+    var user = new ApplicationUser
+    {
+        UserName = email,
+        Email = email
+    };
+
+    var createResult = await userManager.CreateAsync(user, password);
+    if (!createResult.Succeeded)
+    {
+        return Results.Redirect("/auth?mode=register&error=register_create_failed");
+    }
+
+    return Results.Redirect("/auth?mode=login");
+}).DisableAntiforgery();
+app.MapPost("/onboarding/create", async (
+    HttpContext context,
+    ApplicationDbContext dbContext,
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager) =>
+{
+    var hasUsers = await dbContext.Users.AsNoTracking().AnyAsync(context.RequestAborted);
+    if (hasUsers)
+    {
+        return Results.Redirect("/auth?mode=login");
+    }
+
+    if (!context.Request.HasFormContentType)
+    {
+        return Results.Redirect("/onboarding?error=missing_credentials");
+    }
+
+    var form = await context.Request.ReadFormAsync(context.RequestAborted);
+    var email = form["email"].FirstOrDefault()?.Trim() ?? string.Empty;
+    var password = form["password"].FirstOrDefault() ?? string.Empty;
+    var confirmPassword = form["confirmPassword"].FirstOrDefault() ?? string.Empty;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.Redirect("/onboarding?error=missing_credentials");
+    }
+
+    if (!string.Equals(password, confirmPassword, StringComparison.Ordinal))
+    {
+        return Results.Redirect("/onboarding?error=password_mismatch");
+    }
+
+    var user = new ApplicationUser
+    {
+        UserName = email,
+        Email = email
+    };
+
+    var createResult = await userManager.CreateAsync(user, password);
+    if (!createResult.Succeeded)
+    {
+        return Results.Redirect("/onboarding?error=create_failed");
+    }
+
+    if (!await roleManager.RoleExistsAsync("SuperAdmin"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("SuperAdmin"));
+    }
+
+    await userManager.AddToRoleAsync(user, "SuperAdmin");
+    return Results.Redirect("/auth?mode=login");
+}).DisableAntiforgery();
 app.MapGet("/users/logout", (HttpContext context) =>
 {
     var redirectTarget = context.Request.QueryString.HasValue
@@ -239,7 +359,8 @@ app.MapGet("/users/logout", (HttpContext context) =>
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .DisableAntiforgery();
 
 app.Run();
 

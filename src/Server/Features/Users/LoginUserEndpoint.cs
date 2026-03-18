@@ -2,7 +2,7 @@ using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
 using pckg.Data;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class LoginUserEndpoint(SignInManager<ApplicationUser> signInManager)
     : Endpoint<LoginUserRequest, AuthActionResponse>

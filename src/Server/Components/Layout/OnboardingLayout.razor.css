@@ -1,0 +1,8 @@
+.auth-card {
+    width: 100%;
+    margin: 0;
+}
+
+.auth-card .alert {
+    border-radius: 8px;
+}

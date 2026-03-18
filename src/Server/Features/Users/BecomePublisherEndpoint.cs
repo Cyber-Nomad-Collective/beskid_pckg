@@ -1,6 +1,6 @@
 using FastEndpoints;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class BecomePublisherEndpoint
     : EndpointWithoutRequest<AuthActionResponse>

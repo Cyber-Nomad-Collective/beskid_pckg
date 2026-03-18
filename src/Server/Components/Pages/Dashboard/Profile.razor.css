@@ -1,0 +1,228 @@
+.profile-settings-page {
+    max-width: 1000px;
+}
+
+.profile-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+}
+
+.profile-settings-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.profile-settings-form {
+    width: 100%;
+}
+
+.profile-layout {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+}
+
+/* Sidebar */
+.profile-sidebar {
+    position: sticky;
+    top: 24px;
+}
+
+.profile-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-avatar-upload {
+    position: relative;
+}
+
+.profile-avatar-upload.is-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.profile-avatar-upload-trigger {
+    position: relative;
+    display: block;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.profile-avatar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: center;
+    border: 3px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+}
+
+.profile-avatar-placeholder {
+    display: grid;
+    place-items: center;
+}
+
+.profile-avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.65);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.profile-avatar-upload-trigger:hover .profile-avatar-overlay,
+.profile-avatar-upload-trigger:focus-within .profile-avatar-overlay {
+    opacity: 1;
+}
+
+.profile-avatar-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.profile-avatar-info {
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+/* Main content */
+.profile-main {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+/* Settings sections */
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+}
+
+.settings-section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+}
+
+.settings-section-header p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.settings-section-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Email list */
+.email-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.email-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--neutral-fill-stealth-rest);
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 8px;
+}
+
+.email-address {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.9rem;
+}
+
+/* Social links - styles moved to SocialLinksEditor.razor.css */
+
+/* Actions */
+.profile-actions {
+    padding-top: 24px;
+    border-top: 1px solid var(--neutral-stroke-divider-rest);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .profile-layout {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .profile-sidebar {
+        position: static;
+        justify-self: center;
+    }
+
+    .profile-avatar-upload-trigger {
+        width: 140px;
+        height: 140px;
+    }
+
+    .email-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .settings-section-header h2 {
+        font-size: 1rem;
+    }
+}

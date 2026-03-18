@@ -10,6 +10,10 @@
     </FooterTemplate>
     <ChildContent>
         <FluentStack VerticalGap="5" Orientation="Orientation.Vertical" Style="width: 100%; padding: -2rem 0.2rem; margin-top: -5px;">
+              <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/profile"))" Style="width: 100%">
+                <FluentIcon Value="@ApiKeysIcon" Slot="start"/>
+                Profile
+            </FluentMenuItem>
             <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/api-keys"))" Style="width: 100%">
                 <FluentIcon Value="@ApiKeysIcon" Slot="start"/>
                 API Keys

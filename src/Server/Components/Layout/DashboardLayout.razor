@@ -1,15 +1,19 @@
 @inherits LayoutComponentBase
 @using Microsoft.FluentUI.AspNetCore.Components.DesignTokens
-
+<style>
+    .fluent-nav-item.expander {
+        display: none;
+    }
+</style>
 <FluentDesignTheme StorageName="theme" CustomColor="#3aac9e" NeutralBaseColor="#3f5458" />
 
-<FluentMainLayout HeaderHeight="64" NavMenuWidth=@SideMenuWidth Class="dashboard-layout"  NavMenuTitle="Navigation menu"  >
+<FluentMainLayout HeaderHeight="64" NavMenuWidth=@SideMenuWidth Class="dashboard-layout" NavMenuTitle="Navigation menu">
     <Header>
-        <AppTopBar/>
+        <AppTopBar />
     </Header>
-
     <NavMenuContent>
-        <FluentNavMenu  Margin="-20" Collapsible="true" Expanded="true" CustomToggle="true"  Width="@SideMenuWidth" Style="padding: 1rem 0.5rem;">       
+        <FluentNavMenu Collapsible="false" Expanded="true" CustomToggle="true" Width="@SideMenuWidth"
+                       Style="padding: 1rem 0.5rem;">
             <FluentNavLink Href="/dashboard/profile" Icon="@ProfileIcon">Profile Settings</FluentNavLink>
             <FluentNavLink Href="/dashboard/api-keys" Icon="@ApiKeysIcon">API Keys</FluentNavLink>
             <FluentNavGroup Title="Packages" Expanded="true" Icon="@PackagesIcon">
@@ -20,7 +24,7 @@
                     <FluentNavLink Href="/dashboard/packages/all" Icon="@AdminPackagesIcon">All Packages</FluentNavLink>
                 }
             </FluentNavGroup>
-            <FluentDivider/>
+            <FluentDivider />
         </FluentNavMenu>
 
     </NavMenuContent>
@@ -33,8 +37,3 @@
         </FluentBodyContent>
     </Body>
 </FluentMainLayout>
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>

@@ -13,6 +13,7 @@ public partial class UserMenu
     private static readonly Icon ApiKeysIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Key();
     private static readonly Icon LogoutIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.SignOut();
     private static readonly Icon PackagesIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box();
+    private static readonly Icon ProfileIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Person();
 
     private string GetInitials()
     {

@@ -4,109 +4,198 @@
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using Server.Components.Shared
 
 <PageTitle>Profile Settings - Dashboard</PageTitle>
 
-<section class="profile-settings-page">
-    <header class="profile-settings-head">
-        <div>
-            <h2>Profile Settings</h2>
-            <p class="muted">Manage your account details and preferences.</p>
-        </div>
-        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
-            <FluentBadge Appearance="Appearance.Accent">User</FluentBadge>
-            @if (IsSuperAdmin)
-            {
-                <FluentBadge Appearance="Appearance.Neutral">SuperAdmin</FluentBadge>
-            }
-            @if (!string.IsNullOrWhiteSpace(UserId))
-            {
-                <FluentAnchor Appearance="Appearance.Hypertext" Href="@($"/profile/{Uri.EscapeDataString(UserId)}")">Public view</FluentAnchor>
-            }
+<div class="profile-settings-page">
+    <header class="profile-settings-header">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Style="gap: 12px;">
+            <h1>Profile</h1>
+            <FluentStack Orientation="Orientation.Horizontal" Gap="6px" VerticalAlignment="VerticalAlignment.Center">
+                <FluentBadge Appearance="Appearance.Accent">User</FluentBadge>
+                @if (IsSuperAdmin)
+                {
+                    <FluentBadge Appearance="Appearance.Neutral">SuperAdmin</FluentBadge>
+                }
+            </FluentStack>
         </FluentStack>
+        @if (!string.IsNullOrWhiteSpace(UserId))
+        {
+            <FluentAnchor Appearance="Appearance.Stealth" Href="@($"/profile/{Uri.EscapeDataString(UserId)}")" IconEnd="@(new Icons.Regular.Size16.Open())">
+                View public profile
+            </FluentAnchor>
+        }
     </header>
 
     @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
     {
-        <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
+        <FluentMessageBar Intent="@(FeedbackIsError ? MessageIntent.Error : MessageIntent.Success)" Style="margin-bottom: 16px;">
+            @FeedbackMessage
+        </FluentMessageBar>
     }
 
     @if (IsLoading)
     {
-        <FluentCard Class="dashboard-card profile-settings-shell">
-            <p class="muted">Loading profile...</p>
-        </FluentCard>
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
+            <FluentProgressRing />
+            <span class="muted">Loading profile...</span>
+        </FluentStack>
     }
     else
     {
         <EditForm Model="Form" OnValidSubmit="SaveProfileAsync" class="profile-settings-form">
-            <FluentGrid Spacing="3"
-                        AdaptiveRendering="true"
-                        Class="profile-settings-grid">
-                <FluentGridItem xs="12" lg="8" Class="profile-settings-main">
-                    <FluentCard Class="dashboard-card profile-panel">
-                        <div class="profile-panel-head">
-                            <h3>Account Details</h3>
+            <div class="profile-layout">
+                <!-- Sidebar with avatar -->
+                <aside class="profile-sidebar">
+                    <div class="profile-avatar-section">
+                        <div class="profile-avatar-upload @(IsSaving || IsUploadingImage ? "is-disabled" : "")">
+                            <label class="profile-avatar-upload-trigger" aria-label="Upload profile photo">
+                                @if (!string.IsNullOrWhiteSpace(ProfileImageSrc))
+                                {
+                                    <img src="@ProfileImageSrc" alt="Profile image" class="profile-avatar" />
+                                }
+                                else
+                                {
+                                    <div class="profile-avatar profile-avatar-placeholder">
+                                        <FluentIcon Value="@(new Icons.Regular.Size48.Person())" Color="Color.Neutral" />
+                                    </div>
+                                }
+
+                                <span class="profile-avatar-overlay">
+                                    <FluentIcon Value="@(new Icons.Regular.Size24.Camera())" Color="Color.Fill" />
+                                    <span>Change photo</span>
+                                </span>
+
+                                <InputFile OnChange="UploadProfileImageAsync"
+                                           class="profile-avatar-input"
+                                           accept="image/png,image/jpeg,image/webp,image/gif"
+                                           disabled="@(IsSaving || IsUploadingImage)" />
+                            </label>
+                        </div>
+                        <div class="profile-avatar-info">
+                            @if (IsUploadingImage)
+                            {
+                                <FluentProgressRing Style="width: 20px; height: 20px;" />
+                                <span class="muted">Uploading...</span>
+                            }
+                            else
+                            {
+                                <span class="muted">PNG, JPG, WEBP or GIF<br/>Max 5 MB</span>
+                            }
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Main content -->
+                <main class="profile-main">
+                    <!-- Account Details Section -->
+                    <section class="settings-section">
+                        <header class="settings-section-header">
+                            <h2>Account details</h2>
                             <p class="muted">Update your public profile information.</p>
-                        </div>
-                        <FluentStack Orientation="Orientation.Vertical" Gap="12px">
-                            <FluentTextField @bind-Value="Form.DisplayName" Label="Name" Placeholder="Your public display name" Disabled="@IsSaving" />
-                            <FluentTextField @bind-Value="Form.Email" Label="Email" Disabled="true" />
-                            <FluentTextArea @bind-Value="Form.Bio" Label="Profile description" Placeholder="Tell people about yourself" Disabled="@IsSaving" />
-                        </FluentStack>
-                    </FluentCard>
-
-                    <FluentCard Class="dashboard-card profile-panel">
-                        <div class="profile-panel-head">
-                            <h3>Socials</h3>
-                            <p class="muted">Share where people can find your work.</p>
-                        </div>
-
-                        <div class="profile-socials-grid">
-                            <div class="profile-social-item">
-                                <FluentIcon Value="@(new Icons.Regular.Size20.Code())" Color="Color.Neutral" />
-                                <FluentTextField @bind-Value="Form.GitHubUrl" Label="GitHub" Placeholder="https://github.com/username" Disabled="@IsSaving" />
+                        </header>
+                        <div class="settings-section-content">
+                            <div class="settings-field">
+                                <FluentTextField @bind-Value="Form.DisplayName"
+                                                 Label="Display name"
+                                                 Placeholder="Your public display name"
+                                                 Disabled="@IsSaving"
+                                                 Style="width: 100%; max-width: 400px;" />
                             </div>
-                            <div class="profile-social-item">
-                                <FluentIcon Value="@(new Icons.Regular.Size20.Globe())" Color="Color.Neutral" />
-                                <FluentTextField @bind-Value="Form.WebsiteUrl" Label="Website" Placeholder="https://your-site.dev" Disabled="@IsSaving" />
+                            <div class="settings-field">
+                                <FluentTextField @bind-Value="Form.Email"
+                                                 Label="Email"
+                                                 Disabled="true"
+                                                 Style="width: 100%; max-width: 400px;" />
                             </div>
-                            <div class="profile-social-item">
-                                <FluentIcon Value="@(new Icons.Regular.Size20.Chat())" Color="Color.Neutral" />
-                                <FluentTextField @bind-Value="Form.XUrl" Label="X / Twitter" Placeholder="https://x.com/username" Disabled="@IsSaving" />
+                            <div class="settings-field">
+                                <FluentTextArea @bind-Value="Form.Bio"
+                                                Label="Bio"
+                                                Placeholder="Tell people about yourself"
+                                                Disabled="@IsSaving"
+                                                Rows="4"
+                                                Style="width: 100%;" />
                             </div>
                         </div>
-                    </FluentCard>
-                </FluentGridItem>
+                    </section>
 
-                <FluentGridItem xs="12" lg="4" Class="profile-settings-side">
-                    <FluentCard Class="dashboard-card profile-panel profile-avatar-panel">
-                        <div class="profile-panel-head">
-                            <h3>Profile Picture</h3>
-                            <p class="muted">PNG, JPG, WEBP or GIF up to 5 MB.</p>
+                    <!-- Email Addresses Section -->
+                    <section class="settings-section">
+                        <header class="settings-section-header">
+                            <h2>Email addresses</h2>
+                            <p class="muted">Manage your email addresses for notifications and account recovery.</p>
+                        </header>
+                        <div class="settings-section-content">
+                            @if (UserEmails.Count > 0)
+                            {
+                                <div class="email-list">
+                                    @foreach (var email in UserEmails)
+                                    {
+                                        <div class="email-item">
+                                            <span class="email-address">@email.Email</span>
+                                            <FluentStack Orientation="Orientation.Horizontal" Gap="6px" VerticalAlignment="VerticalAlignment.Center">
+                                                @if (email.IsPrimary)
+                                                {
+                                                    <FluentBadge Appearance="Appearance.Accent">Primary</FluentBadge>
+                                                }
+                                                @if (email.IsVerified)
+                                                {
+                                                    <FluentBadge Appearance="Appearance.Lightweight" BackgroundColor="var(--success)">Verified</FluentBadge>
+                                                }
+                                                @if (!email.IsPrimary)
+                                                {
+                                                    <FluentButton Appearance="Appearance.Stealth"
+                                                                  OnClick="@(() => RemoveEmailAsync(email.Id))"
+                                                                  Disabled="@IsSaving"
+                                                                  IconStart="@(new Icons.Regular.Size16.Delete())"
+                                                                  Title="Remove email" />
+                                                }
+                                            </FluentStack>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center" Style="margin-top: 12px;">
+                                <FluentTextField @bind-Value="NewEmailAddress"
+                                                 Placeholder="Add another email address"
+                                                 Style="width: 280px;"
+                                                 Disabled="@IsSaving" />
+                                <FluentButton Appearance="Appearance.Outline"
+                                              OnClick="AddEmailAsync"
+                                              Disabled="@(IsSaving || string.IsNullOrWhiteSpace(NewEmailAddress))"
+                                              IconStart="@(new Icons.Regular.Size16.Add())">
+                                    Add
+                                </FluentButton>
+                            </FluentStack>
                         </div>
+                    </section>
 
-                        @if (!string.IsNullOrWhiteSpace(ProfileImageUrl))
-                        {
-                            <img src="@ProfileImageUrl" alt="Profile image" class="profile-avatar" />
-                        }
-                        else
-                        {
-                            <div class="profile-avatar profile-avatar-placeholder">
-                                <FluentIcon Value="@(new Icons.Regular.Size32.Person())" Color="Color.Neutral" />
-                            </div>
-                        }
+                    <!-- Social Links Section -->
+                    <section class="settings-section">
+                        <header class="settings-section-header">
+                            <h2>Social links</h2>
+                            <p class="muted">Add links to your social profiles. You can add up to 5 links.</p>
+                        </header>
+                        <div class="settings-section-content">
+                            <SocialLinksEditor @bind-Links="SocialLinks"
+                                               Disabled="@IsSaving"
+                                               MaxLinks="5" />
+                        </div>
+                    </section>
 
-                        <InputFile OnChange="UploadProfileImageAsync" accept="image/png,image/jpeg,image/webp,image/gif" />
-                    </FluentCard>
-                </FluentGridItem>
-            </FluentGrid>
-
-            <div class="profile-settings-actions">
-                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="@IsSaving">
-                    @(IsSaving ? "Saving..." : "Save profile")
-                </FluentButton>
+                    <!-- Save Button -->
+                    <div class="profile-actions">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Type="ButtonType.Submit"
+                                      Disabled="@IsSaving"
+                                      IconStart="@(IsSaving ? null : new Icons.Regular.Size16.Save())">
+                            @(IsSaving ? "Saving..." : "Save changes")
+                        </FluentButton>
+                    </div>
+                </main>
             </div>
         </EditForm>
     }
-</section>
+</div>

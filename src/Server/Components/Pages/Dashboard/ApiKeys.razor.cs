@@ -1,16 +1,21 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Server.Components.Shared;
+using pckg.Features.ApiKeys;
 
 namespace Server.Components.Pages.Dashboard;
 
 public partial class ApiKeys
 {
-    private readonly List<ApiKeyRow> ApiKeyItems = [];
-    private ApiKeyGenerateDialog? GenerateDialog;
+    private readonly List<ApiKeysListResponse> ApiKeyItems = [];
     private string? LastCreatedKey;
     private string? FeedbackMessage;
     private bool FeedbackIsError;
     private bool IsWorking;
+
+    [Inject]
+    public IDialogService DialogService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -28,7 +33,7 @@ public partial class ApiKeys
             return;
         }
 
-        var rows = await response.Content.ReadFromJsonAsync<List<ApiKeyRow>>() ?? [];
+        var rows = await response.Content.ReadFromJsonAsync<List<ApiKeysListResponse>>() ?? [];
 
         ApiKeyItems.AddRange(rows);
     }
@@ -109,18 +114,35 @@ public partial class ApiKeys
         SetFeedback("API key copied to clipboard.", isError: false);
     }
 
-    private void ClearLastKey()
-    {
-        LastCreatedKey = null;
-    }
+    private void ClearLastKey() => LastCreatedKey = null;
 
-    private Task DismissGeneratedKey()
+    private async Task OpenGenerateKeyDialogAsync()
     {
-        ClearLastKey();
-        return Task.CompletedTask;
-    }
+        var content = new ApiKeyGenerateDialog.CreateKeyInput
+        {
+            Name = string.Empty,
+            PublishScope = true,
+            ReadScope = true
+        };
 
-    private Task OpenGenerateKeyDialogAsync() => GenerateDialog?.OpenDialogAsync() ?? Task.CompletedTask;
+        var parameters = new DialogParameters
+        {
+            Width = "min(620px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<ApiKeyGenerateDialog>(content, parameters);
+        var result = await dialog.Result;
+
+        if (result?.Cancelled != false || result.Data is not ApiKeyGenerateDialog.CreateKeyInput input)
+        {
+            return;
+        }
+
+        await CreateApiKeyAsync(input);
+    }
 
     private void SetFeedback(string message, bool isError)
     {
@@ -128,17 +150,9 @@ public partial class ApiKeys
         FeedbackIsError = isError;
     }
 
-    private sealed record ApiKeyRow(
-        Guid Id,
-        string Name,
-        string Prefix,
-        IReadOnlyList<string> Scopes,
-        DateTimeOffset CreatedAtUtc,
-        DateTimeOffset? RevokedAtUtc);
-
     private sealed record CreateApiKeyRequest(string Name, string[] Scopes);
-
-    private sealed record CreateApiKeyResponse(bool Success, string? PlainTextKey, ApiKeyRow? Key, string Message);
+    
+    private sealed record CreateApiKeyResponse(bool Success, string? PlainTextKey, ApiKeyView? Key, string Message);
 
     private sealed record RevokeApiKeyResponse(bool Success, string Message, DateTimeOffset? RevokedAtUtc);
 }

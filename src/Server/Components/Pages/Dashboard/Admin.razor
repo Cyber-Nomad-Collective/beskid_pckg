@@ -1,0 +1,91 @@
+@page "/dashboard/admin"
+@layout DashboardLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Admin Panel - Dashboard</PageTitle>
+
+<section class="admin-page">
+    <header class="admin-head">
+        <div>
+            <h2>Admin Panel</h2>
+            <p class="muted">Manage users, roles, and permissions.</p>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+    {
+        <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
+    }
+
+    <FluentCard Class="dashboard-card">
+        <div style="margin-bottom: 16px;">
+            <h3>User Management</h3>
+            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Style="margin-top: 12px;">
+                <FluentTextField @bind-Value="SearchQuery" Placeholder="Search users..." Style="flex: 1;" />
+                <FluentButton Appearance="Appearance.Accent" OnClick="SearchUsersAsync">Search</FluentButton>
+            </FluentStack>
+        </div>
+
+        @if (IsLoading)
+        {
+            <p class="muted">Loading users...</p>
+        }
+        else
+        {
+            <FluentDataGrid Items="@UsersQueryable" ResizableColumns="true" Style="width: 100%; overflow: auto;">
+                <PropertyColumn Property="@(u => u.Email)" Title="Email" Sortable="true" />
+                <PropertyColumn Property="@(u => u.DisplayName)" Title="Display Name" Sortable="true" />
+                <PropertyColumn Property="@(u => u.Rating)" Title="Rating" Sortable="true" Format="F2" />
+                <TemplateColumn Title="Roles">
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="4px" Wrap="true">
+                        @foreach (var role in context.Roles)
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral">@role</FluentBadge>
+                        }
+                    </FluentStack>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OpenEditUserDialog(context))">Edit</FluentButton>
+                </TemplateColumn>
+            </FluentDataGrid>
+
+            <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 16px;" VerticalAlignment="VerticalAlignment.Center">
+                <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">Previous</FluentButton>
+                <span>Page @CurrentPage of @TotalPages</span>
+                <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">Next</FluentButton>
+            </FluentStack>
+        }
+    </FluentCard>
+</section>
+
+<FluentDialog @bind-IsOpen="IsEditDialogOpen" Modal="true">
+    <FluentDialogHeader>
+        <h3>Edit User: @SelectedUser?.Email</h3>
+    </FluentDialogHeader>
+    <FluentDialogBody>
+        @if (SelectedUser is not null)
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                <div>
+                    <label>Roles</label>
+                    <FluentStack Orientation="Orientation.Vertical" Gap="8px" Style="margin-top: 8px;">
+                        @foreach (var role in AvailableRoles)
+                        {
+                            <FluentCheckbox Label="@role" 
+                                          Checked="@EditUserRoles.Contains(role)"
+                                          CheckedChanged="@((bool isChecked) => ToggleRole(role, isChecked))" />
+                        }
+                    </FluentStack>
+                </div>
+            </FluentStack>
+        }
+    </FluentDialogBody>
+    <FluentDialogFooter>
+        <FluentButton Appearance="Appearance.Accent" OnClick="SaveUserRolesAsync" Disabled="@IsSaving">
+            @(IsSaving ? "Saving..." : "Save")
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
+    </FluentDialogFooter>
+</FluentDialog>

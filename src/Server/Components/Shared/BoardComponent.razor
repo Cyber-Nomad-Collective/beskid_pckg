@@ -1,0 +1,180 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using pckg.Data
+
+<div class="board-container">
+    <header class="board-header">
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+            <FluentStack Orientation="Orientation.Vertical" Style="flex: 1;">
+                <h3 style="margin: 0;">@BoardName</h3>
+                @if (!string.IsNullOrWhiteSpace(BoardDescription))
+                {
+                    <p class="muted" style="margin: 0;">@BoardDescription</p>
+                }
+            </FluentStack>
+            <AuthorizeView>
+                <Authorized>
+                    @if (!IsLocked)
+                    {
+                        <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreatePostDialog" IconStart="@(new Icons.Regular.Size20.Add())">
+                            New Post
+                        </FluentButton>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        </FluentStack>
+    </header>
+
+    @if (IsLoading)
+    {
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
+            <FluentProgressRing />
+            <span class="muted">Loading posts...</span>
+        </FluentStack>
+    }
+    else if (Posts.Count == 0)
+    {
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
+            <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Neutral"/>
+            <p class="muted" style="text-align: center;">No posts yet. Be the first to start a discussion!</p>
+        </FluentStack>
+    }
+    else
+    {
+        <FluentStack Orientation="Orientation.Vertical" Gap="12px" Class="board-posts-list">
+            @foreach (var post in Posts)
+            {
+                <FluentCard Class="@($"board-post-card {(post.IsPinned ? "pinned" : "")}")" @onclick="@(() => ViewPost(post.Id))">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                            <span class="post-type-badge" style="background-color: @GetPostTypeColor(post.PostType);">
+                                @GetPostTypeLabel(post.PostType)
+                            </span>
+                            @if (post.IsPinned)
+                            {
+                                <FluentBadge Appearance="Appearance.Accent">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Pin())" Style="margin-right: 4px;" /> Pinned
+                                </FluentBadge>
+                            }
+                            <span style="flex: 1;"></span>
+                            <span class="muted post-date">@post.CreatedAtUtc.ToString("MMM d, yyyy")</span>
+                        </FluentStack>
+                        <h4 class="post-title">@post.Title</h4>
+                        <div class="post-content markdown-content">@RenderMarkdown(TruncateContent(post.Content, 200))</div>
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="16px" VerticalAlignment="VerticalAlignment.Center" Class="post-actions">
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="4px" VerticalAlignment="VerticalAlignment.Center" Class="vote-buttons">
+                                <FluentButton Appearance="@(post.CurrentUserVote == 1 ? Appearance.Accent : Appearance.Stealth)"
+                                              OnClick="@(() => VotePost(post.Id, 1))"
+                                              OnClick:stopPropagation="true"
+                                              Title="Upvote"
+                                              Class="@($"vote-btn {(post.CurrentUserVote == 1 ? "voted-up" : "")}")">
+                                    @if (post.CurrentUserVote == 1)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowUp())" Color="Color.Custom" CustomColor="#ff4500" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUp())" Color="Color.Neutral" />
+                                    }
+                                    <span class="@(post.CurrentUserVote == 1 ? "vote-count-active upvote" : "")">@post.UpvoteCount</span>
+                                </FluentButton>
+                                <FluentButton Appearance="@(post.CurrentUserVote == -1 ? Appearance.Accent : Appearance.Stealth)"
+                                              OnClick="@(() => VotePost(post.Id, -1))"
+                                              OnClick:stopPropagation="true"
+                                              Title="Downvote"
+                                              Class="@($"vote-btn {(post.CurrentUserVote == -1 ? "voted-down" : "")}")">
+                                    @if (post.CurrentUserVote == -1)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowDown())" Color="Color.Custom" CustomColor="#7193ff" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowDown())" Color="Color.Neutral" />
+                                    }
+                                    <span class="@(post.CurrentUserVote == -1 ? "vote-count-active downvote" : "")">@post.DownvoteCount</span>
+                                </FluentButton>
+                            </FluentStack>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => ViewPost(post.Id))" OnClick:stopPropagation="true">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Comment())" Style="margin-right: 6px;" />
+                                View Discussion
+                            </FluentButton>
+                        </FluentStack>
+                    </FluentStack>
+                </FluentCard>
+            }
+        </FluentStack>
+
+        @if (TotalPages > 1)
+        {
+            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Style="margin-top: 24px; padding: 16px; background: var(--neutral-fill-stealth-rest); border-radius: 8px;" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center">
+                <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" Style="margin-right: 4px;" />
+                    Previous
+                </FluentButton>
+                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
+                    @for (var i = 1; i <= TotalPages; i++)
+                    {
+                        var page = i;
+                        @if (i == CurrentPage)
+                        {
+                            <FluentBadge Appearance="Appearance.Accent">@i</FluentBadge>
+                        }
+                        else if (i == 1 || i == TotalPages || (i >= CurrentPage - 1 && i <= CurrentPage + 1))
+                        {
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => GoToPageAsync(page))">@i</FluentButton>
+                        }
+                        else if (i == CurrentPage - 2 || i == CurrentPage + 2)
+                        {
+                            <span class="muted">...</span>
+                        }
+                    }
+                </FluentStack>
+                <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">
+                    Next
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" Style="margin-left: 4px;" />
+                </FluentButton>
+            </FluentStack>
+        }
+    }
+</div>
+
+<FluentDialog @bind-IsOpen="IsCreatePostDialogOpen" Modal="true" Style="min-width: 500px;">
+    <FluentDialogHeader>
+        <h3 style="margin: 0;">Create New Post</h3>
+    </FluentDialogHeader>
+    <FluentDialogBody>
+        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+            <div>
+                <label class="fluent-label">Post Type</label>
+                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 8px;">
+                    <FluentButton Appearance="@(NewPostType == BoardPostType.Issue ? Appearance.Accent : Appearance.Outline)"
+                                  OnClick="@(() => NewPostType = BoardPostType.Issue)"
+                                  Style="@(NewPostType == BoardPostType.Issue ? $"background-color: {GetPostTypeColor(BoardPostType.Issue)};" : "")">
+                        Issue
+                    </FluentButton>
+                    <FluentButton Appearance="@(NewPostType == BoardPostType.FeatureRequest ? Appearance.Accent : Appearance.Outline)"
+                                  OnClick="@(() => NewPostType = BoardPostType.FeatureRequest)"
+                                  Style="@(NewPostType == BoardPostType.FeatureRequest ? $"background-color: {GetPostTypeColor(BoardPostType.FeatureRequest)};" : "")">
+                        Feature Request
+                    </FluentButton>
+                    <FluentButton Appearance="@(NewPostType == BoardPostType.Suggestion ? Appearance.Accent : Appearance.Outline)"
+                                  OnClick="@(() => NewPostType = BoardPostType.Suggestion)"
+                                  Style="@(NewPostType == BoardPostType.Suggestion ? $"background-color: {GetPostTypeColor(BoardPostType.Suggestion)};" : "")">
+                        Suggestion
+                    </FluentButton>
+                </FluentStack>
+            </div>
+            <FluentTextField @bind-Value="NewPostTitle" Label="Title" Placeholder="Give your post a descriptive title" Style="width: 100%;" />
+            <div>
+                <FluentTextArea @bind-Value="NewPostContent" Label="Content" Placeholder="Describe your issue, request, or suggestion. You can use Markdown for formatting." Style="width: 100%; min-height: 150px;" />
+                <small class="muted">Markdown is supported: **bold**, *italic*, `code`, [links](url), lists, and more.</small>
+            </div>
+        </FluentStack>
+    </FluentDialogBody>
+    <FluentDialogFooter>
+        <FluentButton Appearance="Appearance.Accent" OnClick="CreatePostAsync" Disabled="@(string.IsNullOrWhiteSpace(NewPostTitle) || string.IsNullOrWhiteSpace(NewPostContent))">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Send())" Style="margin-right: 6px;" />
+            Post
+        </FluentButton>
+        <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreatePostDialog">Cancel</FluentButton>
+    </FluentDialogFooter>
+</FluentDialog>

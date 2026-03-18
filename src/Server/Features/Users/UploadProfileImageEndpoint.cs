@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using pckg.Data;
 
-namespace pckg.Features.Users;
+namespace Server.Features.Users;
 
 public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> userManager, IWebHostEnvironment environment)
     : EndpointWithoutRequest<UploadProfileImageResponse>

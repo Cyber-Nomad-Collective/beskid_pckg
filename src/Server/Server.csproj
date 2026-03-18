@@ -10,7 +10,11 @@
   <ItemGroup>
     <PackageReference Include="FastEndpoints" Version="8.0.1" />
     <PackageReference Include="FastEndpoints.Swagger" Version="8.0.1" />
+    <PackageReference Include="FluentUI.Blazor.Community.Components" Version="1.1.0" />
+    <PackageReference Include="Kebechet.Blazor.Tabler.Icons" Version="3.40.0" />
+    <PackageReference Include="Markdig" Version="1.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.14.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.0" />

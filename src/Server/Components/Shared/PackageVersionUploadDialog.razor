@@ -1,42 +1,33 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.FluentUI.AspNetCore.Components
-<FluentDialog Hidden="@IsHidden" TrapFocus="true" Modal="true" Class="app-dialog" Style="min-width: min(620px, calc(100vw - 32px));">
-    <FluentDialogHeader>
-        <FluentLabel Typo="Typography.PaneHeader">Upload Version</FluentLabel>
-    </FluentDialogHeader>
-    <FluentDialogBody>
-        <FluentStack Orientation="Orientation.Vertical" Gap="16px" Class="app-dialog-stack">
-            <p class="muted app-dialog-intro">Upload a .bpkg artifact and publish a new immutable version.</p>
+<FluentDialogHeader ShowDismiss="false">
+    <FluentLabel Typo="Typography.PaneHeader">Upload Version</FluentLabel>
+</FluentDialogHeader>
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" Gap="16px" Class="app-dialog-stack">
+        <p class="muted app-dialog-intro">Upload a .bpkg artifact and publish a new immutable version.</p>
 
-            @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
-            {
-                <p class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</p>
-            }
+        <div class="app-dialog-grid-two">
+            <FluentTextField @bind-Value="Content.PackageName" Label="Package name" Placeholder="my.package" Required Disabled="@Content.IsPackageLocked" />
+            <FluentTextField @bind-Value="Content.Version" Label="Version" Placeholder="1.0.0" Required />
+        </div>
 
-            <div class="app-dialog-grid-two">
-                <FluentTextField @bind-Value="PackageNameInput" Label="Package name" Placeholder="my.package" Required Disabled="@(IsWorking || IsPackageLocked)" />
-                <FluentTextField @bind-Value="Version" Label="Version" Placeholder="1.0.0" Required Disabled="@IsWorking" />
-            </div>
+        <FluentTextField @bind-Value="Content.ChecksumSha256" Label="Checksum SHA-256 (optional)" Placeholder="Paste checksum to enforce integrity" />
 
-            <FluentTextField @bind-Value="ChecksumSha256" Label="Checksum SHA-256 (optional)" Placeholder="Paste checksum to enforce integrity" Disabled="@IsWorking" />
-
-            <FluentCard Class="app-dialog-surface">
-                <FluentStack Orientation="Orientation.Vertical" Gap="8px">
-                    <FluentLabel>Artifact (.bpkg)</FluentLabel>
-                    <InputFile OnChange="HandleArtifactSelected" accept=".bpk,.bpkg,application/zip" />
-                    <span class="muted app-dialog-hint">Max size: 64 MB.</span>
-                    @if (!string.IsNullOrWhiteSpace(SelectedArtifactName))
-                    {
-                        <span class="app-dialog-file">Selected: @SelectedArtifactName</span>
-                    }
-                </FluentStack>
-            </FluentCard>
-        </FluentStack>
-    </FluentDialogBody>
-    <FluentDialogFooter>
-        <FluentButton Appearance="Appearance.Outline" OnClick="CloseAsync" Disabled="@IsWorking">Cancel</FluentButton>
-        <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync" Disabled="@IsWorking">
-            @(IsWorking ? "Uploading..." : "Upload & Publish")
-        </FluentButton>
-    </FluentDialogFooter>
-</FluentDialog>
+        <FluentCard Class="app-dialog-surface">
+            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+                <FluentLabel>Artifact (.bpkg)</FluentLabel>
+                <InputFile OnChange="HandleArtifactSelected" accept=".bpk,.bpkg,application/zip" />
+                <span class="muted app-dialog-hint">Max size: 64 MB.</span>
+                @if (!string.IsNullOrWhiteSpace(SelectedArtifactName))
+                {
+                    <span class="app-dialog-file">Selected: @SelectedArtifactName</span>
+                }
+            </FluentStack>
+        </FluentCard>
+    </FluentStack>
+</FluentDialogBody>
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Outline" OnClick="CancelAsync">Cancel</FluentButton>
+    <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync">Upload & Publish</FluentButton>
+</FluentDialogFooter>

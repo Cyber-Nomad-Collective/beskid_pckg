@@ -9,5 +9,6 @@ public sealed class ApplicationUser : IdentityUser
     public string GitHubUrl { get; set; } = string.Empty;
     public string WebsiteUrl { get; set; } = string.Empty;
     public string XUrl { get; set; } = string.Empty;
+    public string SocialLinksJson { get; set; } = string.Empty;
     public string ProfileImageUrl { get; set; } = string.Empty;
 }

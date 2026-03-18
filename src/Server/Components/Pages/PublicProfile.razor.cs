@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using System.Net.Http.Json;
-using pckg.Features.Users;
+using Microsoft.FluentUI.AspNetCore.Components.Icons.Filled;
+using Server.Features.Users;
+using Server.Components.Shared;
 
 namespace Server.Components.Pages;
 
@@ -14,6 +17,30 @@ public partial class PublicProfile
     private string? LoadedUserId;
     private string? FeedbackMessage;
     private PublicProfilePayload? Profile;
+    private IReadOnlyList<SocialLinkViewModel> SocialLinks => BuildSocialLinks(Profile);
+
+    private static IReadOnlyList<SocialLinkViewModel> BuildSocialLinks(PublicProfilePayload? profile)
+    {
+        if (profile is null)
+        {
+            return [];
+        }
+
+        if (profile.SocialLinks.Count > 0)
+        {
+            return profile.SocialLinks
+                .Where(x => !string.IsNullOrWhiteSpace(x.Url))
+                .Select(x => new SocialLinkViewModel(x.Url.Trim(), x.Platform))
+                .ToList();
+        }
+
+        var legacyUrls = new[] { profile.GitHubUrl, profile.WebsiteUrl, profile.XUrl };
+        return legacyUrls
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Select(url => url!.Trim())
+            .Select(url => new SocialLinkViewModel(url, SocialPlatformCatalog.DetectPlatform(url)))
+            .ToList();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -102,4 +129,17 @@ public partial class PublicProfile
             return null;
         }
     }
+
+    private static Icon GetActivityIcon(string activityType)
+    {
+        return activityType.ToLowerInvariant() switch
+        {
+            "package_published" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box(),
+            "package_updated" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.ArrowSync(),
+            "package_downloaded" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.ArrowDownload(),
+            _ => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Circle()
+        };
+    }
+
+    private sealed record SocialLinkViewModel(string Url, SocialPlatform Platform);
 }

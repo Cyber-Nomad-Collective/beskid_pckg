@@ -1,0 +1,19 @@
+/* Package detail header */
+.package-header {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+
+.package-icon-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background: linear-gradient(145deg, var(--brand-500), var(--accent-fill-rest));
+    color: #fff;
+    font-size: 1.7rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+}

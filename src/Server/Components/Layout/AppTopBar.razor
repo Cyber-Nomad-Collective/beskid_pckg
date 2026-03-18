@@ -1,8 +1,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
-<header class="top-nav" style="position: relative; width:100%;">
-    <div class="top-nav-inner" style="position: fixed; width:100%; left: 0;">
-        <div class="top-nav-left" style="position: fixed; width:100%; padding: 0 0.6rem;">
+<header class="top-nav">
+        <div class="top-nav-left">
             @if (HeaderStart != null)
             {
                 @HeaderStart
@@ -13,13 +12,12 @@
                 <span class="brand">beskid pckg</span>
             </a>
         </div>
-        <div class="top-nav-right"  style="position: fixed; width:100%; padding: 0 0.5rem;">
-            <nav class="top-nav-links " style="gap: 1.2rem;"  aria-label="Primary">
-                <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
-                <NavLink href="/packages">Packages</NavLink>
-                <a href="/scalar">API</a>
-            </nav>
 
+        
+        <div class="top-nav-right">
+                <FluentNavLink href="/" Match="NavLinkMatch.All">Home</FluentNavLink>
+                <FluentNavLink href="/packages">Packages</FluentNavLink>
+                <FluentNavLink href="/scalar">API</FluentNavLink>
             <div class="top-nav-controls">
                 <ThemeToggle />
 
@@ -38,5 +36,4 @@
                 </AuthorizeView>
             </div>
         </div>
-    </div>
 </header>

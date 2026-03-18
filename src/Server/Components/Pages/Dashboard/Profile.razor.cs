@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Server.Components.Shared;
+using Server.Features.Users;
 using System.Net.Http.Json;
 
 namespace Server.Components.Pages.Dashboard;
@@ -7,22 +9,45 @@ namespace Server.Components.Pages.Dashboard;
 public partial class Profile
 {
     private readonly ProfileFormModel Form = new();
+    private List<SocialLinkItem> SocialLinks = [];
+    private readonly List<UserEmailItem> UserEmails = [];
     private bool IsLoading = true;
     private bool IsSaving;
+    private bool IsUploadingImage;
     private string? FeedbackMessage;
     private bool FeedbackIsError;
     private string? UserId;
     private string? ProfileImageUrl;
+    private long ProfileImageCacheToken = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    private string? ProfileImageSrc => BuildCacheBustedImageUrl(ProfileImageUrl, ProfileImageCacheToken);
+    private string NewEmailAddress = string.Empty;
     [Inject]
     public IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
     [Inject]
     public HttpClient ApiHttp { get; set; } = default!;
-    
+
     private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadProfileAsync();
+        await LoadEmailsAsync();
+    }
+
+    private static string? BuildCacheBustedImageUrl(string? imageUrl, long cacheToken)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            return imageUrl;
+        }
+
+        var separator = imageUrl.Contains('?', StringComparison.Ordinal) ? '&' : '?';
+        return $"{imageUrl}{separator}v={cacheToken}";
+    }
+
+    private void RefreshProfileImage()
+    {
+        ProfileImageCacheToken = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 
     private async Task LoadProfileAsync()
@@ -46,10 +71,11 @@ public partial class Profile
             Form.Email = profile.Email ?? string.Empty;
             Form.DisplayName = profile.DisplayName ?? string.Empty;
             Form.Bio = profile.Bio ?? string.Empty;
-            Form.GitHubUrl = profile.GitHubUrl ?? string.Empty;
-            Form.WebsiteUrl = profile.WebsiteUrl ?? string.Empty;
-            Form.XUrl = profile.XUrl ?? string.Empty;
+            SocialLinks = profile.SocialLinks
+                .Select(link => new SocialLinkItem { Platform = link.Platform, Url = link.Url })
+                .ToList();
             ProfileImageUrl = profile.ProfileImageUrl;
+            RefreshProfileImage();
         }
         finally
         {
@@ -64,7 +90,13 @@ public partial class Profile
         {
             var response = await ApiHttp.PutAsJsonAsync(
                 "/api/users/profile",
-                new UpdateProfileRequest(Form.DisplayName, Form.Bio, Form.GitHubUrl, Form.WebsiteUrl, Form.XUrl));
+                new UpdateProfileRequest(
+                    Form.DisplayName,
+                    Form.Bio,
+                    SocialLinks
+                        .Where(x => !string.IsNullOrWhiteSpace(x.Url))
+                        .Select(x => new ProfileSocialLinkDto(x.Platform, x.Url.Trim()))
+                        .ToList()));
 
             var payload = await TryReadJsonAsync<UpdateProfileResponse>(response);
             if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
@@ -76,6 +108,7 @@ public partial class Profile
 
             ProfileImageUrl = payload.Profile?.ProfileImageUrl;
             SetFeedback(payload.Message, false);
+            RefreshProfileImage();
         }
         finally
         {
@@ -90,24 +123,37 @@ public partial class Profile
             return;
         }
 
-        var file = args.File;
-        using var content = new MultipartFormDataContent();
-        await using var stream = file.OpenReadStream(5 * 1024 * 1024);
-        var imageContent = new StreamContent(stream);
-        imageContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(file.ContentType);
-        content.Add(imageContent, "image", file.Name);
-
-        var response = await ApiHttp.PostAsync("/api/users/profile/image", content);
-        var payload = await TryReadJsonAsync<UploadProfileImageResponse>(response);
-        if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
+        IsUploadingImage = true;
+        try
         {
-            var fallback = await ReadErrorBodyAsync(response);
-            SetFeedback(payload?.Message ?? fallback ?? "Unable to upload profile picture.", true);
-            return;
-        }
+            var file = args.File;
+            using var content = new MultipartFormDataContent();
+            await using var stream = file.OpenReadStream(5 * 1024 * 1024);
+            var imageContent = new StreamContent(stream);
+            imageContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(file.ContentType);
+            content.Add(imageContent, "image", file.Name);
 
-        ProfileImageUrl = payload.ProfileImageUrl;
-        SetFeedback(payload.Message, false);
+            var response = await ApiHttp.PostAsync("/api/users/profile/image", content);
+            var payload = await TryReadJsonAsync<UploadProfileImageResponse>(response);
+            if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
+            {
+                var fallback = await ReadErrorBodyAsync(response);
+                SetFeedback(payload?.Message ?? fallback ?? "Unable to upload profile picture.", true);
+                return;
+            }
+
+            ProfileImageUrl = payload.ProfileImageUrl;
+            RefreshProfileImage();
+            SetFeedback("Profile photo uploaded successfully.", false);
+        }
+        catch (IOException)
+        {
+            SetFeedback("Selected image exceeds the 5 MB limit.", true);
+        }
+        finally
+        {
+            IsUploadingImage = false;
+        }
     }
 
     private void SetFeedback(string message, bool isError)
@@ -145,10 +191,23 @@ public partial class Profile
     {
         try
         {
+            var mediaType = response.Content.Headers.ContentType?.MediaType;
             var body = await response.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(body))
             {
                 return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(mediaType)
+                && mediaType.Contains("html", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Request failed ({(int)response.StatusCode}). Please try again.";
+            }
+
+            if (body.Contains("<!DOCTYPE", StringComparison.OrdinalIgnoreCase)
+                || body.Contains("<html", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Request failed ({(int)response.StatusCode}). Please try again.";
             }
 
             return body.Length > 240 ? body[..240] : body;
@@ -159,14 +218,98 @@ public partial class Profile
         }
     }
 
+    private async Task LoadEmailsAsync()
+    {
+        try
+        {
+            var response = await ApiHttp.GetAsync("/api/users/emails");
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ListUserEmailsResponse>();
+            if (result?.Emails is not null)
+            {
+                UserEmails.Clear();
+                foreach (var email in result.Emails)
+                {
+                    UserEmails.Add(new UserEmailItem
+                    {
+                        Id = email.Id,
+                        Email = email.Email,
+                        IsVerified = email.IsVerified,
+                        IsPrimary = email.IsPrimary
+                    });
+                }
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task AddEmailAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewEmailAddress))
+        {
+            return;
+        }
+
+        IsSaving = true;
+        try
+        {
+            var response = await ApiHttp.PostAsJsonAsync(
+                "/api/users/emails",
+                new AddUserEmailRequest(NewEmailAddress));
+
+            var payload = await TryReadJsonAsync<AddUserEmailResponse>(response);
+            if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
+            {
+                var fallback = await ReadErrorBodyAsync(response);
+                SetFeedback(payload?.Message ?? fallback ?? "Unable to add email.", true);
+                return;
+            }
+
+            SetFeedback("Email added successfully.", false);
+            NewEmailAddress = string.Empty;
+            await LoadEmailsAsync();
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task RemoveEmailAsync(int emailId)
+    {
+        IsSaving = true;
+        try
+        {
+            var response = await ApiHttp.DeleteAsync($"/api/users/emails/{emailId}");
+            var payload = await TryReadJsonAsync<RemoveUserEmailResponse>(response);
+            
+            if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
+            {
+                var fallback = await ReadErrorBodyAsync(response);
+                SetFeedback(payload?.Message ?? fallback ?? "Unable to remove email.", true);
+                return;
+            }
+
+            SetFeedback("Email removed successfully.", false);
+            await LoadEmailsAsync();
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
     private sealed class ProfileFormModel
     {
         public string Email { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public string Bio { get; set; } = string.Empty;
-        public string GitHubUrl { get; set; } = string.Empty;
-        public string WebsiteUrl { get; set; } = string.Empty;
-        public string XUrl { get; set; } = string.Empty;
     }
 
     private sealed record CurrentUserResponse(
@@ -179,14 +322,13 @@ public partial class Profile
         string? GitHubUrl,
         string? WebsiteUrl,
         string? XUrl,
+        IReadOnlyList<ProfileSocialLinkDto> SocialLinks,
         string? ProfileImageUrl);
 
     private sealed record UpdateProfileRequest(
         string? DisplayName,
         string? Bio,
-        string? GitHubUrl,
-        string? WebsiteUrl,
-        string? XUrl);
+        IReadOnlyList<ProfileSocialLinkDto> SocialLinks);
 
     private sealed record UpdateProfileResponse(bool Success, string Message, ProfilePayload? Profile);
 
@@ -197,7 +339,28 @@ public partial class Profile
         string? GitHubUrl,
         string? WebsiteUrl,
         string? XUrl,
+        IReadOnlyList<ProfileSocialLinkDto> SocialLinks,
         string? ProfileImageUrl);
 
+    private sealed record ProfileSocialLinkDto(SocialPlatform Platform, string Url);
+
     private sealed record UploadProfileImageResponse(bool Success, string Message, string? ProfileImageUrl);
+
+    private sealed class UserEmailItem
+    {
+        public int Id { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public bool IsVerified { get; set; }
+        public bool IsPrimary { get; set; }
+    }
+
+    private sealed record ListUserEmailsResponse(List<UserEmailDto> Emails);
+    
+    private sealed record UserEmailDto(int Id, string Email, bool IsVerified, bool IsPrimary, DateTime AddedAtUtc);
+    
+    private sealed record AddUserEmailRequest(string Email);
+    
+    private sealed record AddUserEmailResponse(bool Success, string Message);
+    
+    private sealed record RemoveUserEmailResponse(bool Success, string Message);
 }

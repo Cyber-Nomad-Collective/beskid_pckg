@@ -12,15 +12,6 @@ public partial class Auth
     [SupplyParameterFromQuery(Name = "error")]
     public string? ErrorCode { get; set; }
 
-    [SupplyParameterFromForm(FormName = "login")]
-    private LoginFormModel? PostedLoginModel { get; set; }
-
-    private LoginFormModel LoginModel => PostedLoginModel ??= new();
-
-    [SupplyParameterFromForm(FormName = "register")]
-    private RegisterFormModel? PostedRegisterModel { get; set; }
-
-    private RegisterFormModel RegisterModel => PostedRegisterModel ??= new();
     private string LoginMessage = string.Empty;
     private bool LoginSuccess;
     private string RegisterMessage = string.Empty;
@@ -49,50 +40,14 @@ public partial class Auth
             _ => string.Empty
         };
         LoginSuccess = false;
-    }
 
-    private async Task RegisterAsync()
-    {
-        RegisterMessage = string.Empty;
+        RegisterMessage = ErrorCode switch
+        {
+            "register_missing_credentials" => "Email and password are required.",
+            "register_password_mismatch" => "Passwords do not match.",
+            "register_create_failed" => "Unable to create account.",
+            _ => string.Empty
+        };
         RegisterSuccess = false;
-
-        if (string.IsNullOrWhiteSpace(RegisterModel.Email) || string.IsNullOrWhiteSpace(RegisterModel.Password))
-        {
-            RegisterMessage = "Email and password are required.";
-            return;
-        }
-
-        if (RegisterModel.Password != RegisterModel.ConfirmPassword)
-        {
-            RegisterMessage = "Passwords do not match.";
-            return;
-        }
-
-        var user = new ApplicationUser { UserName = RegisterModel.Email.Trim(), Email = RegisterModel.Email.Trim() };
-        var createResult = await UserManager.CreateAsync(user, RegisterModel.Password);
-
-        if (!createResult.Succeeded)
-        {
-            RegisterMessage = string.Join(" ", createResult.Errors.Select(e => e.Description));
-            return;
-        }
-
-        RegisterSuccess = true;
-        RegisterMessage = "Account created. You can now sign in.";
-        Navigation.NavigateTo("/auth?mode=login", forceLoad: true);
-    }
-
-    private sealed class LoginFormModel
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public bool RememberMe { get; set; }
-    }
-
-    private sealed class RegisterFormModel
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
