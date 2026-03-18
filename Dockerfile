@@ -14,8 +14,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8082
+EXPOSE 8082
 
 COPY --from=build /app/publish .
 RUN mkdir -p /app/data /app/packages
