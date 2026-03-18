@@ -1,5 +1,7 @@
 const STORAGE_KEY = "theme";
 const VALID_MODES = new Set(["light", "dark", "system"]);
+let activeMode = "system";
+let themeObserver = null;
 
 function normalizeMode(mode) {
     if (!mode) {
@@ -20,13 +22,45 @@ function getEffectiveMode(mode) {
 }
 
 function applyDocumentTheme(mode) {
-    const effectiveMode = getEffectiveMode(mode);
+    activeMode = normalizeMode(mode);
+    const effectiveMode = getEffectiveMode(activeMode);
 
     document.documentElement.setAttribute("data-app-theme", effectiveMode);
 
     for (const themeElement of document.querySelectorAll("fluent-design-theme")) {
         themeElement.setAttribute("mode", effectiveMode);
     }
+}
+
+function hasThemeInTree(node) {
+    if (!(node instanceof Element)) {
+        return false;
+    }
+
+    if (node.matches("fluent-design-theme")) {
+        return true;
+    }
+
+    return node.querySelector("fluent-design-theme") !== null;
+}
+
+function ensureThemeObserver() {
+    if (themeObserver !== null) {
+        return;
+    }
+
+    themeObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const addedNode of mutation.addedNodes) {
+                if (hasThemeInTree(addedNode)) {
+                    applyDocumentTheme(activeMode);
+                    return;
+                }
+            }
+        }
+    });
+
+    themeObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 function readStoredMode() {
@@ -75,12 +109,14 @@ function writeStoredMode(mode) {
 export function getInitialThemeMode() {
     const mode = readStoredMode();
     applyDocumentTheme(mode);
+    ensureThemeObserver();
     return getEffectiveThemeMode(mode);
 }
 
 export function setThemeMode(mode) {
     const storedMode = writeStoredMode(mode);
     applyDocumentTheme(storedMode);
+    ensureThemeObserver();
     return storedMode;
 }
 

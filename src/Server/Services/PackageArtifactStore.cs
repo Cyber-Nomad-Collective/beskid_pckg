@@ -20,15 +20,16 @@ public interface IPackageArtifactStore
         CancellationToken cancellationToken = default);
 }
 
-public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment) : IPackageArtifactStore
+public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment, IConfiguration configuration) : IPackageArtifactStore
 {
+    private readonly string artifactsRoot = ResolveArtifactsRoot(hostEnvironment, configuration);
+
     public async Task<(string StorageKey, string ChecksumSha256, long SizeBytes)> SaveAsync(
         string packageName,
         string version,
         Stream artifact,
         CancellationToken cancellationToken = default)
     {
-        var artifactsRoot = EnsureArtifactsRoot();
         var safePackage = Sanitize(packageName);
         var safeVersion = Sanitize(version);
         var relativePath = Path.Combine(safePackage, safeVersion, "artifact.bpk");
@@ -63,7 +64,12 @@ public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment) : IPa
         string storageKey,
         CancellationToken cancellationToken = default)
     {
-        var absolutePath = Path.Combine(EnsureArtifactsRoot(), storageKey.Replace('/', Path.DirectorySeparatorChar));
+        var absolutePath = ResolveStoragePath(storageKey);
+        if (absolutePath is null)
+        {
+            return Task.FromResult<(Stream Stream, string ContentType, long? SizeBytes)?>(null);
+        }
+
         if (!File.Exists(absolutePath))
         {
             return Task.FromResult<(Stream Stream, string ContentType, long? SizeBytes)?>(null);
@@ -80,7 +86,12 @@ public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment) : IPa
         string expectedSha256,
         CancellationToken cancellationToken = default)
     {
-        var absolutePath = Path.Combine(EnsureArtifactsRoot(), storageKey.Replace('/', Path.DirectorySeparatorChar));
+        var absolutePath = ResolveStoragePath(storageKey);
+        if (absolutePath is null)
+        {
+            return false;
+        }
+
         if (!File.Exists(absolutePath))
         {
             return false;
@@ -92,11 +103,33 @@ public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment) : IPa
         return string.Equals(digest, expectedSha256, StringComparison.OrdinalIgnoreCase);
     }
 
-    private string EnsureArtifactsRoot()
+    private static string ResolveArtifactsRoot(IHostEnvironment hostEnvironment, IConfiguration configuration)
     {
-        var root = Path.Combine(hostEnvironment.ContentRootPath, "App_Data", "artifacts");
+        var configuredPath = configuration["Storage:ArtifactsRootPath"];
+        var root = string.IsNullOrWhiteSpace(configuredPath)
+            ? Path.Combine(hostEnvironment.ContentRootPath, "App_Data", "artifacts")
+            : configuredPath;
+
+        if (!Path.IsPathRooted(root))
+        {
+            root = Path.Combine(hostEnvironment.ContentRootPath, root);
+        }
+
+        root = Path.GetFullPath(root);
         Directory.CreateDirectory(root);
         return root;
+    }
+
+    private string? ResolveStoragePath(string storageKey)
+    {
+        var relativePath = storageKey.Replace('/', Path.DirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(Path.Combine(artifactsRoot, relativePath));
+        if (!fullPath.StartsWith(artifactsRoot, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return fullPath;
     }
 
     private static string Sanitize(string value)

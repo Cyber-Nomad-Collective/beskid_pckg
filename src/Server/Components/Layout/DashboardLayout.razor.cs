@@ -4,7 +4,9 @@ namespace Server.Components.Layout;
 
 public partial class DashboardLayout
 {
-    private bool IsSidebarOpen { get; set; } = false;
+    private bool IsSidebarOpen { get; set; } = true;
+    private string SidebarClass => $"dashboard-sidebar-shell {(IsSidebarOpen ? "open" : "collapsed")}";
+    private const int SideMenuWidth = 230;
     private void ToggleSidebar()
     {
         IsSidebarOpen = !IsSidebarOpen;
@@ -12,9 +14,6 @@ public partial class DashboardLayout
     }
 
     private void CloseSidebar() => IsSidebarOpen = false;
-
-    private static readonly Icon NavIcon =
-        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Navigation();
 
     private static readonly Icon ProfileIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Person();
@@ -24,8 +23,6 @@ public partial class DashboardLayout
 
     private static readonly Icon MyPackagesIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Folder();
-
-    private static readonly Icon MetadataIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Box();
 
     private static readonly Icon VersionsIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Folder();

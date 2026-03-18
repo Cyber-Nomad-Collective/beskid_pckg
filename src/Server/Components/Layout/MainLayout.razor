@@ -2,15 +2,17 @@
 @inject NavigationManager Navigation
 <FluentDesignTheme StorageName="theme" CustomColor="#3aac9e" NeutralBaseColor="#3f5458"/>
 <FluentMenuProvider/>
-<FluentMainLayout>
+
+<FluentMainLayout HeaderHeight="64" Class="dashboard-layout"  NavMenuTitle="Navigation menu"  >
     <Header>
         <AppTopBar/>
     </Header>
     <Body>
-    <FluentBodyContent>
+    <FluentBodyContent Style="padding: 1.5rem 1rem;">
         @Body
     </FluentBodyContent>
     </Body>
+   
 </FluentMainLayout>
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

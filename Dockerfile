@@ -18,6 +18,6 @@ ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
 COPY --from=build /app/publish .
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/packages
 
 ENTRYPOINT ["dotnet", "Server.dll"]

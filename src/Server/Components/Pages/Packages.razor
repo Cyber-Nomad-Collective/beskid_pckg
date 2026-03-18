@@ -6,16 +6,18 @@
 @inject ApplicationDbContext DbContext
 
 <PageTitle>Browse Packages</PageTitle>
-
 <FluentCard Class="section-card">
+    <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4" Wrap="true">
+
     <h1>Browse Packages</h1>
     <p>Search by name, category, or description. Open a package to inspect versions, dependencies, reviews, and feature voting.</p>
-    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
-        <FluentSearch @bind-Value="Search" Placeholder="Search packages..." Style="width: 360px;" />
-        <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
-        <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
+    <FluentSearch @bind-Value="Search" Placeholder="Search packages..." Style="width: 360px;"/>
+    <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
+    <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
     </FluentStack>
+
 </FluentCard>
+
 
 <FluentCard Class="section-card">
     @if (Rows.Count == 0)

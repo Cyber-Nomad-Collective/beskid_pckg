@@ -2,7 +2,7 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
 
 <PageTitle>My Packages - Dashboard</PageTitle>
@@ -13,9 +13,6 @@
             <h2>My Packages</h2>
             <p class="muted">Manage packages you have published to the registry.</p>
         </div>
-        <FluentAnchor Appearance="Appearance.Accent" Href="/dashboard/packages/new" IconStart="@(new Icons.Regular.Size16.Add())">
-            Upload Version
-        </FluentAnchor>
     </header>
 
     <FluentCard Class="dashboard-card" Style="padding: 24px;">
@@ -57,12 +54,105 @@
                         @package.AverageRating.ToString("0.00")
                     </TemplateColumn>
                     <TemplateColumn Title="Actions" Context="package">
-                        <FluentAnchor Appearance="Appearance.Outline" Href="@($"/dashboard/packages/metadata?name={Uri.EscapeDataString(package.Name)}")">
-                            Edit metadata
-                        </FluentAnchor>
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
+                            <FluentButton Appearance="Appearance.Outline" OnClick="@(() => StartMetadataEdit(package))">
+                                Edit metadata
+                            </FluentButton>
+                            <FluentButton Appearance="Appearance.Accent" OnClick="@(() => StartVersionUpload(package))">
+                                Upload version
+                            </FluentButton>
+                        </FluentStack>
                     </TemplateColumn>
                 </ChildContent>
             </FluentDataGrid>
+
+            @if (!string.IsNullOrWhiteSpace(MetadataFeedbackMessage))
+            {
+                <p class="feedback-message is-success" style="margin-top: 16px;">@MetadataFeedbackMessage</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage) && UploadingPackageName is null)
+            {
+                <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
+                    @UploadFeedbackMessage
+                </p>
+            }
+
+            @if (EditingPackageName is not null)
+            {
+                <FluentDivider Style="margin: 20px 0;" />
+
+                <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
+                    <header>
+                        <h3>Edit Metadata: @EditingPackageName</h3>
+                        <p class="muted">Update description, links, and visibility for the selected package.</p>
+                    </header>
+
+                    <EditForm Model="MetadataForm" OnValidSubmit="SaveMetadataAsync">
+                        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+                            <FluentTextField @bind-Value="MetadataForm.PackageName" Label="Package name" Disabled />
+                            <FluentTextArea @bind-Value="MetadataForm.Description" Label="Description" Placeholder="Describe what this package provides" />
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="true">
+                                <FluentTextField @bind-Value="MetadataForm.RepositoryUrl" Label="Repository URL" Placeholder="https://..." />
+                                <FluentTextField @bind-Value="MetadataForm.WebsiteUrl" Label="Website URL" Placeholder="https://..." />
+                            </FluentStack>
+
+                            <FluentSwitch @bind-Value="MetadataForm.IsPublic">Public package</FluentSwitch>
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
+                                <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Button" OnClick="CancelMetadataEdit">Cancel</FluentButton>
+                                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="IsSavingMetadata">Save metadata</FluentButton>
+                            </FluentStack>
+                        </FluentStack>
+                    </EditForm>
+                </FluentCard>
+            }
+
+            @if (UploadingPackageName is not null)
+            {
+                <FluentDivider Style="margin: 20px 0;" />
+
+                <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
+                    <header>
+                        <h3>Upload Version: @UploadingPackageName</h3>
+                        <p class="muted">Upload a .bpkg artifact and publish a new immutable version.</p>
+                    </header>
+
+                    @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage))
+                    {
+                        <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 12px;">
+                            @UploadFeedbackMessage
+                        </p>
+                    }
+
+                    <EditForm OnValidSubmit="UploadVersionAsync">
+                        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+                            <FluentTextField @bind-Value="UploadVersion" Label="Version" Placeholder="1.0.0" Required />
+                            <FluentTextField @bind-Value="UploadChecksumSha256" Label="Checksum SHA-256 (optional)" Placeholder="Paste checksum to enforce integrity" />
+
+                            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+                                <FluentLabel>Artifact (.bpkg)</FluentLabel>
+                                <InputFile OnChange="HandleArtifactSelected" accept=".bpk,.bpkg,application/zip" />
+                                <span class="muted">Max size: 64 MB.</span>
+                                @if (!string.IsNullOrWhiteSpace(SelectedArtifactName))
+                                {
+                                    <span>Selected: @SelectedArtifactName</span>
+                                }
+                            </FluentStack>
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
+                                <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Button" OnClick="CancelVersionUpload" Disabled="IsUploadingVersion">
+                                    Cancel
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="IsUploadingVersion">
+                                    @(IsUploadingVersion ? "Uploading..." : "Upload & Publish")
+                                </FluentButton>
+                            </FluentStack>
+                        </FluentStack>
+                    </EditForm>
+                </FluentCard>
+            }
         }
     </FluentCard>
 </FluentStack>

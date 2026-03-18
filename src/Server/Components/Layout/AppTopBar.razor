@@ -1,44 +1,47 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
-<header class="top-nav">
-    <div class="top-nav-left">
-        <img src="favicon.svg" width="28" height="17" alt="Beskid" />
-        <span class="brand">Beskid Package Registry</span>
+<header class="top-nav" style="position: relative; width:100%;">
+    <div class="top-nav-inner" style="position: fixed; width:100%; left: 0;">
+        <div class="top-nav-left" style="position: fixed; width:100%; padding: 0 0.6rem;">
+            @if (HeaderStart != null)
+            {
+                @HeaderStart
+            }
 
-        @if (HeaderStart != null)
-        {
-            @HeaderStart
-        }
-    </div>
-    <div class="top-nav-right">
+            <a class="brand-link" href="/" aria-label="Beskid home">
+                <img src="favicon.svg" width="28" height="17" alt="Beskid" />
+                <span class="brand">beskid pckg</span>
+            </a>
+        </div>
+        <div class="top-nav-right"  style="position: fixed; width:100%; padding: 0 0.5rem;">
+            <nav class="top-nav-links " style="gap: 1.2rem;"  aria-label="Primary">
+                <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
+                <NavLink href="/packages">Packages</NavLink>
+                <AuthorizeView>
+                    <Authorized>
+                        <NavLink href="/dashboard/packages">Dashboard</NavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <a href="/scalar">API</a>
+            </nav>
 
-        <nav class="top-nav-links" aria-label="Primary">
-            <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
-            <NavLink href="/packages">Packages</NavLink>
-            <AuthorizeView>
-                <Authorized>
-                    <NavLink href="/dashboard/packages">Dashboard</NavLink>
-                </Authorized>
-            </AuthorizeView>
-            <a href="/scalar">API</a>
-        </nav>
-        <FluentStack Orientation="Orientation.Horizontal" Gap="12px" VerticalAlignment="VerticalAlignment.Center">
-            <ThemeToggle />
+            <div class="top-nav-controls">
+                <ThemeToggle />
 
-            <AuthorizeView>
-                <Authorized Context="authState">
-                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
-                        <span class="user-display-name">@(authState.User.Identity?.Name ?? "Account")</span>
-                        <UserMenu DisplayName="@(authState.User.Identity?.Name ?? "Account")" />
-                    </FluentStack>
-                </Authorized>
-                <NotAuthorized>
-                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px">
-                        <FluentAnchor Appearance="Appearance.Outline" Href="/auth?mode=login">Login</FluentAnchor>
-                        <FluentAnchor Appearance="Appearance.Accent" Href="/auth?mode=register">Register</FluentAnchor>
-                    </FluentStack>
-                </NotAuthorized>
-            </AuthorizeView>
-        </FluentStack>
+                <AuthorizeView>
+                    <Authorized Context="authState">
+                        <div class="top-nav-user">
+                            <UserMenu DisplayName="@(authState.User.Identity?.Name ?? "Account")" @bind-IsOpen="IsOpen" />
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div class="top-nav-auth">
+                            <FluentAnchor Appearance="Appearance.Outline" Href="/auth?mode=login">Login</FluentAnchor>
+                            <FluentAnchor Appearance="Appearance.Accent" Href="/auth?mode=register">Register</FluentAnchor>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
     </div>
 </header>

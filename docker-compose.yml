@@ -9,10 +9,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Data Source=/app/data/pckg.db
+      Storage__ArtifactsRootPath: /app/packages
     ports:
       - "8080:8080"
     volumes:
       - pckg_data:/app/data
+      - pckg_packages:/app/packages
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
@@ -23,3 +25,4 @@ services:
 
 volumes:
   pckg_data:
+  pckg_packages:
