@@ -4,6 +4,7 @@ using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using pckg.Data;
@@ -144,6 +145,14 @@ if (useHttpsRedirection)
     app.UseHttpsRedirection();
 }
 
+var uploadsRoot = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads");
+Directory.CreateDirectory(uploadsRoot);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = "/uploads"
+});
+
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
@@ -192,6 +201,34 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+app.MapPost("/auth/login", async (
+    HttpContext context,
+    SignInManager<ApplicationUser> signInManager) =>
+{
+    if (!context.Request.HasFormContentType)
+    {
+        return Results.Redirect("/auth?mode=login&error=invalid_request");
+    }
+
+    var form = await context.Request.ReadFormAsync(context.RequestAborted);
+    var email = form["email"].FirstOrDefault()?.Trim() ?? string.Empty;
+    var password = form["password"].FirstOrDefault() ?? string.Empty;
+    var rememberMe = string.Equals(form["rememberMe"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(form["rememberMe"].FirstOrDefault(), "on", StringComparison.OrdinalIgnoreCase);
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.Redirect("/auth?mode=login&error=missing_credentials");
+    }
+
+    var result = await signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure: false);
+    if (!result.Succeeded)
+    {
+        return Results.Redirect("/auth?mode=login&error=invalid_credentials");
+    }
+
+    return Results.Redirect("/dashboard/packages/my");
+});
 app.MapGet("/users/logout", (HttpContext context) =>
 {
     var redirectTarget = context.Request.QueryString.HasValue

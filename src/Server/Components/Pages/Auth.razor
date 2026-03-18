@@ -39,18 +39,18 @@
                     <p class="muted">Continue where you left off.</p>
                 </header>
                 <div class="section-card-body">
-                    <EditForm Model="LoginModel" OnValidSubmit="LoginAsync" FormName="login" class="auth-form" novalidate>
-                        <FluentTextField @bind-Value="LoginModel.Email" Name="PostedLoginModel.Email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
-                        <FluentTextField @bind-Value="LoginModel.Password"
-                                         Name="PostedLoginModel.Password"
+                    <form method="post" action="/auth/login" class="auth-form" novalidate>
+                        <AntiforgeryToken />
+                        <FluentTextField Name="email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
+                        <FluentTextField Name="password"
                                          Label="Password"
                                          TextFieldType="TextFieldType.Password"
                                          Placeholder="Your password"
                                          Required
                                          Class="auth-form-field" />
-                        <FluentCheckbox @bind-Value="LoginModel.RememberMe" Name="PostedLoginModel.RememberMe">Keep me signed in</FluentCheckbox>
+                        <FluentCheckbox Name="rememberMe" Value="true">Keep me signed in</FluentCheckbox>
                         <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Class="auth-submit">Login</FluentButton>
-                    </EditForm>
+                    </form>
                     @if (!string.IsNullOrWhiteSpace(LoginMessage))
                     {
                         <div class="feedback-message @(LoginSuccess ? "is-success" : "is-error")" role="status" aria-live="polite">@LoginMessage</div>
@@ -71,6 +71,7 @@
                 </header>
                 <div class="section-card-body">
                     <EditForm Model="RegisterModel" OnValidSubmit="RegisterAsync" FormName="register" class="auth-form" novalidate>
+                        <AntiforgeryToken />
                         <FluentTextField @bind-Value="RegisterModel.Email" Name="PostedRegisterModel.Email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
                         <FluentTextField @bind-Value="RegisterModel.Password"
                                          Name="PostedRegisterModel.Password"

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Json;
 using pckg.Features.Packages;
+using Server.Components.Shared;
 
 namespace Server.Components.Pages.Dashboard;
 
@@ -8,6 +9,7 @@ public partial class AllPackages
 {
     private const long MaxUploadBytes = 64 * 1024 * 1024;
     private readonly List<PackageSummaryResponse> PackageItems = [];
+    private PackageVersionUploadDialog? UploadDialog;
     private bool IsLoading = true;
     private bool IsSavingMetadata;
     private bool IsUploadingVersion;
@@ -17,9 +19,6 @@ public partial class AllPackages
     private string? UploadingPackageName;
     private string? UploadFeedbackMessage;
     private bool UploadFeedbackIsError;
-    private string UploadVersion = string.Empty;
-    private string UploadChecksumSha256 = string.Empty;
-    private IBrowserFile? UploadArtifact;
     private readonly MetadataFormModel MetadataForm = new();
 
     protected override async Task OnInitializedAsync()
@@ -69,14 +68,15 @@ public partial class AllPackages
         IsSavingMetadata = false;
     }
 
-    private void StartVersionUpload(PackageSummaryResponse package)
+    private async Task StartVersionUpload(PackageSummaryResponse package)
     {
         UploadingPackageName = package.Name;
-        UploadVersion = string.Empty;
-        UploadChecksumSha256 = string.Empty;
-        UploadArtifact = null;
         UploadFeedbackMessage = null;
         UploadFeedbackIsError = false;
+        if (UploadDialog is not null)
+        {
+            await UploadDialog.OpenDialogAsync(package.Name);
+        }
     }
 
     private void CancelVersionUpload()
@@ -85,21 +85,20 @@ public partial class AllPackages
         IsUploadingVersion = false;
     }
 
-    private string? SelectedArtifactName => UploadArtifact?.Name;
-
-    private void HandleArtifactSelected(InputFileChangeEventArgs args)
+    private Task CancelVersionUploadAsync()
     {
-        UploadArtifact = args.FileCount > 0 ? args.File : null;
+        CancelVersionUpload();
+        return Task.CompletedTask;
     }
 
-    private async Task UploadVersionAsync()
+    private async Task UploadVersionAsync(PackageVersionUploadDialog.UploadVersionInput input)
     {
-        if (string.IsNullOrWhiteSpace(UploadingPackageName))
+        if (string.IsNullOrWhiteSpace(input.PackageName))
         {
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(UploadVersion) || UploadArtifact is null)
+        if (string.IsNullOrWhiteSpace(input.Version) || input.Artifact is null)
         {
             UploadFeedbackIsError = true;
             UploadFeedbackMessage = "Version and artifact are required.";
@@ -111,11 +110,11 @@ public partial class AllPackages
 
         try
         {
-            await using var fileStream = UploadArtifact.OpenReadStream(MaxUploadBytes);
+            await using var fileStream = input.Artifact.OpenReadStream(MaxUploadBytes);
             using var content = new MultipartFormDataContent();
-            content.Add(new StringContent(UploadVersion.Trim()), "version");
+            content.Add(new StringContent(input.Version.Trim()), "version");
 
-            var checksum = UploadChecksumSha256.Trim();
+            var checksum = input.ChecksumSha256.Trim();
             if (!string.IsNullOrWhiteSpace(checksum))
             {
                 content.Add(new StringContent(checksum), "checksumSha256");
@@ -123,9 +122,9 @@ public partial class AllPackages
 
             var artifactContent = new StreamContent(fileStream);
             artifactContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/zip");
-            content.Add(artifactContent, "artifact", UploadArtifact.Name);
+            content.Add(artifactContent, "artifact", input.Artifact.Name);
 
-            var response = await Http.PostAsync($"/api/packages/{Uri.EscapeDataString(UploadingPackageName)}/publish", content);
+            var response = await Http.PostAsync($"/api/packages/{Uri.EscapeDataString(input.PackageName)}/publish", content);
             var payload = await response.Content.ReadFromJsonAsync<PublishPackageVersionResponse>();
 
             if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
@@ -137,6 +136,11 @@ public partial class AllPackages
 
             UploadFeedbackIsError = false;
             UploadFeedbackMessage = payload.Message;
+            CancelVersionUpload();
+            if (UploadDialog is not null)
+            {
+                await UploadDialog.CloseDialogAsync();
+            }
             await LoadAllPackagesAsync();
         }
         catch (IOException)

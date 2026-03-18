@@ -2,8 +2,7 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using System.Net.Http.Json
-@inject IDialogService DialogService
+@using Server.Components.Shared
 @inject IJSRuntime JsRuntime
 @inject HttpClient Http
 
@@ -19,6 +18,13 @@
             Generate new key
         </FluentButton>
     </header>
+
+    <ApiKeyGenerateDialog @ref="GenerateDialog"
+                          LastCreatedKey="@LastCreatedKey"
+                          IsWorking="@IsWorking"
+                          OnGenerate="CreateApiKeyAsync"
+                          OnCopyKey="CopyLastKeyAsync"
+                          OnDismissKey="DismissGeneratedKey" />
 
     @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
     {

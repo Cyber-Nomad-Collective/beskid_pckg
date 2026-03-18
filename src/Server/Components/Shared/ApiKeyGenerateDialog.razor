@@ -1,0 +1,41 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialog Hidden="@IsHidden" TrapFocus="true" Modal="true" Class="app-dialog" Style="min-width: min(620px, calc(100vw - 32px));">
+    <FluentDialogHeader>
+        <FluentLabel Typo="Typography.PaneHeader">Generate API key</FluentLabel>
+    </FluentDialogHeader>
+    <FluentDialogBody>
+        <FluentStack Orientation="Orientation.Vertical" Gap="16px" Class="app-dialog-stack">
+            <p class="muted app-dialog-intro">Create a key for CLI publishing and read operations.</p>
+
+            <FluentTextField @bind-Value="Model.Name" Label="Key name" Placeholder="CI publish token" Required Disabled="@IsWorking" />
+            <FluentCard Class="app-dialog-surface">
+                <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+                    <FluentLabel>Scopes</FluentLabel>
+                    <FluentCheckbox @bind-Value="Model.PublishScope" Disabled="@IsWorking">Publish</FluentCheckbox>
+                    <FluentCheckbox @bind-Value="Model.ReadScope" Disabled="@IsWorking">Read</FluentCheckbox>
+                </FluentStack>
+            </FluentCard>
+
+            @if (!string.IsNullOrWhiteSpace(LastCreatedKey))
+            {
+                <FluentCard Class="app-dialog-surface">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                        <FluentLabel>Copy this key now. You will not be able to see it again.</FluentLabel>
+                        <code class="app-dialog-code">@LastCreatedKey</code>
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="12px">
+                            <FluentButton Appearance="Appearance.Accent" OnClick="OnCopyKey" Disabled="@IsWorking">Copy key</FluentButton>
+                            <FluentButton Appearance="Appearance.Outline" OnClick="DismissKey" Disabled="@IsWorking">Dismiss</FluentButton>
+                        </FluentStack>
+                    </FluentStack>
+                </FluentCard>
+            }
+        </FluentStack>
+    </FluentDialogBody>
+    <FluentDialogFooter>
+        <FluentButton Appearance="Appearance.Outline" OnClick="CloseAsync" Disabled="@IsWorking">Cancel</FluentButton>
+        <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync" Disabled="@IsWorking">
+            @(IsWorking ? "Generating..." : "Generate key")
+        </FluentButton>
+    </FluentDialogFooter>
+</FluentDialog>

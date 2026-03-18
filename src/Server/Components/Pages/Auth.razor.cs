@@ -9,6 +9,9 @@ public partial class Auth
     [SupplyParameterFromQuery(Name = "mode")]
     public string? RequestedMode { get; set; }
 
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? ErrorCode { get; set; }
+
     [SupplyParameterFromForm(FormName = "login")]
     private LoginFormModel? PostedLoginModel { get; set; }
 
@@ -37,29 +40,15 @@ public partial class Auth
         {
             Navigation.NavigateTo("/onboarding", forceLoad: true);
         }
-    }
 
-    private async Task LoginAsync()
-    {
-        LoginMessage = string.Empty;
+        LoginMessage = ErrorCode switch
+        {
+            "missing_credentials" => "Email and password are required.",
+            "invalid_credentials" => "Invalid credentials.",
+            "invalid_request" => "Invalid login request.",
+            _ => string.Empty
+        };
         LoginSuccess = false;
-
-        if (string.IsNullOrWhiteSpace(LoginModel.Email) || string.IsNullOrWhiteSpace(LoginModel.Password))
-        {
-            LoginMessage = "Email and password are required.";
-            return;
-        }
-
-        var result = await SignInManager.PasswordSignInAsync(
-            LoginModel.Email.Trim(), LoginModel.Password, LoginModel.RememberMe, lockoutOnFailure: false);
-
-        if (!result.Succeeded)
-        {
-            LoginMessage = "Invalid credentials.";
-            return;
-        }
-
-        Navigation.NavigateTo("/dashboard/packages/my", forceLoad: true);
     }
 
     private async Task RegisterAsync()

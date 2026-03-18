@@ -20,13 +20,35 @@ public sealed class GetCurrentUserEndpoint(UserManager<ApplicationUser> userMana
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await Send.OkAsync(new CurrentUserResponse(false, null, null, false), ct);
+            await Send.OkAsync(new CurrentUserResponse(false, null, null, false, null, null, null, null, null, null), ct);
             return;
         }
 
         var user = await userManager.FindByIdAsync(userId);
-        await Send.OkAsync(new CurrentUserResponse(true, userId, user?.Email, true), ct);
+        await Send.OkAsync(
+            new CurrentUserResponse(
+                true,
+                userId,
+                user?.Email,
+                true,
+                string.IsNullOrWhiteSpace(user?.DisplayName) ? user?.Email : user.DisplayName,
+                user?.Bio,
+                user?.GitHubUrl,
+                user?.WebsiteUrl,
+                user?.XUrl,
+                user?.ProfileImageUrl),
+            ct);
     }
 }
 
-public sealed record CurrentUserResponse(bool IsAuthenticated, string? UserId, string? Email, bool IsPublisher);
+public sealed record CurrentUserResponse(
+    bool IsAuthenticated,
+    string? UserId,
+    string? Email,
+    bool IsPublisher,
+    string? DisplayName,
+    string? Bio,
+    string? GitHubUrl,
+    string? WebsiteUrl,
+    string? XUrl,
+    string? ProfileImageUrl);

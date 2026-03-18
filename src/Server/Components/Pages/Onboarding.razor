@@ -22,6 +22,7 @@
     }
 
     <EditForm Model="Model" OnValidSubmit="CreateInitialAdminAsync" FormName="onboarding" class="auth-form" novalidate>
+        <AntiforgeryToken />
         <FluentTextField @bind-Value="Model.Email" Name="PostedModel.Email" Label="Email" Placeholder="admin@example.com" Required Class="auth-form-field" />
         <FluentTextField @bind-Value="Model.Password"
                          Name="PostedModel.Password"

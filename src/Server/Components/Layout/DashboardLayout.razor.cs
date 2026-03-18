@@ -1,19 +1,13 @@
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.AspNetCore.Components;
 
 namespace Server.Components.Layout;
 
 public partial class DashboardLayout
 {
-    private bool IsSidebarOpen { get; set; } = true;
-    private string SidebarClass => $"dashboard-sidebar-shell {(IsSidebarOpen ? "open" : "collapsed")}";
+    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+    private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
     private const int SideMenuWidth = 230;
-    private void ToggleSidebar()
-    {
-        IsSidebarOpen = !IsSidebarOpen;
-        StateHasChanged();
-    }
-
-    private void CloseSidebar() => IsSidebarOpen = false;
 
     private static readonly Icon ProfileIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Person();

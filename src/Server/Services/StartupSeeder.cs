@@ -16,6 +16,7 @@ public sealed class StartupSeeder(
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         dbContext.Database.EnsureCreated();
+        await EnsureUserProfileSchemaAsync(cancellationToken);
         await EnsurePackageSchemaAsync(cancellationToken);
         await EnsurePackageVersionSchemaAsync(cancellationToken);
         await EnsureRoleAsync("SuperAdmin");
@@ -26,6 +27,55 @@ public sealed class StartupSeeder(
         if (!await roleManager.RoleExistsAsync(roleName))
         {
             await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+
+    private async Task EnsureUserProfileSchemaAsync(CancellationToken cancellationToken)
+    {
+        var existingColumns = await dbContext.Database
+            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('AspNetUsers')")
+            .ToListAsync(cancellationToken);
+
+        if (!existingColumns.Contains("DisplayName", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN DisplayName TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        if (!existingColumns.Contains("Bio", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN Bio TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        if (!existingColumns.Contains("GitHubUrl", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN GitHubUrl TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        if (!existingColumns.Contains("WebsiteUrl", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN WebsiteUrl TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        if (!existingColumns.Contains("XUrl", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN XUrl TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
+        }
+
+        if (!existingColumns.Contains("ProfileImageUrl", StringComparer.OrdinalIgnoreCase))
+        {
+            await dbContext.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE AspNetUsers ADD COLUMN ProfileImageUrl TEXT NOT NULL DEFAULT '';",
+                cancellationToken);
         }
     }
 

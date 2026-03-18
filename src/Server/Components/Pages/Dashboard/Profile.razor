@@ -3,32 +3,110 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Profile Settings - Dashboard</PageTitle>
 
-<FluentStack Orientation="Orientation.Vertical" Gap="24px">
-    <header>
-        <h2>Profile Settings</h2>
-        <p class="muted">Manage your account details and preferences.</p>
+<section class="profile-settings-page">
+    <header class="profile-settings-head">
+        <div>
+            <h2>Profile Settings</h2>
+            <p class="muted">Manage your account details and preferences.</p>
+        </div>
+        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true" VerticalAlignment="VerticalAlignment.Center">
+            <FluentBadge Appearance="Appearance.Accent">User</FluentBadge>
+            @if (IsSuperAdmin)
+            {
+                <FluentBadge Appearance="Appearance.Neutral">SuperAdmin</FluentBadge>
+            }
+            @if (!string.IsNullOrWhiteSpace(UserId))
+            {
+                <FluentAnchor Appearance="Appearance.Hypertext" Href="@($"/profile/{Uri.EscapeDataString(UserId)}")">Public view</FluentAnchor>
+            }
+        </FluentStack>
     </header>
 
-    <FluentCard Class="dashboard-card">
-        <div style="padding: 24px;">
-            <AuthorizeView>
-                <Authorized>
-                    <h3>Account Details</h3>
-                    <p>Email: <strong>@context.User.Identity?.Name</strong></p>
-                    
-                    <FluentDivider Style="margin: 24px 0;" />
-                    
-                    <h3>Roles</h3>
-                    <FluentBadge Appearance="Appearance.Accent">User</FluentBadge>
-                    @if (context.User.IsInRole("SuperAdmin"))
-                    {
-                        <FluentBadge Appearance="Appearance.Neutral">SuperAdmin</FluentBadge>
-                    }
-                </Authorized>
-            </AuthorizeView>
-        </div>
-    </FluentCard>
-</FluentStack>
+    @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+    {
+        <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
+    }
+
+    @if (IsLoading)
+    {
+        <FluentCard Class="dashboard-card profile-settings-shell">
+            <p class="muted">Loading profile...</p>
+        </FluentCard>
+    }
+    else
+    {
+        <EditForm Model="Form" OnValidSubmit="SaveProfileAsync" class="profile-settings-form">
+            <FluentGrid Spacing="3"
+                        AdaptiveRendering="true"
+                        Class="profile-settings-grid">
+                <FluentGridItem xs="12" lg="8" Class="profile-settings-main">
+                    <FluentCard Class="dashboard-card profile-panel">
+                        <div class="profile-panel-head">
+                            <h3>Account Details</h3>
+                            <p class="muted">Update your public profile information.</p>
+                        </div>
+                        <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                            <FluentTextField @bind-Value="Form.DisplayName" Label="Name" Placeholder="Your public display name" Disabled="@IsSaving" />
+                            <FluentTextField @bind-Value="Form.Email" Label="Email" Disabled="true" />
+                            <FluentTextArea @bind-Value="Form.Bio" Label="Profile description" Placeholder="Tell people about yourself" Disabled="@IsSaving" />
+                        </FluentStack>
+                    </FluentCard>
+
+                    <FluentCard Class="dashboard-card profile-panel">
+                        <div class="profile-panel-head">
+                            <h3>Socials</h3>
+                            <p class="muted">Share where people can find your work.</p>
+                        </div>
+
+                        <div class="profile-socials-grid">
+                            <div class="profile-social-item">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Code())" Color="Color.Neutral" />
+                                <FluentTextField @bind-Value="Form.GitHubUrl" Label="GitHub" Placeholder="https://github.com/username" Disabled="@IsSaving" />
+                            </div>
+                            <div class="profile-social-item">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Globe())" Color="Color.Neutral" />
+                                <FluentTextField @bind-Value="Form.WebsiteUrl" Label="Website" Placeholder="https://your-site.dev" Disabled="@IsSaving" />
+                            </div>
+                            <div class="profile-social-item">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Chat())" Color="Color.Neutral" />
+                                <FluentTextField @bind-Value="Form.XUrl" Label="X / Twitter" Placeholder="https://x.com/username" Disabled="@IsSaving" />
+                            </div>
+                        </div>
+                    </FluentCard>
+                </FluentGridItem>
+
+                <FluentGridItem xs="12" lg="4" Class="profile-settings-side">
+                    <FluentCard Class="dashboard-card profile-panel profile-avatar-panel">
+                        <div class="profile-panel-head">
+                            <h3>Profile Picture</h3>
+                            <p class="muted">PNG, JPG, WEBP or GIF up to 5 MB.</p>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ProfileImageUrl))
+                        {
+                            <img src="@ProfileImageUrl" alt="Profile image" class="profile-avatar" />
+                        }
+                        else
+                        {
+                            <div class="profile-avatar profile-avatar-placeholder">
+                                <FluentIcon Value="@(new Icons.Regular.Size32.Person())" Color="Color.Neutral" />
+                            </div>
+                        }
+
+                        <InputFile OnChange="UploadProfileImageAsync" accept="image/png,image/jpeg,image/webp,image/gif" />
+                    </FluentCard>
+                </FluentGridItem>
+            </FluentGrid>
+
+            <div class="profile-settings-actions">
+                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="@IsSaving">
+                    @(IsSaving ? "Saving..." : "Save profile")
+                </FluentButton>
+            </div>
+        </EditForm>
+    }
+</section>

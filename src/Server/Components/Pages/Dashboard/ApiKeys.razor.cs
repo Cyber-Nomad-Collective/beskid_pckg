@@ -1,16 +1,16 @@
 using Microsoft.JSInterop;
+using Server.Components.Shared;
 
 namespace Server.Components.Pages.Dashboard;
 
 public partial class ApiKeys
 {
     private readonly List<ApiKeyRow> ApiKeyItems = [];
-    private readonly CreateKeyModel CreateModel = new();
+    private ApiKeyGenerateDialog? GenerateDialog;
     private string? LastCreatedKey;
     private string? FeedbackMessage;
     private bool FeedbackIsError;
     private bool IsWorking;
-    public bool IsDialogHidden { get; set; } = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -33,9 +33,9 @@ public partial class ApiKeys
         ApiKeyItems.AddRange(rows);
     }
 
-    private async Task CreateApiKeyAsync()
+    private async Task CreateApiKeyAsync(ApiKeyGenerateDialog.CreateKeyInput input)
     {
-        if (string.IsNullOrWhiteSpace(CreateModel.Name))
+        if (string.IsNullOrWhiteSpace(input.Name))
         {
             SetFeedback("Key name is required.", isError: true);
             return;
@@ -45,18 +45,18 @@ public partial class ApiKeys
         try
         {
             var scopes = new List<string>();
-            if (CreateModel.PublishScope)
+            if (input.PublishScope)
             {
                 scopes.Add("publish");
             }
 
-            if (CreateModel.ReadScope)
+            if (input.ReadScope)
             {
                 scopes.Add("read");
             }
 
             var response = await Http.PostAsJsonAsync("/api/keys",
-                new CreateApiKeyRequest(CreateModel.Name.Trim(), scopes.ToArray()));
+                new CreateApiKeyRequest(input.Name.Trim(), scopes.ToArray()));
             var payload = await response.Content.ReadFromJsonAsync<CreateApiKeyResponse>();
 
             if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
@@ -66,7 +66,6 @@ public partial class ApiKeys
             }
 
             LastCreatedKey = payload.PlainTextKey;
-            CreateModel.Name = string.Empty;
             await LoadKeysAsync();
             SetFeedback(payload.Message, isError: false);
         }
@@ -115,21 +114,13 @@ public partial class ApiKeys
         LastCreatedKey = null;
     }
 
-    private Task OpenGenerateKeyDialogAsync()
+    private Task DismissGeneratedKey()
     {
-        CreateModel.Name = string.Empty;
-        CreateModel.PublishScope = true;
-        CreateModel.ReadScope = true;
         ClearLastKey();
-        IsDialogHidden = false;
         return Task.CompletedTask;
     }
 
-    private void CloseDialog()
-    {
-        IsDialogHidden = true;
-        ClearLastKey();
-    }
+    private Task OpenGenerateKeyDialogAsync() => GenerateDialog?.OpenDialogAsync() ?? Task.CompletedTask;
 
     private void SetFeedback(string message, bool isError)
     {
@@ -150,11 +141,4 @@ public partial class ApiKeys
     private sealed record CreateApiKeyResponse(bool Success, string? PlainTextKey, ApiKeyRow? Key, string Message);
 
     private sealed record RevokeApiKeyResponse(bool Success, string Message, DateTimeOffset? RevokedAtUtc);
-
-    private sealed class CreateKeyModel
-    {
-        public string Name { get; set; } = string.Empty;
-        public bool PublishScope { get; set; } = true;
-        public bool ReadScope { get; set; } = true;
-    }
 }

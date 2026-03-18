@@ -1,0 +1,83 @@
+@page "/profile/{UserId}"
+
+<PageTitle>Public Profile</PageTitle>
+
+<section class="public-profile-page">
+    @if (IsLoading)
+    {
+        <FluentCard Class="public-profile-card">
+            <p class="muted">Loading profile...</p>
+        </FluentCard>
+    }
+    else if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+    {
+        <FluentCard Class="public-profile-card">
+            <div class="feedback-message is-error">@FeedbackMessage</div>
+        </FluentCard>
+    }
+    else if (Profile is not null)
+    {
+        <header class="public-profile-hero">
+            <div class="public-profile-hero-inner">
+                @if (!string.IsNullOrWhiteSpace(Profile.ProfileImageUrl))
+                {
+                    <img src="@Profile.ProfileImageUrl" alt="@Profile.DisplayName" class="public-profile-avatar" />
+                }
+                else
+                {
+                    <div class="public-profile-avatar public-profile-avatar-placeholder">
+                        <FluentIcon Value="@(new Icons.Regular.Size32.Person())" Color="Color.Neutral" />
+                    </div>
+                }
+
+                <div class="public-profile-title">
+                    <h1>@Profile.DisplayName</h1>
+                    <p class="muted">Public profile</p>
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
+                        <FluentBadge Appearance="Appearance.Accent">Publisher</FluentBadge>
+                    </FluentStack>
+                </div>
+            </div>
+        </header>
+
+        <div class="public-profile-sections">
+            <FluentCard Class="public-profile-card">
+                <h2>About</h2>
+                <p class="muted">@(!string.IsNullOrWhiteSpace(Profile.Bio) ? Profile.Bio : "No profile description yet.")</p>
+            </FluentCard>
+
+            <FluentCard Class="public-profile-card">
+                <h2>Socials</h2>
+                <ul class="public-profile-list">
+                    @if (!string.IsNullOrWhiteSpace(Profile.GitHubUrl))
+                    {
+                        <li>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Code())" Color="Color.Neutral" />
+                            <a href="@Profile.GitHubUrl" target="_blank" rel="noopener noreferrer">GitHub</a>
+                        </li>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Profile.WebsiteUrl))
+                    {
+                        <li>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Globe())" Color="Color.Neutral" />
+                            <a href="@Profile.WebsiteUrl" target="_blank" rel="noopener noreferrer">Website</a>
+                        </li>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Profile.XUrl))
+                    {
+                        <li>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Chat())" Color="Color.Neutral" />
+                            <a href="@Profile.XUrl" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+                        </li>
+                    }
+                    @if (string.IsNullOrWhiteSpace(Profile.GitHubUrl)
+                         && string.IsNullOrWhiteSpace(Profile.WebsiteUrl)
+                         && string.IsNullOrWhiteSpace(Profile.XUrl))
+                    {
+                        <li class="muted">No social links available.</li>
+                    }
+                </ul>
+            </FluentCard>
+        </div>
+    }
+</section>

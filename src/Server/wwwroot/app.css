@@ -2,13 +2,15 @@
 
 /* Layout tokens only - colors come from FluentUI DesignTheme */
 :root {
+    --topbar-gradient: linear-gradient(0deg,var(--neutral-fill-layer-rest) 0%, var(--neutral-fill-rest) 100%);
     --brand-500: #3aac9e;
     --brand-600: #258d80;
     --surface-shadow: 0 0 2px rgba(17, 38, 44, 0.08), 0 6px 16px rgba(17, 38, 44, 0.08);
 }
 .layout > header.header {
-    background: var(--neutral-fill-stencil-rest);
-    
+    background: #243035;
+    background: var(--topbar-gradient);
+    box-shadow: 0 0px 10px 20px var(--neutral-fill-layer-rest);
 }
 body {
     --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
@@ -20,9 +22,7 @@ body {
     color: var(--neutral-foreground-rest);
     background: var(--neutral-fill-layer-rest);
 }
-.fluent-nav-item.expander{
-    display: none;
-}
+
 /* Shell */
 .app-shell {
     min-height: 100dvh;
@@ -36,10 +36,10 @@ body {
     align-items: center;
     padding: 0.7rem 3rem;
     height: 64px;
-    border-bottom: 1px solid var(--neutral-stroke-divider-rest) thin inset;
-    background: var(--neutral-fill-layer-rest);
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+    background: #243035;
+    background: var(--topbar-gradient);
     color: var(--neutral-foreground-rest);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .top-nav-inner {
@@ -465,6 +465,251 @@ fluent-anchor > svg{
     border-color: var(--error-stroke-rest);
 }
 
+.profile-settings-page {
+    display: grid;
+    gap: 20px;
+}
+
+.profile-settings-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.profile-settings-head h2 {
+    margin: 0;
+    font-size: clamp(1.4rem, 2.1vw, 1.95rem);
+    letter-spacing: -0.01em;
+}
+
+.profile-settings-head p {
+    margin: 6px 0 0;
+}
+
+.profile-settings-shell {
+    padding: 24px;
+}
+
+.profile-settings-form {
+    display: grid;
+    gap: 16px;
+}
+
+.profile-settings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: 20px;
+    align-items: start;
+}
+
+.profile-settings-main {
+    display: grid;
+    gap: 20px;
+}
+
+.profile-settings-side {
+    min-width: 0;
+}
+
+.profile-panel {
+    display: grid;
+    gap: 14px;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 12px;
+    background: var(--neutral-fill-stealth-rest);
+    padding: 20px;
+}
+
+.profile-panel-head {
+    display: grid;
+    gap: 6px;
+}
+
+.profile-panel-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+}
+
+.profile-panel-head p {
+    margin: 0;
+}
+
+.profile-socials-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.profile-social-item {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-avatar-panel {
+    justify-items: center;
+}
+
+.profile-avatar {
+    width: 124px;
+    height: 124px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+}
+
+.profile-avatar-placeholder {
+    display: grid;
+    place-items: center;
+}
+
+.profile-settings-actions {
+    display: flex;
+    justify-content: end;
+}
+
+.public-profile-page {
+    width: min(980px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+.public-profile-hero {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--neutral-fill-rest) 0%, var(--neutral-fill-stealth-rest) 100%);
+    padding: 24px;
+}
+
+.public-profile-hero-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 18px;
+    align-items: center;
+}
+
+.public-profile-avatar {
+    width: 112px;
+    height: 112px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+}
+
+.public-profile-avatar-placeholder {
+    display: grid;
+    place-items: center;
+}
+
+.public-profile-title {
+    display: grid;
+    gap: 8px;
+}
+
+.public-profile-title h1 {
+    margin: 0;
+    font-size: clamp(1.45rem, 2.2vw, 2rem);
+}
+
+.public-profile-title p {
+    margin: 0;
+}
+
+.public-profile-sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.public-profile-card {
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 12px;
+    background: var(--neutral-fill-rest);
+    padding: 18px;
+    display: grid;
+    gap: 10px;
+}
+
+.public-profile-card h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.public-profile-list {
+    list-style: none;
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+}
+
+.public-profile-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.public-profile-list a {
+    color: var(--accent-foreground-rest);
+    text-decoration: none;
+}
+
+.public-profile-list a:hover {
+    text-decoration: underline;
+}
+
+.app-dialog {
+    max-width: min(720px, calc(100vw - 32px));
+}
+
+.app-dialog-stack {
+    padding-top: 8px;
+    max-width: 100%;
+}
+
+.app-dialog-intro {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.app-dialog-grid-two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.app-dialog-surface {
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-stealth-rest);
+}
+
+.app-dialog-hint {
+    font-size: 0.9rem;
+}
+
+.app-dialog-file {
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+    word-break: break-word;
+}
+
+.app-dialog-code {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+    word-break: break-all;
+}
+
 .empty-state {
     width: 100%;
 }
@@ -673,6 +918,29 @@ table tbody tr {
     .auth-submit,
     .auth-help-actions .action-link {
         width: 100%;
+    }
+
+    .profile-settings-grid,
+    .public-profile-sections {
+        grid-template-columns: 1fr;
+    }
+
+    .public-profile-hero-inner {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+    }
+
+    .profile-settings-actions {
+        justify-content: stretch;
+    }
+
+    .profile-settings-actions fluent-button {
+        width: 100%;
+    }
+
+    .app-dialog-grid-two {
+        grid-template-columns: 1fr;
     }
 }
 

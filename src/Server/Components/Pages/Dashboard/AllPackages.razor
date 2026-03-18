@@ -52,6 +52,13 @@
                 </p>
             }
 
+            <PackageVersionUploadDialog @ref="UploadDialog"
+                                        IsWorking="@IsUploadingVersion"
+                                        FeedbackMessage="@UploadFeedbackMessage"
+                                        FeedbackIsError="@UploadFeedbackIsError"
+                                        OnSubmit="UploadVersionAsync"
+                                        OnCancel="CancelVersionUploadAsync" />
+
             @if (EditingPackageName is not null)
             {
                 <FluentDivider Style="margin: 20px 0;" />
@@ -83,50 +90,6 @@
                 </FluentCard>
             }
 
-            @if (UploadingPackageName is not null)
-            {
-                <FluentDivider Style="margin: 20px 0;" />
-
-                <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
-                    <header>
-                        <h3>Upload Version: @UploadingPackageName</h3>
-                        <p class="muted">Upload a .bpkg artifact and publish a new immutable version.</p>
-                    </header>
-
-                    @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage))
-                    {
-                        <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 12px;">
-                            @UploadFeedbackMessage
-                        </p>
-                    }
-
-                    <EditForm OnValidSubmit="UploadVersionAsync">
-                        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
-                            <FluentTextField @bind-Value="UploadVersion" Label="Version" Placeholder="1.0.0" Required />
-                            <FluentTextField @bind-Value="UploadChecksumSha256" Label="Checksum SHA-256 (optional)" Placeholder="Paste checksum to enforce integrity" />
-
-                            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
-                                <FluentLabel>Artifact (.bpkg)</FluentLabel>
-                                <InputFile OnChange="HandleArtifactSelected" accept=".bpk,.bpkg,application/zip" />
-                                <span class="muted">Max size: 64 MB.</span>
-                                @if (!string.IsNullOrWhiteSpace(SelectedArtifactName))
-                                {
-                                    <span>Selected: @SelectedArtifactName</span>
-                                }
-                            </FluentStack>
-
-                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
-                                <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Button" OnClick="CancelVersionUpload" Disabled="IsUploadingVersion">
-                                    Cancel
-                                </FluentButton>
-                                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="IsUploadingVersion">
-                                    @(IsUploadingVersion ? "Uploading..." : "Upload & Publish")
-                                </FluentButton>
-                            </FluentStack>
-                        </FluentStack>
-                    </EditForm>
-                </FluentCard>
-            }
         }
     </FluentCard>
 </FluentStack>

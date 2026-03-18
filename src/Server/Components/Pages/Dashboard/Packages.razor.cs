@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using pckg.Features.Packages;
+using Server.Components.Shared;
 
 namespace Server.Components.Pages.Dashboard;
 
@@ -8,6 +11,7 @@ public partial class Packages
 {
     private const long MaxUploadBytes = 64 * 1024 * 1024;
     private readonly List<PackageSummaryResponse> PackageItems = [];
+    private PackageVersionUploadDialog? UploadDialog;
     private bool IsLoading = true;
     private bool IsSavingMetadata;
     private bool IsUploadingVersion;
@@ -17,11 +21,9 @@ public partial class Packages
     private string? UploadingPackageName;
     private string? UploadFeedbackMessage;
     private bool UploadFeedbackIsError;
-    private string UploadVersion = string.Empty;
-    private string UploadChecksumSha256 = string.Empty;
-    private IBrowserFile? UploadArtifact;
     private readonly MetadataFormModel MetadataForm = new();
-
+    [Inject]
+    public IDialogService DialogService { get; set; } = default!;
     protected override async Task OnInitializedAsync()
     {
         await LoadPackagesAsync();
@@ -69,14 +71,26 @@ public partial class Packages
         IsSavingMetadata = false;
     }
 
-    private void StartVersionUpload(PackageSummaryResponse package)
+    private async Task StartVersionUpload(PackageSummaryResponse package)
     {
         UploadingPackageName = package.Name;
-        UploadVersion = string.Empty;
-        UploadChecksumSha256 = string.Empty;
-        UploadArtifact = null;
         UploadFeedbackMessage = null;
         UploadFeedbackIsError = false;
+        if (UploadDialog is not null)
+        {
+            await UploadDialog.OpenDialogAsync(package.Name);
+        }
+    }
+
+    private async Task OpenUploadDialogAsync()
+    {
+        UploadingPackageName = string.Empty;
+        UploadFeedbackMessage = null;
+        UploadFeedbackIsError = false;
+        if (UploadDialog is not null)
+        {
+            await UploadDialog.OpenDialogAsync(string.Empty);
+        }
     }
 
     private void CancelVersionUpload()
@@ -85,21 +99,20 @@ public partial class Packages
         IsUploadingVersion = false;
     }
 
-    private string? SelectedArtifactName => UploadArtifact?.Name;
-
-    private void HandleArtifactSelected(InputFileChangeEventArgs args)
+    private Task CancelVersionUploadAsync()
     {
-        UploadArtifact = args.FileCount > 0 ? args.File : null;
+        CancelVersionUpload();
+        return Task.CompletedTask;
     }
 
-    private async Task UploadVersionAsync()
+    private async Task UploadVersionAsync(PackageVersionUploadDialog.UploadVersionInput input)
     {
-        if (string.IsNullOrWhiteSpace(UploadingPackageName))
+        if (string.IsNullOrWhiteSpace(input.PackageName))
         {
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(UploadVersion) || UploadArtifact is null)
+        if (string.IsNullOrWhiteSpace(input.Version) || input.Artifact is null)
         {
             UploadFeedbackIsError = true;
             UploadFeedbackMessage = "Version and artifact are required.";
@@ -111,11 +124,11 @@ public partial class Packages
 
         try
         {
-            await using var fileStream = UploadArtifact.OpenReadStream(MaxUploadBytes);
+            await using var fileStream = input.Artifact.OpenReadStream(MaxUploadBytes);
             using var content = new MultipartFormDataContent();
-            content.Add(new StringContent(UploadVersion.Trim()), "version");
+            content.Add(new StringContent(input.Version.Trim()), "version");
 
-            var checksum = UploadChecksumSha256.Trim();
+            var checksum = input.ChecksumSha256.Trim();
             if (!string.IsNullOrWhiteSpace(checksum))
             {
                 content.Add(new StringContent(checksum), "checksumSha256");
@@ -123,9 +136,9 @@ public partial class Packages
 
             var artifactContent = new StreamContent(fileStream);
             artifactContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/zip");
-            content.Add(artifactContent, "artifact", UploadArtifact.Name);
+            content.Add(artifactContent, "artifact", input.Artifact.Name);
 
-            var response = await Http.PostAsync($"/api/packages/{Uri.EscapeDataString(UploadingPackageName)}/publish", content);
+            var response = await Http.PostAsync($"/api/packages/{Uri.EscapeDataString(input.PackageName)}/publish", content);
             var payload = await response.Content.ReadFromJsonAsync<PublishPackageVersionResponse>();
 
             if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
@@ -137,6 +150,11 @@ public partial class Packages
 
             UploadFeedbackIsError = false;
             UploadFeedbackMessage = payload.Message;
+            CancelVersionUpload();
+            if (UploadDialog is not null)
+            {
+                await UploadDialog.CloseDialogAsync();
+            }
             await LoadPackagesAsync();
         }
         catch (IOException)
