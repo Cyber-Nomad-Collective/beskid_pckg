@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using pckg.Features.Packages;
 
 namespace Server.Components.Pages;
 
 public partial class Packages
 {
-    private readonly List<PackageRow> Rows = [];
+    private readonly List<PackageSummaryResponse> Rows = [];
     private string Search = string.Empty;
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -19,12 +20,42 @@ public partial class Packages
         }
 
         Rows.Clear();
+        var packageIds = await query.Select(x => x.Id).ToListAsync();
+        
+        var pendingCounts = await DbContext.PackageReviews
+            .AsNoTracking()
+            .Where(x => packageIds.Contains(x.PackageId) && x.Status == "Pending")
+            .GroupBy(x => x.PackageId)
+            .Select(group => new { group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+            
+        var ratingAverages = await DbContext.PackageCommunityReviews
+            .AsNoTracking()
+            .Where(x => packageIds.Contains(x.PackageId))
+            .GroupBy(x => x.PackageId)
+            .Select(group => new { group.Key, Average = group.Average(x => x.Rating) })
+            .ToDictionaryAsync(x => x.Key, x => x.Average);
+
         var packageRows = await query
-            .Select(x => new PackageRow(x.Name, x.Category, x.TotalDownloads, x.UpdatedAtUtc))
+            .Select(x => new PackageSummaryResponse(
+                x.Id,
+                x.Name,
+                x.Description,
+                x.RepositoryUrl,
+                x.WebsiteUrl,
+                x.IsPublic,
+                x.UpdatedAtUtc,
+                0,
+                0.0))
             .ToListAsync();
+            
+        packageRows = packageRows.Select(x => x with {
+            PendingReviewsCount = pendingCounts.GetValueOrDefault(x.Id),
+            AverageRating = Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2)
+        }).ToList();
 
         Rows.AddRange(packageRows
-            .OrderByDescending(x => x.TotalDownloads)
+            .OrderByDescending(x => x.PendingReviewsCount)
             .ThenByDescending(x => x.UpdatedAtUtc)
             .Take(100));
     }
@@ -34,26 +65,4 @@ public partial class Packages
         Search = string.Empty;
         await LoadAsync();
     }
-
-    private static string GetCategoryLabel(PackageRow row)
-    {
-        return string.IsNullOrWhiteSpace(row.Category) ? "General" : row.Category.Trim();
-    }
-
-    private static string FormatDownloads(long downloads)
-    {
-        if (downloads >= 1_000_000)
-        {
-            return $"{downloads / 1_000_000d:0.#}M";
-        }
-
-        if (downloads >= 1_000)
-        {
-            return $"{downloads / 1_000d:0.#}K";
-        }
-
-        return downloads.ToString();
-    }
-
-    private sealed record PackageRow(string Name, string Category, long TotalDownloads, DateTimeOffset UpdatedAtUtc);
 }

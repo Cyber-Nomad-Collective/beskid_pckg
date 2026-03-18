@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
 @using pckg.Data
+@using pckg.Features.Packages
+@using Server.Components.Shared
 
 @inject ApplicationDbContext DbContext
 
@@ -27,20 +29,6 @@
     }
     else
     {
-        <FluentDataGrid TGridItem="PackageRow" Items="@Rows.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
-            <ChildContent>
-                <TemplateColumn Title="Name" Context="row">
-                    <strong>@row.Name</strong>
-                </TemplateColumn>
-                <TemplateColumn Title="Category" Context="row">
-                    <FluentBadge Appearance="Appearance.Neutral">@GetCategoryLabel(row)</FluentBadge>
-                </TemplateColumn>
-                <TemplateColumn Title="Downloads" Context="row">@FormatDownloads(row.TotalDownloads)</TemplateColumn>
-                <TemplateColumn Title="Updated" Context="row">@row.UpdatedAtUtc.ToLocalTime().ToString("u")</TemplateColumn>
-                <TemplateColumn Title="Actions" Context="row">
-                    <FluentAnchor Appearance="Appearance.Accent" Href="@($"/packages/{row.Name}")">Open</FluentAnchor>
-                </TemplateColumn>
-            </ChildContent>
-        </FluentDataGrid>
+        <PackageGrid Packages="Rows" ShowActions="false" />
     }
 </FluentCard>

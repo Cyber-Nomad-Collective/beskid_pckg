@@ -4,7 +4,7 @@ using pckg.Features.Packages;
 
 namespace Server.Components.Pages.Dashboard;
 
-public partial class Packages
+public partial class AllPackages
 {
     private const long MaxUploadBytes = 64 * 1024 * 1024;
     private readonly List<PackageSummaryResponse> PackageItems = [];
@@ -24,10 +24,10 @@ public partial class Packages
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPackagesAsync();
+        await LoadAllPackagesAsync();
     }
 
-    private async Task LoadPackagesAsync()
+    private async Task LoadAllPackagesAsync()
     {
         IsLoading = true;
         FeedbackMessage = null;
@@ -137,7 +137,7 @@ public partial class Packages
 
             UploadFeedbackIsError = false;
             UploadFeedbackMessage = payload.Message;
-            await LoadPackagesAsync();
+            await LoadAllPackagesAsync();
         }
         catch (IOException)
         {

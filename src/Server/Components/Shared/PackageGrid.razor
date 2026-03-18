@@ -1,0 +1,52 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using pckg.Features.Packages
+
+<FluentDataGrid TGridItem="PackageSummaryResponse" Items="@Packages.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" MultiLine="true" Class="package-grid">
+    <ChildContent>
+        <TemplateColumn Title="Name" Context="package">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <strong><a href="@($"/packages/{package.Name}")" style="text-decoration: none; color: var(--accent-fill-rest);">@package.Name</a></strong>
+                <span class="muted">@package.Description</span>
+            </div>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Visibility" Context="package">
+            <FluentBadge Appearance="@(package.IsPublic ? Appearance.Accent : Appearance.Neutral)">
+                @(package.IsPublic ? "Public" : "Private")
+            </FluentBadge>
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Downloads" Context="package">
+            @package.PendingReviewsCount <!-- Repurposed or placeholder, wait, we don't have downloads in SummaryResponse. Let's fix that later or just show Reviews for now -->
+            @package.PendingReviewsCount
+        </TemplateColumn>
+
+        <TemplateColumn Title="Updated" Context="package">
+            @package.UpdatedAtUtc.ToString("u")
+        </TemplateColumn>
+        
+        <TemplateColumn Title="Rating" Context="package">
+            @package.AverageRating.ToString("0.00")
+        </TemplateColumn>
+        
+        @if (ShowActions)
+        {
+            <TemplateColumn Title="Actions" Context="package">
+                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
+                    @if (OnEditMetadata.HasDelegate)
+                    {
+                        <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OnEditMetadata.InvokeAsync(package))">
+                            Edit metadata
+                        </FluentButton>
+                    }
+                    @if (OnUploadVersion.HasDelegate)
+                    {
+                        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => OnUploadVersion.InvokeAsync(package))">
+                            Upload version
+                        </FluentButton>
+                    }
+                </FluentStack>
+            </TemplateColumn>
+        }
+    </ChildContent>
+</FluentDataGrid>

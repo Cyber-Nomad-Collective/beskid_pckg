@@ -59,7 +59,7 @@ public partial class Auth
             return;
         }
 
-        Navigation.NavigateTo("/dashboard/packages", forceLoad: true);
+        Navigation.NavigateTo("/dashboard/packages/my", forceLoad: true);
     }
 
     private async Task RegisterAsync()

@@ -17,8 +17,13 @@
             <FluentNavLink Href="/dashboard/api-keys" Icon="@ApiKeysIcon">API Keys</FluentNavLink>
             <FluentNavGroup Title="Packages" Expanded="true" Icon="@PackagesIcon">
                 <FluentNavLink Href="/dashboard/packages/my" Icon="@MyPackagesIcon">My Packages</FluentNavLink>
-                <FluentNavLink Href="/dashboard/packages/versions" Icon="@VersionsIcon">Versions</FluentNavLink>
                 <FluentNavLink Href="/dashboard/packages/new" Icon="@UploadIcon">Upload</FluentNavLink>
+                
+                <AuthorizeView Roles="SuperAdmin">
+                    <Authorized>
+                        <FluentNavLink Href="/dashboard/packages/all" Icon="@AdminPackagesIcon">All Packages</FluentNavLink>
+                    </Authorized>
+                </AuthorizeView>
             </FluentNavGroup>
             <FluentDivider/>
         </FluentNavMenu>

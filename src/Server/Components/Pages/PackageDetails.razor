@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
 @using pckg.Data
+@using pckg.Features.Packages
 
 @inject ApplicationDbContext DbContext
 @inject IHttpContextAccessor HttpContextAccessor
@@ -44,12 +45,48 @@ else
     @if (ActiveTab == "versions")
     {
         <FluentCard Class="section-card">
-            <h2>Versions</h2>
-            <p>Version stream is ready. Hook your publishing pipeline to expose release history here.</p>
-            <ul>
-                <li>Latest: 1.0.0-preview (placeholder)</li>
-                <li>Previous: 0.9.0-beta (placeholder)</li>
-            </ul>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Versions</h2>
+            </div>
+            @if (Versions.Count == 0)
+            {
+                <p class="muted">No versions published yet.</p>
+            }
+            else
+            {
+                <FluentDataGrid TGridItem="PackageVersionSummaryResponse" Items="@Versions.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+                    <ChildContent>
+                        <TemplateColumn Title="Version" Context="version">
+                            <strong>@version.Version</strong>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Status" Context="version">
+                            @if (version.IsYanked)
+                            {
+                                <FluentBadge Appearance="Appearance.Neutral">Yanked</FluentBadge>
+                            }
+                            else
+                            {
+                                <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
+                            }
+                        </TemplateColumn>
+                        <TemplateColumn Title="Size" Context="version">
+                            @(FormatSize(version.SizeBytes))
+                        </TemplateColumn>
+                        <TemplateColumn Title="Published" Context="version">
+                            @version.PublishedAtUtc.ToString("u")
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions" Context="version">
+                            @if (CanManageVersions)
+                            {
+                                <FluentButton Appearance="Appearance.Stealth" 
+                                              IconStart="@(new Icons.Regular.Size16.Delete())" 
+                                              Title="Delete Version"
+                                              OnClick="@(() => DeleteVersionAsync(version))" />
+                            }
+                        </TemplateColumn>
+                    </ChildContent>
+                </FluentDataGrid>
+            }
         </FluentCard>
     }
     else if (ActiveTab == "dependencies")

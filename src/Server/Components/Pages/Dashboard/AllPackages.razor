@@ -1,18 +1,18 @@
-@page "/dashboard/packages/my"
+@page "/dashboard/packages/all"
 @layout DashboardLayout
-@attribute [Authorize]
+@attribute [Authorize(Roles = "SuperAdmin")]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Server.Components.Shared
 @inject HttpClient Http
 
-<PageTitle>My Packages - Dashboard</PageTitle>
+<PageTitle>All Packages - Dashboard</PageTitle>
 
 <FluentStack Orientation="Orientation.Vertical" Gap="24px">
     <header style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
         <div>
-            <h2>My Packages</h2>
-            <p class="muted">Manage packages you have published to the registry.</p>
+            <h2>All Packages</h2>
+            <p class="muted">Manage all packages across the registry.</p>
         </div>
     </header>
 

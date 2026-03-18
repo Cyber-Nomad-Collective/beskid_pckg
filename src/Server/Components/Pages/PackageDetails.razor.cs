@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using pckg.Data;
+using pckg.Features.Packages;
 
 namespace Server.Components.Pages;
 
@@ -14,7 +15,9 @@ public partial class PackageDetails
     private readonly List<IssueRow> Issues = [];
     private readonly ReviewInput ReviewForm = new();
     private readonly IssueInput IssueForm = new();
+    private readonly List<PackageVersionSummaryResponse> Versions = [];
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+    private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -27,6 +30,7 @@ public partial class PackageDetails
     {
         Reviews.Clear();
         Issues.Clear();
+        Versions.Clear();
 
         if (Package is null)
         {
@@ -56,6 +60,23 @@ public partial class PackageDetails
             .ToDictionaryAsync(x => x.Key, x => x.Score);
 
         Issues.AddRange(issueRows.Select(x => new IssueRow(x.Id, x.Title, x.Body, scores.GetValueOrDefault(x.Id))));
+
+        var versionRows = await DbContext.PackageVersions
+            .AsNoTracking()
+            .Where(x => x.PackageId == Package.Id)
+            .OrderByDescending(x => x.PublishedAtUtc)
+            .ToListAsync();
+
+        Versions.AddRange(versionRows.Select(x => new PackageVersionSummaryResponse(
+            x.Id,
+            x.PackageId,
+            Package.Name,
+            x.Version,
+            x.IsYanked,
+            x.ChecksumSha256,
+            x.SizeBytes,
+            x.PublishedAtUtc,
+            x.YankedAtUtc)));
     }
 
     private async Task AddReviewAsync()
@@ -135,6 +156,32 @@ public partial class PackageDetails
 
         await DbContext.SaveChangesAsync();
         await LoadSecondaryDataAsync();
+    }
+
+    private async Task DeleteVersionAsync(PackageVersionSummaryResponse version)
+    {
+        if (!CanManageVersions)
+        {
+            return;
+        }
+
+        var entity = await DbContext.PackageVersions.FindAsync(version.Id);
+        if (entity is not null)
+        {
+            DbContext.PackageVersions.Remove(entity);
+            await DbContext.SaveChangesAsync();
+            await LoadSecondaryDataAsync();
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] suf = { "B", "KB", "MB", "GB", "TB" };
+        if (bytes == 0) return "0 B";
+        var bytesDouble = (double)bytes;
+        var place = Convert.ToInt32(Math.Floor(Math.Log(bytesDouble, 1024)));
+        var num = Math.Round(bytesDouble / Math.Pow(1024, place), 1);
+        return $"{num} {suf[place]}";
     }
 
     private sealed class ReviewInput

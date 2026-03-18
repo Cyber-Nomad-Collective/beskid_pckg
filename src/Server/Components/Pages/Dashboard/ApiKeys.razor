@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using System.Net.Http.Json
+@inject IDialogService DialogService
 @inject IJSRuntime JsRuntime
 @inject HttpClient Http
 
@@ -12,51 +13,17 @@
     <header style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
         <div>
             <h2>API Keys</h2>
-            <p class="muted">Manage authentication tokens for the CLI tools.</p>
+            <p class="muted">Manage authentication tokens for publishing packages via CLI.</p>
         </div>
+        <FluentButton Appearance="Appearance.Accent" OnClick="OpenGenerateKeyDialogAsync" IconStart="@(new Icons.Regular.Size16.Add())">
+            Generate new key
+        </FluentButton>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
     {
         <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
     }
-
-    <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 720px;">
-        <FluentStack Orientation="Orientation.Vertical" Gap="12px">
-            <h3 style="margin: 0;">Generate new key</h3>
-            <p class="muted" style="margin: 0;">Plaintext key is shown once. Save it securely.</p>
-
-            <FluentTextField @bind-Value="CreateModel.Name" Label="Key name" Placeholder="CI publisher key" Required />
-
-            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
-                <FluentLabel>Scopes</FluentLabel>
-                <FluentStack Orientation="Orientation.Horizontal" Gap="16px" Wrap="true">
-                    <FluentCheckbox @bind-Value="CreateModel.PublishScope">publish</FluentCheckbox>
-                    <FluentCheckbox @bind-Value="CreateModel.ReadScope">read</FluentCheckbox>
-                </FluentStack>
-            </FluentStack>
-
-            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
-                <FluentButton Appearance="Appearance.Accent" Disabled="@IsWorking" OnClick="CreateApiKeyAsync" IconStart="@(new Icons.Regular.Size16.Add())">
-                    @(IsWorking ? "Generating..." : "Generate key")
-                </FluentButton>
-            </FluentStack>
-
-            @if (!string.IsNullOrWhiteSpace(LastCreatedKey))
-            {
-                <FluentCard Style="padding: 16px; border: 1px solid var(--accent-stroke-rest); background: var(--accent-fill-subtle-rest);">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="10px">
-                        <FluentLabel>New API key</FluentLabel>
-                        <code style="display: block; overflow-wrap: anywhere;">@LastCreatedKey</code>
-                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px">
-                            <FluentButton Appearance="Appearance.Outline" OnClick="CopyLastKeyAsync" IconStart="@(new Icons.Regular.Size16.Copy())">Copy key</FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="ClearLastKey">Clear from screen</FluentButton>
-                        </FluentStack>
-                    </FluentStack>
-                </FluentCard>
-            }
-        </FluentStack>
-    </FluentCard>
 
     <FluentCard Class="dashboard-card" Style="padding: 24px;">
         @if (ApiKeyItems.Count == 0)

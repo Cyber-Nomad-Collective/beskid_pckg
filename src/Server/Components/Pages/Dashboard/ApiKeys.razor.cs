@@ -10,6 +10,7 @@ public partial class ApiKeys
     private string? FeedbackMessage;
     private bool FeedbackIsError;
     private bool IsWorking;
+    public bool IsDialogHidden { get; set; } = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,6 +113,22 @@ public partial class ApiKeys
     private void ClearLastKey()
     {
         LastCreatedKey = null;
+    }
+
+    private Task OpenGenerateKeyDialogAsync()
+    {
+        CreateModel.Name = string.Empty;
+        CreateModel.PublishScope = true;
+        CreateModel.ReadScope = true;
+        ClearLastKey();
+        IsDialogHidden = false;
+        return Task.CompletedTask;
+    }
+
+    private void CloseDialog()
+    {
+        IsDialogHidden = true;
+        ClearLastKey();
     }
 
     private void SetFeedback(string message, bool isError)
