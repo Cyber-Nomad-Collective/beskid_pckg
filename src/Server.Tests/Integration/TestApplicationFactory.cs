@@ -47,8 +47,11 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IPackageArtifactStore>();
-            services.AddSingleton<IPackageArtifactStore>(
-                new PackageArtifactStore(new TestHostEnvironment(_artifactRoot)));
+            services.AddSingleton<IPackageArtifactStore>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                return new PackageArtifactStore(new TestHostEnvironment(_artifactRoot), configuration);
+            });
         });
     }
 

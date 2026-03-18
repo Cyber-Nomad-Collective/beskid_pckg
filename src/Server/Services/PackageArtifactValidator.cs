@@ -74,6 +74,12 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
                 }
             }
 
+            var forbiddenEntry = fileEntries.Keys.FirstOrDefault(IsForbiddenEntryPath);
+            if (forbiddenEntry is not null)
+            {
+                return new(false, $"Artifact contains forbidden entry '{forbiddenEntry}'.");
+            }
+
             if (!fileEntries.Keys.Any(path => path.StartsWith("src/", StringComparison.Ordinal)))
             {
                 return new(false, "Artifact must include at least one file under src/.");
@@ -232,5 +238,11 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
     private static string NormalizeEntryPath(string path)
     {
         return path.Replace('\\', '/').TrimStart('/');
+    }
+
+    private static bool IsForbiddenEntryPath(string path)
+    {
+        return path.StartsWith(".beskid/", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(path, ".beskid", StringComparison.OrdinalIgnoreCase);
     }
 }

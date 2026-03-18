@@ -1,4 +1,5 @@
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Server.Services;
 
@@ -13,7 +14,14 @@ public class PackageArtifactStoreTests : IDisposable
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), "pckg_store_tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempRoot);
-        _store = new PackageArtifactStore(new TestHostEnvironment(_tempRoot));
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Storage:ArtifactsRootPath"] = Path.Combine(_tempRoot, "artifacts")
+            })
+            .Build();
+
+        _store = new PackageArtifactStore(new TestHostEnvironment(_tempRoot), configuration);
     }
 
     [Fact]

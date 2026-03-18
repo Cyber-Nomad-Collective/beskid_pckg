@@ -6,18 +6,19 @@
 @inject ApplicationDbContext DbContext
 
 <PageTitle>Browse Packages</PageTitle>
-<FluentCard Class="section-card">
-    <FluentStack Orientation="Orientation.Horizontal" VerticalGap="4" Wrap="true">
-
-    <h1>Browse Packages</h1>
-    <p>Search by name, category, or description. Open a package to inspect versions, dependencies, reviews, and feature voting.</p>
-    <FluentSearch @bind-Value="Search" Placeholder="Search packages..." Style="width: 360px;"/>
-    <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
-    <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
+<FluentCard Class="section-card package-browse-hero">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+        <header class="section-card-header">
+            <h1>Browse Packages</h1>
+            <p class="muted">Discover published packages and open details for versions, changelogs, and usage.</p>
+        </header>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Left" VerticalGap="8" Wrap="true" Class="package-browse-toolbar">
+            <FluentSearch @bind-Value="Search" Placeholder="Search packages, category, description..." Class="package-browse-search" />
+            <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
+            <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
+        </FluentStack>
     </FluentStack>
-
 </FluentCard>
-
 
 <FluentCard Class="section-card">
     @if (Rows.Count == 0)
@@ -26,28 +27,20 @@
     }
     else
     {
-        <table>
-            <thead>
-            <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Downloads</th>
-                <th>Updated</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var row in Rows)
-            {
-                <tr>
-                    <td>@row.Name</td>
-                    <td>@row.Category</td>
-                    <td>@row.TotalDownloads</td>
-                    <td>@row.UpdatedAtUtc.ToLocalTime().ToString("u")</td>
-                    <td><NavLink href="@($"/packages/{row.Name}")">Open</NavLink></td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <FluentDataGrid TGridItem="PackageRow" Items="@Rows.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+            <ChildContent>
+                <TemplateColumn Title="Name" Context="row">
+                    <strong>@row.Name</strong>
+                </TemplateColumn>
+                <TemplateColumn Title="Category" Context="row">
+                    <FluentBadge Appearance="Appearance.Neutral">@GetCategoryLabel(row)</FluentBadge>
+                </TemplateColumn>
+                <TemplateColumn Title="Downloads" Context="row">@FormatDownloads(row.TotalDownloads)</TemplateColumn>
+                <TemplateColumn Title="Updated" Context="row">@row.UpdatedAtUtc.ToLocalTime().ToString("u")</TemplateColumn>
+                <TemplateColumn Title="Actions" Context="row">
+                    <FluentAnchor Appearance="Appearance.Accent" Href="@($"/packages/{row.Name}")">Open</FluentAnchor>
+                </TemplateColumn>
+            </ChildContent>
+        </FluentDataGrid>
     }
 </FluentCard>

@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using pckg.Data;
 
@@ -17,6 +18,9 @@ public sealed class LogoutUserEndpoint(SignInManager<ApplicationUser> signInMana
     public override async Task HandleAsync(CancellationToken ct)
     {
         await signInManager.SignOutAsync();
+        await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        await HttpContext.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
         var returnUrl = Query<string>("returnUrl", false) ?? "/";
         HttpContext.Response.Redirect(returnUrl);
     }

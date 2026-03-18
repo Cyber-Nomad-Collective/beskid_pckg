@@ -27,6 +27,6 @@ public partial class DashboardLayout
     private static readonly Icon VersionsIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Folder();
 
-    private static readonly Icon UploadIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Add();
+    private static readonly Icon UploadIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ArrowUpload();
     private static readonly Icon HomeIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Home();
 }

@@ -35,5 +35,25 @@ public partial class Packages
         await LoadAsync();
     }
 
+    private static string GetCategoryLabel(PackageRow row)
+    {
+        return string.IsNullOrWhiteSpace(row.Category) ? "General" : row.Category.Trim();
+    }
+
+    private static string FormatDownloads(long downloads)
+    {
+        if (downloads >= 1_000_000)
+        {
+            return $"{downloads / 1_000_000d:0.#}M";
+        }
+
+        if (downloads >= 1_000)
+        {
+            return $"{downloads / 1_000d:0.#}K";
+        }
+
+        return downloads.ToString();
+    }
+
     private sealed record PackageRow(string Name, string Category, long TotalDownloads, DateTimeOffset UpdatedAtUtc);
 }
