@@ -8,7 +8,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<ApiKeyEntity> ApiKeys => Set<ApiKeyEntity>();
     public DbSet<PackageEntity> Packages => Set<PackageEntity>();
+    public DbSet<PackageVersionEntity> PackageVersions => Set<PackageVersionEntity>();
     public DbSet<PackageReviewEntity> PackageReviews => Set<PackageReviewEntity>();
+    public DbSet<PackageCommunityReviewEntity> PackageCommunityReviews => Set<PackageCommunityReviewEntity>();
+    public DbSet<PackageIssueEntity> PackageIssues => Set<PackageIssueEntity>();
+    public DbSet<PackageIssueVoteEntity> PackageIssueVotes => Set<PackageIssueVoteEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -30,9 +34,33 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(x => x.Id);
             entity.Property(x => x.OwnerUserId).IsRequired().HasMaxLength(450);
             entity.Property(x => x.Name).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.Category).IsRequired().HasMaxLength(64);
             entity.Property(x => x.Description).HasMaxLength(1024);
+            entity.Property(x => x.IconUrl).HasMaxLength(256);
+            entity.Property(x => x.RepositoryUrl).HasMaxLength(256);
+            entity.Property(x => x.WebsiteUrl).HasMaxLength(256);
+            entity.Property(x => x.TotalDownloads).HasDefaultValue(0L);
             entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasIndex(x => x.Category);
             entity.HasIndex(x => x.OwnerUserId);
+        });
+
+        builder.Entity<PackageVersionEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Version).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.ManifestJson).IsRequired();
+            entity.Property(x => x.ChecksumSha256).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.StorageKey).IsRequired().HasMaxLength(512);
+            entity.Property(x => x.ContentType).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.SizeBytes).IsRequired();
+            entity.Property(x => x.IsYanked).HasDefaultValue(false);
+            entity.HasIndex(x => new { x.PackageId, x.Version }).IsUnique();
+            entity.HasIndex(x => x.PublishedAtUtc);
+            entity.HasOne(x => x.Package)
+                .WithMany()
+                .HasForeignKey(x => x.PackageId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PackageReviewEntity>(entity =>
@@ -47,6 +75,42 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne(x => x.Package)
                 .WithMany()
                 .HasForeignKey(x => x.PackageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PackageCommunityReviewEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.Comment).IsRequired().HasMaxLength(1024);
+            entity.HasIndex(x => x.PackageId);
+            entity.HasOne(x => x.Package)
+                .WithMany()
+                .HasForeignKey(x => x.PackageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PackageIssueEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.AuthorUserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.Title).IsRequired().HasMaxLength(160);
+            entity.Property(x => x.Body).IsRequired().HasMaxLength(3000);
+            entity.HasIndex(x => x.PackageId);
+            entity.HasOne(x => x.Package)
+                .WithMany()
+                .HasForeignKey(x => x.PackageId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PackageIssueVoteEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.HasIndex(x => new { x.IssueId, x.UserId }).IsUnique();
+            entity.HasOne(x => x.Issue)
+                .WithMany()
+                .HasForeignKey(x => x.IssueId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

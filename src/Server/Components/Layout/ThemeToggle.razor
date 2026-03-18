@@ -1,0 +1,8 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+
+<FluentIcon Value="@CurrentIcon" Color="Color.Neutral"              OnClick="HandleToggle"
+/>

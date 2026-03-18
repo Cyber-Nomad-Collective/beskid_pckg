@@ -1,332 +1,51 @@
 @page "/packages"
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
-@using System.Security.Claims
 @using pckg.Data
 
 @inject ApplicationDbContext DbContext
-@inject IHttpContextAccessor HttpContextAccessor
 
-<PageTitle>Package Manager</PageTitle>
+<PageTitle>Browse Packages</PageTitle>
 
-<FluentCard Class="page-card">
-    <h1>Package Manager</h1>
-    <p>List, review, and manage your package namespaces from the Blazor monolith.</p>
+<FluentCard Class="section-card">
+    <h1>Browse Packages</h1>
+    <p>Search by name, category, or description. Open a package to inspect versions, dependencies, reviews, and feature voting.</p>
+    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
+        <FluentSearch @bind-Value="Search" Placeholder="Search packages..." Style="width: 360px;" />
+        <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
+        <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
+    </FluentStack>
 </FluentCard>
 
-<FluentCard Class="page-card">
-    <h2>Create or update package</h2>
-    <EditForm Model="Editor" OnValidSubmit="SavePackageAsync">
-        <DataAnnotationsValidator />
-
-        <div class="form-grid">
-            <div>
-                <label for="pkg-name">Package Name</label>
-                <InputText id="pkg-name" @bind-Value="Editor.Name" class="form-control" />
-            </div>
-            <div>
-                <label for="pkg-visibility">Visibility</label>
-                <InputSelect id="pkg-visibility" @bind-Value="Editor.IsPublic" class="form-select">
-                    <option value="true">Public</option>
-                    <option value="false">Private</option>
-                </InputSelect>
-            </div>
-            <div class="full-row">
-                <label for="pkg-desc">Description</label>
-                <InputTextArea id="pkg-desc" @bind-Value="Editor.Description" class="form-control" />
-            </div>
-            <div>
-                <label for="review-reason">Review reason</label>
-                <InputText id="review-reason" @bind-Value="Editor.ReviewReason" class="form-control" />
-            </div>
-            <div class="submit-cell">
-                <FluentCheckbox @bind-Value="Editor.SubmitForReview">Submit for review</FluentCheckbox>
-                <FluentButton Appearance="@Appearance.Accent" Type="ButtonType.Submit">Save</FluentButton>
-            </div>
-        </div>
-    </EditForm>
-    @if (!string.IsNullOrWhiteSpace(SaveMessage))
+<FluentCard Class="section-card">
+    @if (Rows.Count == 0)
     {
-        <p class="info-message">@SaveMessage</p>
+        <p class="muted">No packages matched your query.</p>
     }
-</FluentCard>
-
-<div class="two-col">
-    <FluentCard Class="page-card">
-        <h2>Owned packages</h2>
-        @if (PackageRows.Count == 0)
-        {
-            <p>No packages yet.</p>
-        }
-        else
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Visibility</th>
-                        <th>Pending Reviews</th>
-                        <th>Updated</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var pkg in PackageRows)
-                    {
-                        <tr>
-                            <td>
-                                <strong>@pkg.Name</strong>
-                                <div>@pkg.Description</div>
-                            </td>
-                            <td>@(pkg.IsPublic ? "Public" : "Private")</td>
-                            <td>@pkg.PendingReviews</td>
-                            <td>@pkg.UpdatedAtUtc.ToLocalTime().ToString("u")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-    </FluentCard>
-
-    <FluentCard Class="page-card">
-        <h2>Review queue</h2>
-        @if (Reviews.Count == 0)
-        {
-            <p>No review requests in queue.</p>
-        }
-        else
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Package</th>
-                        <th>Reason</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var review in Reviews)
-                    {
-                        <tr>
-                            <td>@review.PackageName</td>
-                            <td>@review.Reason</td>
-                            <td>@review.Status</td>
-                            <td>
-                                @if (review.Status == "Pending")
-                                {
-                                    <div class="action-buttons">
-                                        <FluentButton Appearance="@Appearance.Accent" @onclick='() => ApplyReviewActionAsync(review, "Approve")'>Approve</FluentButton>
-                                        <FluentButton Appearance="@Appearance.Outline" @onclick='() => ApplyReviewActionAsync(review, "NeedsChanges")'>Needs changes</FluentButton>
-                                        <FluentButton Appearance="@Appearance.Stealth" @onclick='() => ApplyReviewActionAsync(review, "Reject")'>Reject</FluentButton>
-                                    </div>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        @if (!string.IsNullOrWhiteSpace(ReviewMessage))
-        {
-            <p class="info-message">@ReviewMessage</p>
-        }
-    </FluentCard>
-</div>
-
-@code {
-    private readonly PackageEditorModel Editor = new();
-    private readonly List<PackageRowModel> PackageRows = [];
-    private readonly List<ReviewRowModel> Reviews = [];
-    private string SaveMessage = string.Empty;
-    private string ReviewMessage = string.Empty;
-
-    protected override async Task OnInitializedAsync()
+    else
     {
-        await ReloadAsync();
-    }
-
-    private async Task SavePackageAsync()
-    {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            SaveMessage = "You must be signed in to manage packages.";
-            return;
-        }
-
-        var normalizedName = Editor.Name.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedName))
-        {
-            SaveMessage = "Package name is required.";
-            return;
-        }
-
-        var package = await DbContext.Packages.SingleOrDefaultAsync(x => x.Name == normalizedName);
-        if (package is null)
-        {
-            package = new PackageEntity
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Downloads</th>
+                <th>Updated</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Rows)
             {
-                Id = Guid.NewGuid(),
-                OwnerUserId = userId,
-                Name = normalizedName,
-                Description = Editor.Description?.Trim() ?? string.Empty,
-                IsPublic = Editor.IsPublic,
-                CreatedAtUtc = DateTimeOffset.UtcNow,
-                UpdatedAtUtc = DateTimeOffset.UtcNow,
-            };
-            DbContext.Packages.Add(package);
-        }
-        else
-        {
-            if (!string.Equals(package.OwnerUserId, userId, StringComparison.Ordinal))
-            {
-                SaveMessage = "This namespace belongs to another owner.";
-                return;
+                <tr>
+                    <td>@row.Name</td>
+                    <td>@row.Category</td>
+                    <td>@row.TotalDownloads</td>
+                    <td>@row.UpdatedAtUtc.ToLocalTime().ToString("u")</td>
+                    <td><NavLink href="@($"/packages/{row.Name}")">Open</NavLink></td>
+                </tr>
             }
-
-            package.Description = Editor.Description?.Trim() ?? string.Empty;
-            package.IsPublic = Editor.IsPublic;
-            package.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        }
-
-        if (Editor.SubmitForReview)
-        {
-            DbContext.PackageReviews.Add(new PackageReviewEntity
-            {
-                Id = Guid.NewGuid(),
-                PackageId = package.Id,
-                RequestedByUserId = userId,
-                Reason = string.IsNullOrWhiteSpace(Editor.ReviewReason)
-                    ? "Requested from portal"
-                    : Editor.ReviewReason.Trim(),
-                Status = "Pending",
-                SubmittedAtUtc = DateTimeOffset.UtcNow,
-            });
-        }
-
-        await DbContext.SaveChangesAsync();
-
-        Editor.Name = string.Empty;
-        Editor.Description = string.Empty;
-        Editor.ReviewReason = string.Empty;
-        Editor.SubmitForReview = false;
-
-        SaveMessage = "Package saved.";
-        await ReloadAsync();
+            </tbody>
+        </table>
     }
-
-    private async Task ApplyReviewActionAsync(ReviewRowModel review, string action)
-    {
-        var userId = GetCurrentUserId();
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            ReviewMessage = "You must be signed in to review packages.";
-            return;
-        }
-
-        var entity = await DbContext.PackageReviews.SingleOrDefaultAsync(x => x.Id == review.Id);
-        if (entity is null)
-        {
-            ReviewMessage = "Review item no longer exists.";
-            return;
-        }
-
-        entity.Status = action;
-        entity.ReviewerUserId = userId;
-        entity.ReviewedAtUtc = DateTimeOffset.UtcNow;
-
-        await DbContext.SaveChangesAsync();
-
-        ReviewMessage = $"Review {review.Id} set to {action}.";
-        await ReloadAsync();
-    }
-
-    private async Task ReloadAsync()
-    {
-        var userId = GetCurrentUserId();
-        PackageRows.Clear();
-        Reviews.Clear();
-
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            return;
-        }
-
-        var packageEntities = await DbContext.Packages
-            .AsNoTracking()
-            .Where(x => x.OwnerUserId == userId)
-            .OrderByDescending(x => x.UpdatedAtUtc)
-            .ToListAsync();
-
-        var packageIds = packageEntities.Select(x => x.Id).ToList();
-
-        var pendingCounts = await DbContext.PackageReviews
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId) && x.Status == "Pending")
-            .GroupBy(x => x.PackageId)
-            .Select(group => new { group.Key, Count = group.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
-
-        PackageRows.AddRange(packageEntities.Select(x => new PackageRowModel
-        {
-            Id = x.Id,
-            Name = x.Name,
-            Description = x.Description,
-            IsPublic = x.IsPublic,
-            UpdatedAtUtc = x.UpdatedAtUtc,
-            PendingReviews = pendingCounts.GetValueOrDefault(x.Id),
-        }));
-
-        var reviewEntities = await DbContext.PackageReviews
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId))
-            .OrderByDescending(x => x.SubmittedAtUtc)
-            .ToListAsync();
-
-        var packageNameById = packageEntities.ToDictionary(x => x.Id, x => x.Name);
-
-        Reviews.AddRange(reviewEntities.Select(x => new ReviewRowModel
-        {
-            Id = x.Id,
-            PackageId = x.PackageId,
-            PackageName = packageNameById.GetValueOrDefault(x.PackageId, "unknown"),
-            Reason = x.Reason,
-            Status = x.Status,
-            SubmittedAtUtc = x.SubmittedAtUtc,
-        }));
-    }
-
-    private string? GetCurrentUserId()
-    {
-        return HttpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-    }
-
-    private sealed class PackageEditorModel
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public bool IsPublic { get; set; } = true;
-        public bool SubmitForReview { get; set; }
-        public string ReviewReason { get; set; } = string.Empty;
-    }
-
-    private sealed class PackageRowModel
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public bool IsPublic { get; set; }
-        public int PendingReviews { get; set; }
-        public DateTimeOffset UpdatedAtUtc { get; set; }
-    }
-
-    private sealed class ReviewRowModel
-    {
-        public Guid Id { get; set; }
-        public Guid PackageId { get; set; }
-        public string PackageName { get; set; } = string.Empty;
-        public string Reason { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public DateTimeOffset SubmittedAtUtc { get; set; }
-    }
-}
+</FluentCard>

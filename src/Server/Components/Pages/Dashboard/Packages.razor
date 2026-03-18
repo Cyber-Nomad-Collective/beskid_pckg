@@ -1,0 +1,68 @@
+@page "/dashboard/packages"
+@layout DashboardLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>My Packages - Dashboard</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Gap="24px">
+    <header style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+        <div>
+            <h2>My Packages</h2>
+            <p class="muted">Manage packages you have published to the registry.</p>
+        </div>
+        <FluentAnchor Appearance="Appearance.Accent" Href="/dashboard/packages/new" IconStart="@(new Icons.Regular.Size16.Add())">
+            Upload Version
+        </FluentAnchor>
+    </header>
+
+    <FluentCard Class="dashboard-card" Style="padding: 24px;">
+        @if (IsLoading)
+        {
+            <p class="muted">Loading packages...</p>
+        }
+        else if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+        {
+            <p class="feedback-message is-error">@FeedbackMessage</p>
+        }
+        else if (PackageItems.Count == 0)
+        {
+            <div style="text-align: center; padding: 48px 0; color: var(--neutral-foreground-hint);">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Box())" Color="Color.Neutral" Style="margin-bottom: 16px; opacity: 0.5; width: 48px; height: 48px;" />
+                <h3>No packages yet</h3>
+                <p>You haven't published any packages. Create a package via the CLI or upload one manually.</p>
+            </div>
+        }
+        else
+        {
+            <FluentDataGrid TGridItem="PackageSummaryRow" Items="@PackageItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" MultiLine="true">
+                <ChildContent>
+                    <TemplateColumn Title="Name" Context="package">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <strong>@package.Name</strong>
+                            <span class="muted">@package.Description</span>
+                        </div>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Visibility" Context="package">
+                        <FluentBadge Appearance="@(package.IsPublic ? Appearance.Accent : Appearance.Neutral)">
+                            @(package.IsPublic ? "Public" : "Private")
+                        </FluentBadge>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Updated" Context="package">
+                        @package.UpdatedAtUtc.ToString("u")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Rating" Context="package">
+                        @package.AverageRating.ToString("0.00")
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Context="package">
+                        <FluentAnchor Appearance="Appearance.Outline" Href="@($"/dashboard/packages/metadata?name={Uri.EscapeDataString(package.Name)}")">
+                            Edit metadata
+                        </FluentAnchor>
+                    </TemplateColumn>
+                </ChildContent>
+            </FluentDataGrid>
+        }
+    </FluentCard>
+</FluentStack>

@@ -1,11 +1,10 @@
 using FastEndpoints;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using pckg.Data;
+using Server.Services;
 
 namespace pckg.Features.ApiKeys;
 
-public sealed class ListApiKeysEndpoint(ApplicationDbContext dbContext)
+public sealed class ListApiKeysEndpoint(IApiKeyManagementService apiKeyManagementService)
     : EndpointWithoutRequest<List<ApiKeysListResponse>>
 {
     public override void Configure()
@@ -29,20 +28,12 @@ public sealed class ListApiKeysEndpoint(ApplicationDbContext dbContext)
             return;
         }
 
-        var entities = await dbContext.ApiKeys
-            .AsNoTracking()
-            .Where(k => k.UserId == userId)
-            .OrderByDescending(k => k.CreatedAtUtc)
-            .ToListAsync(ct);
-
-        var keys = entities
+        var keys = (await apiKeyManagementService.ListAsync(userId, ct))
             .Select(k => new ApiKeysListResponse(
                 k.Id,
                 k.Name,
                 k.Prefix,
-                string.IsNullOrWhiteSpace(k.ScopesCsv)
-                    ? Array.Empty<string>()
-                    : k.ScopesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                k.Scopes,
                 k.CreatedAtUtc,
                 k.RevokedAtUtc))
             .ToList();

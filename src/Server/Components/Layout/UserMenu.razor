@@ -1,0 +1,24 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<FluentProfileMenu Initials="@GetInitials()"
+                   Status="PresenceStatus.Available"
+                   HeaderLabel="@(string.IsNullOrWhiteSpace(DisplayName) ? "Signed in" : $"Signed in as {DisplayName}")"
+                   HeaderButton="Sign out"
+                   OnHeaderButtonClick="@(() => NavigateTo("/api/users/logout?returnUrl=/"))">
+    <ChildContent>
+        <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/profile"))">
+            <FluentIcon Value="@ProfileIcon" Slot="start" />
+            Edit Profile
+        </FluentMenuItem>
+        <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/api-keys"))">
+            <FluentIcon Value="@ApiKeysIcon" Slot="start" />
+            API Keys
+        </FluentMenuItem>
+        <FluentDivider />
+        <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/packages"))">
+            <FluentIcon Value="@PackagesIcon" Slot="start" />
+            My Packages
+        </FluentMenuItem>
+    </ChildContent>
+</FluentProfileMenu>

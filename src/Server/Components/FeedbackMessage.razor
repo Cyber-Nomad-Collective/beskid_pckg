@@ -1,0 +1,11 @@
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="feedback-message @(IsSuccess ? "is-success" : "is-error")" role="status" aria-live="polite">
+        @Message
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public bool IsSuccess { get; set; }
+}

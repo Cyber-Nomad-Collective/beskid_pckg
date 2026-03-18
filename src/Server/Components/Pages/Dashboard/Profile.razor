@@ -1,0 +1,34 @@
+@page "/dashboard"
+@page "/dashboard/profile"
+@layout DashboardLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>Profile Settings - Dashboard</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Gap="24px">
+    <header>
+        <h2>Profile Settings</h2>
+        <p class="muted">Manage your account details and preferences.</p>
+    </header>
+
+    <FluentCard Class="dashboard-card">
+        <div style="padding: 24px;">
+            <AuthorizeView>
+                <Authorized>
+                    <h3>Account Details</h3>
+                    <p>Email: <strong>@context.User.Identity?.Name</strong></p>
+                    
+                    <FluentDivider Style="margin: 24px 0;" />
+                    
+                    <h3>Roles</h3>
+                    <FluentBadge Appearance="Appearance.Accent">User</FluentBadge>
+                    @if (context.User.IsInRole("SuperAdmin"))
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral">SuperAdmin</FluentBadge>
+                    }
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </FluentCard>
+</FluentStack>

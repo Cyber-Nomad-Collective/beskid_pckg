@@ -1,0 +1,39 @@
+@page "/dashboard/packages/metadata"
+@layout DashboardLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>Edit Metadata - Dashboard</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Gap="24px">
+    <header>
+        <h2>Edit Package Metadata</h2>
+        <p class="muted">Update description, links, visibility, and categorization.</p>
+    </header>
+
+    <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
+        <EditForm Model="Model" OnValidSubmit="SaveAsync">
+            <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+                <FluentTextField @bind-Value="Model.PackageName" Label="Package name" Placeholder="my-package" Required />
+                <FluentTextField @bind-Value="Model.Category" Label="Category" Placeholder="General" />
+                <FluentTextArea @bind-Value="Model.Description" Label="Description" Placeholder="Describe what this package provides" />
+
+                <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="true">
+                    <FluentTextField @bind-Value="Model.RepositoryUrl" Label="Repository URL" Placeholder="https://..." />
+                    <FluentTextField @bind-Value="Model.WebsiteUrl" Label="Website URL" Placeholder="https://..." />
+                    <FluentTextField @bind-Value="Model.IconUrl" Label="Icon URL" Placeholder="https://..." />
+                </FluentStack>
+
+                <FluentSwitch @bind-Value="Model.IsPublic">Public package</FluentSwitch>
+
+                <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
+                    <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Reset">Reset</FluentButton>
+                    <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Save metadata</FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </EditForm>
+    </FluentCard>
+</FluentStack>

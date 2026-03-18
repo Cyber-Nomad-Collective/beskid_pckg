@@ -1,0 +1,25 @@
+services:
+  pckg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pckg:latest
+    container_name: pckg
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Data Source=/app/data/pckg.db
+    ports:
+      - "8080:8080"
+    volumes:
+      - pckg_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pckg_data:

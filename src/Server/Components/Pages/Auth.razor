@@ -1,0 +1,114 @@
+@page "/auth"
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using pckg.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Account</PageTitle>
+
+<section class="auth-page">
+    <section class="auth-intro">
+        <h1>Account access</h1>
+        <p>Securely sign in or create your account in seconds.</p>
+    </section>
+
+    <div class="auth-stage">
+        <section class="auth-side-panel" aria-label="Account overview">
+            <h2>@(IsLoginMode ? "Welcome back" : "Create your account")</h2>
+            <p>
+                @(IsLoginMode
+                    ? "Sign in to manage packages, post reviews, and access your dashboard."
+                    : "Join the registry to publish packages, participate in reviews, and vote on roadmap features.")
+            </p>
+            <ul>
+                <li>One account for browse + publish workflows</li>
+                <li>Direct access to package management dashboard</li>
+                <li>Fast access to package details and review status</li>
+            </ul>
+        </section>
+
+        @if (IsLoginMode)
+        {
+            <FluentCard Class="section-card auth-card auth-pane">
+                <header class="section-card-header">
+                    <h2>Sign in</h2>
+                    <p class="muted">Continue where you left off.</p>
+                </header>
+                <div class="section-card-body">
+                    <EditForm Model="LoginModel" OnValidSubmit="LoginAsync" FormName="login" class="auth-form" novalidate>
+                        <FluentTextField @bind-Value="LoginModel.Email" Name="PostedLoginModel.Email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
+                        <FluentTextField @bind-Value="LoginModel.Password"
+                                         Name="PostedLoginModel.Password"
+                                         Label="Password"
+                                         TextFieldType="TextFieldType.Password"
+                                         Placeholder="Your password"
+                                         Required
+                                         Class="auth-form-field" />
+                        <FluentCheckbox @bind-Value="LoginModel.RememberMe" Name="PostedLoginModel.RememberMe">Keep me signed in</FluentCheckbox>
+                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Class="auth-submit">Login</FluentButton>
+                    </EditForm>
+                    @if (!string.IsNullOrWhiteSpace(LoginMessage))
+                    {
+                        <div class="feedback-message @(LoginSuccess ? "is-success" : "is-error")" role="status" aria-live="polite">@LoginMessage</div>
+                    }
+                    <p class="auth-switch-copy">
+                        New here?
+                        <a href="/auth?mode=register" class="auth-inline-link">Create an account</a>
+                    </p>
+                </div>
+            </FluentCard>
+        }
+        else
+        {
+            <FluentCard Class="section-card auth-card auth-pane">
+                <header class="section-card-header">
+                    <h2>Register</h2>
+                    <p class="muted">Set up your account in less than a minute.</p>
+                </header>
+                <div class="section-card-body">
+                    <EditForm Model="RegisterModel" OnValidSubmit="RegisterAsync" FormName="register" class="auth-form" novalidate>
+                        <FluentTextField @bind-Value="RegisterModel.Email" Name="PostedRegisterModel.Email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
+                        <FluentTextField @bind-Value="RegisterModel.Password"
+                                         Name="PostedRegisterModel.Password"
+                                         Label="Password"
+                                         TextFieldType="TextFieldType.Password"
+                                         Placeholder="Create a password"
+                                         Required
+                                         Class="auth-form-field" />
+                        <FluentTextField @bind-Value="RegisterModel.ConfirmPassword"
+                                         Name="PostedRegisterModel.ConfirmPassword"
+                                         Label="Confirm password"
+                                         TextFieldType="TextFieldType.Password"
+                                         Placeholder="Repeat your password"
+                                         Required
+                                         Class="auth-form-field" />
+                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Class="auth-submit">Create account</FluentButton>
+                    </EditForm>
+                    @if (!string.IsNullOrWhiteSpace(RegisterMessage))
+                    {
+                        <div class="feedback-message @(RegisterSuccess ? "is-success" : "is-error")" role="status" aria-live="polite">@RegisterMessage</div>
+                    }
+                    <p class="auth-switch-copy">
+                        Already have an account?
+                        <a href="/auth?mode=login" class="auth-inline-link">Back to login</a>
+                    </p>
+                </div>
+            </FluentCard>
+        }
+    </div>
+
+    <FluentCard Class="section-card auth-help">
+        <header class="section-card-header">
+            <h2>Ready to manage your packages?</h2>
+            <p class="muted">After login, open Dashboard to manage package metadata, versions, and API keys.</p>
+        </header>
+        <div class="section-card-body auth-help-actions">
+            <a href="/packages" class="fluent-button-outline">Browse packages first</a>
+            <a href="/dashboard/packages" class="fluent-button-accent">Go to dashboard</a>
+        </div>
+    </FluentCard>
+</section>

@@ -1,0 +1,35 @@
+<FluentCard Class="@BuildClass()">
+    <div class="empty-state-content">
+        <h2>@Title</h2>
+        <p class="muted">@Message</p>
+
+        @if (!string.IsNullOrWhiteSpace(ActionHref) && !string.IsNullOrWhiteSpace(ActionText))
+        {
+            <a class="action-link action-link-accent" href="@ActionHref">@ActionText</a>
+        }
+
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+    </div>
+</FluentCard>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public string? ActionHref { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string BuildClass()
+    {
+        if (string.IsNullOrWhiteSpace(Class))
+        {
+            return "section-card empty-state";
+        }
+
+        return $"section-card empty-state {Class}";
+    }
+}

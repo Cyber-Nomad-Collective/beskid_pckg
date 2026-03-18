@@ -1,0 +1,98 @@
+@page "/dashboard/api-keys"
+@layout DashboardLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Json
+@inject IJSRuntime JsRuntime
+@inject HttpClient Http
+
+<PageTitle>API Keys - Dashboard</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Gap="24px">
+    <header style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+        <div>
+            <h2>API Keys</h2>
+            <p class="muted">Manage authentication tokens for the CLI tools.</p>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+    {
+        <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
+    }
+
+    <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 720px;">
+        <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+            <h3 style="margin: 0;">Generate new key</h3>
+            <p class="muted" style="margin: 0;">Plaintext key is shown once. Save it securely.</p>
+
+            <FluentTextField @bind-Value="CreateModel.Name" Label="Key name" Placeholder="CI publisher key" Required />
+
+            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+                <FluentLabel>Scopes</FluentLabel>
+                <FluentStack Orientation="Orientation.Horizontal" Gap="16px" Wrap="true">
+                    <FluentCheckbox @bind-Value="CreateModel.PublishScope">publish</FluentCheckbox>
+                    <FluentCheckbox @bind-Value="CreateModel.ReadScope">read</FluentCheckbox>
+                </FluentStack>
+            </FluentStack>
+
+            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
+                <FluentButton Appearance="Appearance.Accent" Disabled="@IsWorking" OnClick="CreateApiKeyAsync" IconStart="@(new Icons.Regular.Size16.Add())">
+                    @(IsWorking ? "Generating..." : "Generate key")
+                </FluentButton>
+            </FluentStack>
+
+            @if (!string.IsNullOrWhiteSpace(LastCreatedKey))
+            {
+                <FluentCard Style="padding: 16px; border: 1px solid var(--accent-stroke-rest); background: var(--accent-fill-subtle-rest);">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="10px">
+                        <FluentLabel>New API key</FluentLabel>
+                        <code style="display: block; overflow-wrap: anywhere;">@LastCreatedKey</code>
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px">
+                            <FluentButton Appearance="Appearance.Outline" OnClick="CopyLastKeyAsync" IconStart="@(new Icons.Regular.Size16.Copy())">Copy key</FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="ClearLastKey">Clear from screen</FluentButton>
+                        </FluentStack>
+                    </FluentStack>
+                </FluentCard>
+            }
+        </FluentStack>
+    </FluentCard>
+
+    <FluentCard Class="dashboard-card" Style="padding: 24px;">
+        @if (ApiKeyItems.Count == 0)
+        {
+            <div style="text-align: center; padding: 48px 0; color: var(--neutral-foreground-hint);">
+                <FluentIcon Value="@(new Icons.Regular.Size32.Key())" Color="Color.Neutral" Style="margin-bottom: 16px; opacity: 0.5; width: 48px; height: 48px;" />
+                <h3>No API Keys</h3>
+                <p>Generate a key to authenticate via the Beskid CLI and publish packages.</p>
+            </div>
+        }
+        else
+        {
+            <FluentDataGrid TGridItem="ApiKeyRow" Items="@ApiKeyItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+                <ChildContent>
+                    <TemplateColumn Title="Name" Context="key">@key.Name</TemplateColumn>
+                    <TemplateColumn Title="Prefix" Context="key"><code>@key.Prefix</code></TemplateColumn>
+                    <TemplateColumn Title="Scopes" Context="key">@string.Join(", ", key.Scopes)</TemplateColumn>
+                    <TemplateColumn Title="Created" Context="key">@key.CreatedAtUtc.ToString("u")</TemplateColumn>
+                    <TemplateColumn Title="Status" Context="key">
+                        @if (key.RevokedAtUtc is null)
+                        {
+                            <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
+                        }
+                        else
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral">Revoked</FluentBadge>
+                        }
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Context="key">
+                        @if (key.RevokedAtUtc is null)
+                        {
+                            <FluentButton Appearance="Appearance.Outline" Disabled="@IsWorking" OnClick="() => RevokeApiKeyAsync(key.Id)">Revoke</FluentButton>
+                        }
+                    </TemplateColumn>
+                </ChildContent>
+            </FluentDataGrid>
+        }
+    </FluentCard>
+</FluentStack>

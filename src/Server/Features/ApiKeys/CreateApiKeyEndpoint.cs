@@ -1,13 +1,11 @@
 using FastEndpoints;
-using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using pckg.Data;
+using Server.Services;
 
 namespace pckg.Features.ApiKeys;
 
 public sealed class CreateApiKeyEndpoint(
-    ApplicationDbContext dbContext,
-    IPasswordHasher<ApiKeyEntity> apiKeyHasher)
+    IApiKeyManagementService apiKeyManagementService)
     : Endpoint<CreateApiKeyRequest, CreateApiKeyResponse>
 {
     public override void Configure()
@@ -31,41 +29,27 @@ public sealed class CreateApiKeyEndpoint(
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(req.Name))
+        var requestedScopes = (req.Scopes ?? [])
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+        var result = await apiKeyManagementService.CreateAsync(userId, req.Name, requestedScopes, ct);
+
+        if (!result.Success)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await HttpContext.Response.WriteAsJsonAsync(new CreateApiKeyResponse(false, null, null, "Key name is required."), ct);
+            await HttpContext.Response.WriteAsJsonAsync(new CreateApiKeyResponse(false, null, null, result.Message), ct);
             return;
         }
 
-        var random = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(20))
-            .ToLowerInvariant();
-        var plain = $"bpk_{random}";
-        var entity = new ApiKeyEntity
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Name = req.Name.Trim(),
-            Prefix = plain[..10],
-            ScopesCsv = string.Join(',', (req.Scopes ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).Distinct(StringComparer.OrdinalIgnoreCase)),
-            CreatedAtUtc = DateTimeOffset.UtcNow,
-        };
-        entity.KeyHash = apiKeyHasher.HashPassword(entity, plain);
-
-        dbContext.ApiKeys.Add(entity);
-        await dbContext.SaveChangesAsync(ct);
-
         var keyView = new ApiKeyView(
-            entity.Id,
-            entity.Name,
-            entity.Prefix,
-            string.IsNullOrWhiteSpace(entity.ScopesCsv)
-                ? []
-                : entity.ScopesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            entity.CreatedAtUtc,
-            entity.RevokedAtUtc);
+            result.Key!.Id,
+            result.Key.Name,
+            result.Key.Prefix,
+            result.Key.Scopes,
+            result.Key.CreatedAtUtc,
+            result.Key.RevokedAtUtc);
 
-        await Send.OkAsync(new CreateApiKeyResponse(true, plain, keyView, "API key created."), ct);
+        await Send.OkAsync(new CreateApiKeyResponse(true, result.PlainTextKey, keyView, result.Message), ct);
     }
 }
 

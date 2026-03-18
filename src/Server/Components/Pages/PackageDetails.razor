@@ -1,0 +1,138 @@
+@page "/packages/{PackageName}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using pckg.Data
+
+@inject ApplicationDbContext DbContext
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>@(Package?.Name ?? "Package")</PageTitle>
+
+@if (Package is null)
+{
+    <FluentCard Class="section-card">
+        <h1>Package not found</h1>
+        <p>The package <strong>@PackageName</strong> does not exist yet.</p>
+    </FluentCard>
+}
+else
+{
+    <FluentCard Class="package-header section-card">
+        <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
+        <div>
+            <h1>@Package.Name</h1>
+            <p>@Package.Description</p>
+            <p>
+                <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
+                <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
+            </p>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="section-card">
+        <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
+            <FluentButton Appearance="@(ActiveTab == "versions" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "versions"'>Versions</FluentButton>
+            <FluentButton Appearance="@(ActiveTab == "dependencies" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "dependencies"'>Dependencies</FluentButton>
+            <FluentButton Appearance="@(ActiveTab == "dependents" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "dependents"'>Dependents</FluentButton>
+            <FluentButton Appearance="@(ActiveTab == "reviews" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "reviews"'>Reviews</FluentButton>
+            <FluentButton Appearance="@(ActiveTab == "voting" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "voting"'>Feature Voting</FluentButton>
+            <FluentButton Appearance="@(ActiveTab == "issues" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "issues"'>Issues</FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (ActiveTab == "versions")
+    {
+        <FluentCard Class="section-card">
+            <h2>Versions</h2>
+            <p>Version stream is ready. Hook your publishing pipeline to expose release history here.</p>
+            <ul>
+                <li>Latest: 1.0.0-preview (placeholder)</li>
+                <li>Previous: 0.9.0-beta (placeholder)</li>
+            </ul>
+        </FluentCard>
+    }
+    else if (ActiveTab == "dependencies")
+    {
+        <FluentCard Class="section-card">
+            <h2>Dependencies</h2>
+            <p>No dependency metadata published yet.</p>
+        </FluentCard>
+    }
+    else if (ActiveTab == "dependents")
+    {
+        <FluentCard Class="section-card">
+            <h2>Dependents</h2>
+            <p>Dependent package analytics will appear after usage tracking is wired.</p>
+        </FluentCard>
+    }
+    else if (ActiveTab == "reviews")
+    {
+        <FluentCard Class="section-card">
+            <h2>Community reviews</h2>
+            @if (IsAuthenticated)
+            {
+                <EditForm Model="ReviewForm" OnValidSubmit="AddReviewAsync">
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
+                        <FluentNumberField @bind-Value="ReviewForm.Rating" Min="1" Max="5" Placeholder="Rating 1-5" />
+                        <FluentTextField @bind-Value="ReviewForm.Comment" Placeholder="What did you like?" />
+                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Post review</FluentButton>
+                    </FluentStack>
+                </EditForm>
+            }
+            @foreach (var review in Reviews)
+            {
+                <FluentCard>
+                    <strong>@review.Rating/5</strong>
+                    <p>@review.Comment</p>
+                </FluentCard>
+            }
+        </FluentCard>
+    }
+    else if (ActiveTab == "voting")
+    {
+        <FluentCard Class="section-card">
+            <h2>Feature voting board</h2>
+            @foreach (var issue in Issues)
+            {
+                <FluentCard>
+                    <strong>@issue.Title</strong>
+                    <p>@issue.Body</p>
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
+                        <FluentBadge Appearance="Appearance.Neutral">Score: @issue.Score</FluentBadge>
+                        @if (IsAuthenticated)
+                        {
+                            <FluentButton Appearance="Appearance.Accent" @onclick="() => VoteAsync(issue.Id, 1)">Upvote</FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" @onclick="() => VoteAsync(issue.Id, -1)">Downvote</FluentButton>
+                        }
+                    </FluentStack>
+                </FluentCard>
+            }
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard Class="section-card">
+            <h2>Issue board</h2>
+            @if (IsAuthenticated)
+            {
+                <EditForm Model="IssueForm" OnValidSubmit="AddIssueAsync">
+                    <FluentStack>
+                        <FluentTextField @bind-Value="IssueForm.Title" Placeholder="Issue title" />
+                        <FluentTextArea @bind-Value="IssueForm.Body" Placeholder="Describe your request or bug" />
+                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Post issue</FluentButton>
+                    </FluentStack>
+                </EditForm>
+            }
+
+            @foreach (var issue in Issues)
+            {
+                <FluentCard>
+                    <strong>@issue.Title</strong>
+                    <p>@issue.Body</p>
+                    <small>Score: @issue.Score</small>
+                </FluentCard>
+            }
+        </FluentCard>
+    }
+}
