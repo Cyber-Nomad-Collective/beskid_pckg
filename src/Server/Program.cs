@@ -192,6 +192,13 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+app.MapGet("/users/logout", (HttpContext context) =>
+{
+    var redirectTarget = context.Request.QueryString.HasValue
+        ? $"/api/users/logout{context.Request.QueryString.Value}"
+        : "/api/users/logout";
+    return Results.Redirect(redirectTarget);
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

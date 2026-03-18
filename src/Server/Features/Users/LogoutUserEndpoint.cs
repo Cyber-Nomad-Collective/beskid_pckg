@@ -21,7 +21,18 @@ public sealed class LogoutUserEndpoint(SignInManager<ApplicationUser> signInMana
         await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
         await HttpContext.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
-        var returnUrl = Query<string>("returnUrl", false) ?? "/";
-        HttpContext.Response.Redirect(returnUrl);
+
+        var requestedReturnUrl = Query<string>("returnUrl", false);
+        var returnUrl = IsLocalReturnUrl(requestedReturnUrl) ? requestedReturnUrl! : "/";
+
+        HttpContext.Response.Redirect(returnUrl, permanent: false);
+        await HttpContext.Response.CompleteAsync();
+    }
+
+    private static bool IsLocalReturnUrl(string? returnUrl)
+    {
+        return !string.IsNullOrWhiteSpace(returnUrl)
+               && returnUrl.StartsWith("/", StringComparison.Ordinal)
+               && !returnUrl.StartsWith("//", StringComparison.Ordinal);
     }
 }
