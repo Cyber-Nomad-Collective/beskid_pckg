@@ -37,19 +37,24 @@ public partial class PackageDetails
             return;
         }
 
-        Reviews.AddRange(await DbContext.PackageCommunityReviews
+        var reviewRows = await DbContext.PackageCommunityReviews
             .AsNoTracking()
             .Where(x => x.PackageId == Package.Id)
+            .ToListAsync();
+
+        Reviews.AddRange(reviewRows
             .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(30)
-            .ToListAsync());
+            .Take(30));
 
         var issueRows = await DbContext.PackageIssues
             .AsNoTracking()
             .Where(x => x.PackageId == Package.Id)
+            .ToListAsync();
+
+        issueRows = issueRows
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(50)
-            .ToListAsync();
+            .ToList();
 
         var issueIds = issueRows.Select(x => x.Id).ToList();
         var scores = await DbContext.PackageIssueVotes
@@ -64,10 +69,13 @@ public partial class PackageDetails
         var versionRows = await DbContext.PackageVersions
             .AsNoTracking()
             .Where(x => x.PackageId == Package.Id)
-            .OrderByDescending(x => x.PublishedAtUtc)
             .ToListAsync();
 
-        Versions.AddRange(versionRows.Select(x => new PackageVersionSummaryResponse(
+        var orderedVersionRows = versionRows
+            .OrderByDescending(x => x.PublishedAtUtc)
+            .ToList();
+
+        Versions.AddRange(orderedVersionRows.Select(x => new PackageVersionSummaryResponse(
             x.Id,
             x.PackageId,
             Package.Name,

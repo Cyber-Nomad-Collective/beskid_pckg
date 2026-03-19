@@ -39,8 +39,11 @@ public sealed class ApiKeyManagementService(
         var entities = await dbContext.ApiKeys
             .AsNoTracking()
             .Where(k => k.UserId == userId)
-            .OrderByDescending(k => k.CreatedAtUtc)
             .ToListAsync(cancellationToken);
+
+        entities = entities
+            .OrderByDescending(k => k.CreatedAtUtc)
+            .ToList();
 
         return entities
             .Select(k => new ApiKeyListItem(

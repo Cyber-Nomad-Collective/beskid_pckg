@@ -43,8 +43,11 @@ public sealed class GetPublicProfileEndpoint(
         var packages = await dbContext.Packages
             .AsNoTracking()
             .Where(x => x.OwnerUserId == user.Id && x.IsPublic)
-            .OrderByDescending(x => x.UpdatedAtUtc)
             .ToListAsync(ct);
+
+        packages = packages
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .ToList();
 
         var packageIds = packages.Select(x => x.Id).ToList();
 
@@ -118,9 +121,12 @@ public sealed class GetPublicProfileEndpoint(
                         $"Published version {version.Version}",
                         version.PublishedAtUtc,
                         BuildPackageLink(package.Name)))
-                .OrderByDescending(x => x.OccurredAtUtc)
-                .Take(6)
                 .ToListAsync(ct);
+
+        versionActivities = versionActivities
+            .OrderByDescending(x => x.OccurredAtUtc)
+            .Take(6)
+            .ToList();
 
         var reviewActivities = await dbContext.PackageCommunityReviews
             .AsNoTracking()
@@ -135,9 +141,12 @@ public sealed class GetPublicProfileEndpoint(
                     $"Reviewed this package ({review.Rating}/5): {Truncate(review.Comment, 88)}",
                     review.CreatedAtUtc,
                     BuildPackageLink(package.Name)))
+            .ToListAsync(ct);
+
+        reviewActivities = reviewActivities
             .OrderByDescending(x => x.OccurredAtUtc)
             .Take(6)
-            .ToListAsync(ct);
+            .ToList();
 
         var issueActivities = await dbContext.PackageIssues
             .AsNoTracking()
@@ -152,9 +161,12 @@ public sealed class GetPublicProfileEndpoint(
                     $"Opened issue: {Truncate(issue.Title, 72)}",
                     issue.CreatedAtUtc,
                     BuildPackageLink(package.Name)))
+            .ToListAsync(ct);
+
+        issueActivities = issueActivities
             .OrderByDescending(x => x.OccurredAtUtc)
             .Take(6)
-            .ToListAsync(ct);
+            .ToList();
 
         var recentActivity = versionActivities
             .Concat(reviewActivities)
