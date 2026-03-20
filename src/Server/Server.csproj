@@ -19,4 +19,10 @@
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.13.10" />
   </ItemGroup>
+  <!-- Ensure files under Features/Packages are compiled even if some environments
+       exclude "packages" folders by default; avoid duplicates locally. -->
+  <ItemGroup>
+    <Compile Remove="Features/Packages/**/*.cs" />
+    <Compile Include="Features/Packages/**/*.cs" />
+  </ItemGroup>
 </Project>
