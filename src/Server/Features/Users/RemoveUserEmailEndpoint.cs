@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
-using pckg.Data;
 using System.Security.Claims;
+using Server.Data;
 
 namespace Server.Features.Users;
 

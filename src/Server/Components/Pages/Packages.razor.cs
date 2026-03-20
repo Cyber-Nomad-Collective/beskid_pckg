@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using pckg.Features.Packages;
+using Server.Features.Packages;
 
 namespace Server.Components.Pages;
 

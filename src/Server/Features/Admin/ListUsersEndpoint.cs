@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using pckg.Data;
+using Server.Data;
 
 namespace Server.Features.Admin;
 

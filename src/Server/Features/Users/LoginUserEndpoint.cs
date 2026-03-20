@@ -1,6 +1,6 @@
 using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
-using pckg.Data;
+using Server.Data;
 
 namespace Server.Features.Users;
 

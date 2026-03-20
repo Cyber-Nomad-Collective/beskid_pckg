@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Server.Components.Shared;
-using pckg.Data;
+using Server.Data;
 
 namespace Server.Features.Users;
 

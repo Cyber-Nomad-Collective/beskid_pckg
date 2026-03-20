@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using pckg.Data;
+using Server.Data;
 using Server.Services;
 
 namespace Server.Tests.Integration;

@@ -1,7 +1,7 @@
 using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-using pckg.Data;
+using Server.Data;
 
 namespace Server.Features.Users;
 

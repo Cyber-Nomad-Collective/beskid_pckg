@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Json;
-using pckg.Data;
+using Server.Data;
 using Server.Services;
 
 namespace Server.Components.Shared;

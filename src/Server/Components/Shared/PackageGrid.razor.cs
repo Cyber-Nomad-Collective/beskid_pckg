@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Components;
-using pckg.Features.Packages;
+using Server.Features.Packages;
 
 namespace Server.Components.Shared;
 

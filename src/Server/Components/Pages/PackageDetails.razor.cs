@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-using pckg.Data;
-using pckg.Features.Packages;
+using Server.Data;
+using Server.Features.Packages;
 
 namespace Server.Components.Pages;
 

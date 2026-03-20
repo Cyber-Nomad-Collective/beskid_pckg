@@ -25,4 +25,14 @@
     <Compile Remove="Features/Packages/**/*.cs" />
     <Compile Include="Features/Packages/**/*.cs" />
   </ItemGroup>
+  <!-- Optional: emit compile item list when LogCompileItems=true -->
+  <PropertyGroup>
+    <LogCompileItems>false</LogCompileItems>
+  </PropertyGroup>
+  <Target Name="PrintCompileItems" BeforeTargets="CoreCompile" Condition="'$(LogCompileItems)'=='true'">
+    <Message Importance="High" Text="=== Begin Compile items for $(MSBuildProjectName) ===" />
+    <Message Importance="High" Text="DefaultItemExcludes=$(DefaultItemExcludes)" />
+    <Message Importance="High" Text="%(Compile.Identity)" />
+    <Message Importance="High" Text="=== End Compile items ===" />
+  </Target>
 </Project>

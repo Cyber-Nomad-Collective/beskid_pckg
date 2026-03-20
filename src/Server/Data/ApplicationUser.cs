@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace pckg.Data;
+namespace Server.Data;
 
 public sealed class ApplicationUser : IdentityUser
 {

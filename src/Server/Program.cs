@@ -1,17 +1,16 @@
-using Microsoft.FluentUI.AspNetCore.Components;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.EntityFrameworkCore;
-using Scalar.AspNetCore;
-using pckg.Data;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Scalar.AspNetCore;
 using Server.Components;
 using Server.Components.Account;
-using Server.Components.Layout;
+using Server.Data;
 using Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -404,4 +403,7 @@ static string? ResolveInternalBaseAddress(string? urlsSetting)
     return $"{parsed.Scheme}://{host}:{port}";
 }
 
-public partial class Program;
+namespace Server
+{
+    public partial class Program;
+}

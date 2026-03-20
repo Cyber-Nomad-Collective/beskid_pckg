@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using pckg.Data;
+using Server.Data;
 using Server.Services;
 
 namespace Server.Tests.Unit;

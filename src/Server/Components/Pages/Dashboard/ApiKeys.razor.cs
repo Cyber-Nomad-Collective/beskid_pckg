@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Server.Components.Shared;
-using pckg.Features.ApiKeys;
+using Server.Features.ApiKeys;
 
 namespace Server.Components.Pages.Dashboard;
 

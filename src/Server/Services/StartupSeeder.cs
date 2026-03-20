@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using pckg.Data;
+using Server.Data;
 using Server.Features.Users;
 
 namespace Server.Services;

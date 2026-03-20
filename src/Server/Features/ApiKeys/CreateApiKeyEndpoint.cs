@@ -1,8 +1,8 @@
-using FastEndpoints;
 using System.Security.Claims;
+using FastEndpoints;
 using Server.Services;
 
-namespace pckg.Features.ApiKeys;
+namespace Server.Features.ApiKeys;
 
 public sealed class CreateApiKeyEndpoint(
     IApiKeyManagementService apiKeyManagementService)

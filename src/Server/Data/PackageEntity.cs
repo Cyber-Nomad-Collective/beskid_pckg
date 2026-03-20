@@ -1,4 +1,4 @@
-namespace pckg.Data;
+namespace Server.Data;
 
 public sealed class PackageEntity
 {
