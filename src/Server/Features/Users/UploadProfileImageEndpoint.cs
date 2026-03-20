@@ -8,7 +8,7 @@ namespace Server.Features.Users;
 public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> userManager, IWebHostEnvironment environment)
     : EndpointWithoutRequest<UploadProfileImageResponse>
 {
-    private const long MaxFileSizeBytes = 5 * 1024 * 1024;
+    private const long MaxFileSizeBytes = 10 * 1024 * 1024;
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/png",
@@ -61,7 +61,7 @@ public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> user
         if (file.Length <= 0 || file.Length > MaxFileSizeBytes)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Image size must be between 1 byte and 5 MB.", null), ct);
+            await Send.OkAsync(new UploadProfileImageResponse(false, "Image size must be between 1 byte and 10 MB.", null), ct);
             return;
         }
 

@@ -8,6 +8,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8082
+      HttpClient__InternalBaseAddress: http://127.0.0.1:8082
       ConnectionStrings__DefaultConnection: Data Source=/app/data/pckg.db
       Storage__ArtifactsRootPath: /app/packages 
     ports:

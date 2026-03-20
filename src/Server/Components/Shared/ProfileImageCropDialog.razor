@@ -1,0 +1,57 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialogHeader ShowDismiss="false">
+    <FluentLabel Typo="Typography.PaneHeader">Crop profile photo</FluentLabel>
+</FluentDialogHeader>
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" Gap="12px" Class="app-dialog-stack">
+        <p class="muted app-dialog-intro">Adjust crop area before uploading. Output is a square PNG.</p>
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <FluentMessageBar Intent="MessageIntent.Error">@ErrorMessage</FluentMessageBar>
+        }
+
+        @if (string.IsNullOrWhiteSpace(SourceDataUrl))
+        {
+            <FluentProgressRing Style="width: 28px; height: 28px;" />
+        }
+        else
+        {
+            <FluentCard Class="app-dialog-surface">
+                <div class="profile-crop-preview" style="@BuildPreviewStyle()"></div>
+            </FluentCard>
+
+            <FluentCard Class="app-dialog-surface">
+                <FluentStack Orientation="Orientation.Vertical" Gap="10px">
+                    <FluentLabel>Zoom (@Zoom.ToString("0.00"))</FluentLabel>
+                    <FluentSlider TValue="decimal" Min="1m" Max="3m" Step="0.05m" @bind-Value="Zoom" />
+
+                    <FluentLabel>Horizontal (@OffsetX.ToString("0.00"))</FluentLabel>
+                    <FluentSlider TValue="decimal" Min="-1m" Max="1m" Step="0.05m" @bind-Value="OffsetX" />
+
+                    <FluentLabel>Vertical (@OffsetY.ToString("0.00"))</FluentLabel>
+                    <FluentSlider TValue="decimal" Min="-1m" Max="1m" Step="0.05m" @bind-Value="OffsetY" />
+                </FluentStack>
+            </FluentCard>
+        }
+    </FluentStack>
+</FluentDialogBody>
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Outline" OnClick="CancelAsync" Disabled="@IsBusy">Cancel</FluentButton>
+    <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync" Disabled="@(IsBusy || string.IsNullOrWhiteSpace(SourceDataUrl))">
+        @(IsBusy ? "Cropping..." : "Use this crop")
+    </FluentButton>
+</FluentDialogFooter>
+
+<style>
+    .profile-crop-preview {
+        width: min(100%, 340px);
+        aspect-ratio: 1;
+        margin: 0 auto;
+        border-radius: 12px;
+        border: 1px solid var(--neutral-stroke-rest);
+        background-repeat: no-repeat;
+        background-color: var(--neutral-layer-2);
+    }
+</style>

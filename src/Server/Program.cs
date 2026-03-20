@@ -16,6 +16,14 @@ using Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var internalApiBaseAddress = builder.Configuration["HttpClient:InternalBaseAddress"];
+if (string.IsNullOrWhiteSpace(internalApiBaseAddress))
+{
+    var urlsSetting = builder.Configuration["ASPNETCORE_URLS"]
+        ?? builder.Configuration["URLS"];
+    internalApiBaseAddress = ResolveInternalBaseAddress(urlsSetting) ?? "http://127.0.0.1:8080";
+}
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -24,14 +32,10 @@ builder.Services.AddScoped(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
     var httpContext = httpContextAccessor.HttpContext;
-    var scheme = string.IsNullOrWhiteSpace(httpContext?.Request.Scheme) ? "http" : httpContext.Request.Scheme;
-    var host = httpContext?.Request.Host.HasValue == true
-        ? httpContext.Request.Host.Value
-        : "localhost";
 
     var client = new HttpClient
     {
-        BaseAddress = new Uri($"{scheme}://{host}")
+        BaseAddress = new Uri(internalApiBaseAddress)
     };
 
     if (httpContext is not null)
@@ -77,7 +81,7 @@ builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogL
 var dataProtectionKeysPath = builder.Configuration["Security:DataProtectionKeysPath"];
 if (string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
-    dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, ".data-protection-keys");
+    dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "data", ".data-protection-keys");
 }
 try
 {
@@ -188,7 +192,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Redirect to onboarding if no users exist (run after antiforgery is set up)
+// Redirect to onboarding if no users exist.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
@@ -363,5 +367,41 @@ app.MapRazorComponents<App>()
     .DisableAntiforgery();
 
 app.Run();
+
+static string? ResolveInternalBaseAddress(string? urlsSetting)
+{
+    if (string.IsNullOrWhiteSpace(urlsSetting))
+    {
+        return null;
+    }
+
+    var firstUrl = urlsSetting
+        .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        .FirstOrDefault();
+
+    if (string.IsNullOrWhiteSpace(firstUrl))
+    {
+        return null;
+    }
+
+    var normalizedUrl = firstUrl
+        .Replace("://+:", "://127.0.0.1:", StringComparison.Ordinal)
+        .Replace("://*:", "://127.0.0.1:", StringComparison.Ordinal);
+
+    if (!Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var parsed))
+    {
+        return null;
+    }
+
+    var host = parsed.Host is "0.0.0.0" or "[::]" or "::" or "+"
+        ? "127.0.0.1"
+        : parsed.Host;
+
+    var port = parsed.IsDefaultPort
+        ? (string.Equals(parsed.Scheme, "https", StringComparison.OrdinalIgnoreCase) ? 443 : 80)
+        : parsed.Port;
+
+    return $"{parsed.Scheme}://{host}:{port}";
+}
 
 public partial class Program;

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Server.Components.Shared;
 using Server.Features.Users;
 using System.Net.Http.Json;
@@ -8,6 +9,7 @@ namespace Server.Components.Pages.Dashboard;
 
 public partial class Profile
 {
+    private const long ProfileImageMaxUploadBytes = 10 * 1024 * 1024;
     private readonly ProfileFormModel Form = new();
     private List<SocialLinkItem> SocialLinks = [];
     private readonly List<UserEmailItem> UserEmails = [];
@@ -25,6 +27,8 @@ public partial class Profile
     public IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
     [Inject]
     public HttpClient ApiHttp { get; set; } = default!;
+    [Inject]
+    public IDialogService DialogService { get; set; } = default!;
 
     private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
 
@@ -83,6 +87,39 @@ public partial class Profile
         }
     }
 
+    private async Task<ProfileImageCropDialog.CropOutput?> OpenProfileImageCropDialogAsync(IBrowserFile file)
+    {
+        if (file.Size <= 0)
+        {
+            SetFeedback("Selected image is empty.", true);
+            return null;
+        }
+
+        if (file.Size > ProfileImageMaxUploadBytes)
+        {
+            SetFeedback("Selected image exceeds the 10 MB limit.", true);
+            return null;
+        }
+
+        var content = new ProfileImageCropDialog.CropInput(file, ProfileImageMaxUploadBytes);
+        var parameters = new DialogParameters
+        {
+            Width = "min(720px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<ProfileImageCropDialog>(content, parameters);
+        var result = await dialog.Result;
+        if (result?.Cancelled != false || result.Data is not ProfileImageCropDialog.CropOutput cropped)
+        {
+            return null;
+        }
+
+        return cropped;
+    }
+
     private async Task SaveProfileAsync()
     {
         IsSaving = true;
@@ -123,15 +160,20 @@ public partial class Profile
             return;
         }
 
+        var file = args.File;
+        var cropped = await OpenProfileImageCropDialogAsync(file);
+        if (cropped is null)
+        {
+            return;
+        }
+
         IsUploadingImage = true;
         try
         {
-            var file = args.File;
             using var content = new MultipartFormDataContent();
-            await using var stream = file.OpenReadStream(5 * 1024 * 1024);
-            var imageContent = new StreamContent(stream);
-            imageContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(file.ContentType);
-            content.Add(imageContent, "image", file.Name);
+            var imageContent = new ByteArrayContent(cropped.Bytes);
+            imageContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(cropped.ContentType);
+            content.Add(imageContent, "image", cropped.FileName);
 
             var response = await ApiHttp.PostAsync("/api/users/profile/image", content);
             var payload = await TryReadJsonAsync<UploadProfileImageResponse>(response);
@@ -148,7 +190,7 @@ public partial class Profile
         }
         catch (IOException)
         {
-            SetFeedback("Selected image exceeds the 5 MB limit.", true);
+            SetFeedback("Selected image exceeds the 10 MB limit.", true);
         }
         finally
         {
