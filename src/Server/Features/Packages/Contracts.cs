@@ -4,8 +4,10 @@ public sealed record PackageSummaryResponse(
     Guid Id,
     string Name,
     string Description,
+    string Category,
     string? RepositoryUrl,
     string? WebsiteUrl,
+    IReadOnlyList<string> Tags,
     bool IsPublic,
     long TotalDownloads,
     DateTimeOffset UpdatedAtUtc,
@@ -31,8 +33,10 @@ public sealed record PublishPackageVersionResponse(
 public sealed record UpsertPackageRequest(
     string Name,
     string? Description,
+    string? Category,
     string? RepositoryUrl,
     string? WebsiteUrl,
+    IReadOnlyList<string>? Tags,
     bool IsPublic,
     bool SubmitForReview,
     string? ReviewReason);

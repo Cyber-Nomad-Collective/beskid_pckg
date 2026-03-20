@@ -58,6 +58,8 @@ public partial class AllPackages
 
         MetadataForm.PackageName = package.Name;
         MetadataForm.Description = package.Description;
+        MetadataForm.Topic = package.Category;
+        MetadataForm.TagsInput = string.Join(", ", package.Tags);
         MetadataForm.RepositoryUrl = package.RepositoryUrl ?? string.Empty;
         MetadataForm.WebsiteUrl = package.WebsiteUrl ?? string.Empty;
         MetadataForm.IsPublic = package.IsPublic;
@@ -168,23 +170,32 @@ public partial class AllPackages
 
         try
         {
-            await Task.Delay(150);
+            var request = new UpsertPackageRequest(
+                MetadataForm.PackageName,
+                MetadataForm.Description,
+                MetadataForm.Topic,
+                NormalizeOptionalText(MetadataForm.RepositoryUrl),
+                NormalizeOptionalText(MetadataForm.WebsiteUrl),
+                ParseTags(MetadataForm.TagsInput),
+                MetadataForm.IsPublic,
+                false,
+                null);
+
+            var response = await Http.PostAsJsonAsync("/api/packages", request);
+            var payload = await response.Content.ReadFromJsonAsync<UpsertPackageResponse>();
+            if (!response.IsSuccessStatusCode || payload is null || !payload.Success || payload.Package is null)
+            {
+                MetadataFeedbackMessage = payload?.Message ?? "Failed to save package metadata.";
+                return;
+            }
 
             var packageIndex = PackageItems.FindIndex(p => p.Name == MetadataForm.PackageName);
             if (packageIndex >= 0)
             {
-                var existing = PackageItems[packageIndex];
-                PackageItems[packageIndex] = existing with
-                {
-                    Description = MetadataForm.Description,
-                    RepositoryUrl = NormalizeOptionalText(MetadataForm.RepositoryUrl),
-                    WebsiteUrl = NormalizeOptionalText(MetadataForm.WebsiteUrl),
-                    IsPublic = MetadataForm.IsPublic,
-                    UpdatedAtUtc = DateTimeOffset.UtcNow
-                };
+                PackageItems[packageIndex] = payload.Package;
             }
 
-            MetadataFeedbackMessage = $"Saved metadata for '{MetadataForm.PackageName}'.";
+            MetadataFeedbackMessage = payload.Message;
             EditingPackageName = null;
         }
         finally
@@ -199,10 +210,18 @@ public partial class AllPackages
         return trimmed.Length == 0 ? null : trimmed;
     }
 
+    private static IReadOnlyList<string> ParseTags(string value)
+        => value
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
     private sealed class MetadataFormModel
     {
         public string PackageName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Topic { get; set; } = string.Empty;
+        public string TagsInput { get; set; } = string.Empty;
         public string RepositoryUrl { get; set; } = string.Empty;
         public string WebsiteUrl { get; set; } = string.Empty;
         public bool IsPublic { get; set; }

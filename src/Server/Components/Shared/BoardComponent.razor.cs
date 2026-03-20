@@ -19,6 +19,27 @@ public partial class BoardComponent
     [Parameter]
     public bool IsLocked { get; set; }
 
+    [Parameter]
+    public BoardPostType? FilterPostType { get; set; }
+
+    [Parameter]
+    public bool ShowPostTypeSelector { get; set; } = true;
+
+    [Parameter]
+    public BoardPostType DefaultPostType { get; set; } = BoardPostType.Issue;
+
+    [Parameter]
+    public string NewPostButtonText { get; set; } = "New Post";
+
+    [Parameter]
+    public string CreateDialogTitle { get; set; } = "Create New Post";
+
+    [Parameter]
+    public string EmptyStateText { get; set; } = "No posts yet. Be the first to start a discussion!";
+
+    [Parameter]
+    public string ViewDiscussionButtonText { get; set; } = "View Discussion";
+
     [Inject]
     public HttpClient ApiHttp { get; set; } = default!;
 
@@ -38,6 +59,8 @@ public partial class BoardComponent
     private string NewPostTitle = string.Empty;
     private string NewPostContent = string.Empty;
     private BoardPostType NewPostType = BoardPostType.Issue;
+    private int? _loadedBoardId;
+    private BoardPostType? _loadedFilterPostType;
 
     private string GetPostTypeLabel(BoardPostType type) => type switch
     {
@@ -79,12 +102,27 @@ public partial class BoardComponent
         await LoadPostsAsync();
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedBoardId == BoardId && _loadedFilterPostType == FilterPostType)
+        {
+            return;
+        }
+
+        CurrentPage = 1;
+        await LoadPostsAsync();
+    }
+
     private async Task LoadPostsAsync()
     {
         IsLoading = true;
         try
         {
-            var response = await ApiHttp.GetAsync($"/api/boards/{BoardId}/posts?page={CurrentPage}&pageSize={PageSize}");
+            _loadedBoardId = BoardId;
+            _loadedFilterPostType = FilterPostType;
+
+            var postTypeQuery = FilterPostType is null ? string.Empty : $"&postType={FilterPostType}";
+            var response = await ApiHttp.GetAsync($"/api/boards/{BoardId}/posts?page={CurrentPage}&pageSize={PageSize}{postTypeQuery}");
             if (!response.IsSuccessStatusCode)
             {
                 return;
@@ -132,6 +170,7 @@ public partial class BoardComponent
 
     private void ShowCreatePostDialog()
     {
+        NewPostType = FilterPostType ?? DefaultPostType;
         IsCreatePostDialogOpen = true;
     }
 
@@ -140,7 +179,7 @@ public partial class BoardComponent
         IsCreatePostDialogOpen = false;
         NewPostTitle = string.Empty;
         NewPostContent = string.Empty;
-        NewPostType = BoardPostType.Issue;
+        NewPostType = FilterPostType ?? DefaultPostType;
     }
 
     private async Task CreatePostAsync()
@@ -152,7 +191,7 @@ public partial class BoardComponent
 
         var response = await ApiHttp.PostAsJsonAsync(
             $"/api/boards/{BoardId}/posts",
-            new CreateBoardPostRequest(NewPostTitle, NewPostContent, NewPostType));
+            new CreateBoardPostRequest(NewPostTitle, NewPostContent, FilterPostType ?? NewPostType));
 
         if (response.IsSuccessStatusCode)
         {

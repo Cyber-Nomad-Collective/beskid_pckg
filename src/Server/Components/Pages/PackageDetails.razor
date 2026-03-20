@@ -4,6 +4,7 @@
 @using System.Security.Claims
 @using Server.Data
 @using Server.Features.Packages
+@using Server.Components.Shared
 
 @inject ApplicationDbContext DbContext
 @inject IHttpContextAccessor HttpContextAccessor
@@ -21,7 +22,7 @@ else
 {
     <FluentCard Class="package-header section-card">
         <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
-        <div>
+        <div style="flex:1;">
             <h1>@Package.Name</h1>
             <p>@Package.Description</p>
             <p>
@@ -29,6 +30,14 @@ else
                 <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
             </p>
         </div>
+        @if (IsAuthenticated)
+        {
+            <div>
+                <FluentButton Appearance="@(IsFollowing ? Appearance.Accent : Appearance.Outline)" OnClick="ToggleFollowAsync">
+                    @(IsFollowing ? "Following" : "Follow")
+                </FluentButton>
+            </div>
+        }
     </FluentCard>
 
     <FluentCard Class="section-card">
@@ -106,21 +115,47 @@ else
     else if (ActiveTab == "reviews")
     {
         <FluentCard Class="section-card">
-            <h2>Community reviews</h2>
+            <div class="reviews-header-row">
+                <h2>Community reviews</h2>
+                @if (IsAuthenticated)
+                {
+                    <FluentButton Appearance="Appearance.Accent" OnClick="OpenReviewDialogAsync" IconStart="@(new Icons.Regular.Size16.Edit())">Write review</FluentButton>
+                }
+            </div>
+
+            <div class="reviews-summary-card">
+                <div class="reviews-summary-score">
+                    <div class="reviews-score-value">@AverageReviewRating.ToString("0.0")</div>
+                    <FluentRatingPicker ReadOnly="true" Value="@(Convert.ToInt32(Math.Round(AverageReviewRating, MidpointRounding.AwayFromZero)))" />
+                    <div class="muted">@Reviews.Count review(s)</div>
+                </div>
+                <div class="reviews-distribution">
+                    @for (var rating = 5; rating >= 1; rating--)
+                    {
+                        var count = GetReviewCountFor(rating);
+                        var width = GetReviewDistributionPercent(rating);
+                        <div class="distribution-row">
+                            <span class="distribution-label">@rating</span>
+                            <div class="distribution-track">
+                                <div class="distribution-fill" style="width:@($"{width:0.##}%")"></div>
+                            </div>
+                            <span class="distribution-count">@count</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
             @if (IsAuthenticated)
             {
-                <EditForm Model="ReviewForm" OnValidSubmit="AddReviewAsync">
-                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
-                        <FluentNumberField @bind-Value="ReviewForm.Rating" Min="1" Max="5" Placeholder="Rating 1-5" />
-                        <FluentTextField @bind-Value="ReviewForm.Comment" Placeholder="What did you like?" />
-                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Post review</FluentButton>
-                    </FluentStack>
-                </EditForm>
+                <p class="muted">Your review is public and helps others choose reliable packages.</p>
             }
             @foreach (var review in Reviews)
             {
-                <FluentCard>
-                    <strong>@review.Rating/5</strong>
+                <FluentCard Class="review-entry-card">
+                    <div class="review-entry-head">
+                        <FluentRatingPicker ReadOnly="true" Value="review.Rating" />
+                        <span class="muted">@review.CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+                    </div>
                     <p>@review.Comment</p>
                 </FluentCard>
             }
@@ -130,20 +165,23 @@ else
     {
         <FluentCard Class="section-card">
             <h2>Feature voting board</h2>
-            @foreach (var issue in Issues)
+            @if (PackageBoardId <= 0)
             {
-                <FluentCard>
-                    <strong>@issue.Title</strong>
-                    <p>@issue.Body</p>
-                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
-                        <FluentBadge Appearance="Appearance.Neutral">Score: @issue.Score</FluentBadge>
-                        @if (IsAuthenticated)
-                        {
-                            <FluentButton Appearance="Appearance.Accent" @onclick="() => VoteAsync(issue.Id, 1)">Upvote</FluentButton>
-                            <FluentButton Appearance="Appearance.Stealth" @onclick="() => VoteAsync(issue.Id, -1)">Downvote</FluentButton>
-                        }
-                    </FluentStack>
-                </FluentCard>
+                <p class="muted">Discussion board is not available yet.</p>
+            }
+            else
+            {
+                <BoardComponent BoardId="PackageBoardId"
+                                BoardName="Feature voting"
+                                BoardDescription="Request and vote on features for this package."
+                                IsLocked="IsPackageBoardLocked"
+                                FilterPostType="BoardPostType.FeatureRequest"
+                                ShowPostTypeSelector="false"
+                                DefaultPostType="BoardPostType.FeatureRequest"
+                                NewPostButtonText="New feature request"
+                                CreateDialogTitle="Create feature request"
+                                EmptyStateText="No feature requests yet. Be the first to suggest one."
+                                ViewDiscussionButtonText="View request" />
             }
         </FluentCard>
     }
@@ -151,24 +189,23 @@ else
     {
         <FluentCard Class="section-card">
             <h2>Issue board</h2>
-            @if (IsAuthenticated)
+            @if (PackageBoardId <= 0)
             {
-                <EditForm Model="IssueForm" OnValidSubmit="AddIssueAsync">
-                    <FluentStack>
-                        <FluentTextField @bind-Value="IssueForm.Title" Placeholder="Issue title" />
-                        <FluentTextArea @bind-Value="IssueForm.Body" Placeholder="Describe your request or bug" />
-                        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Post issue</FluentButton>
-                    </FluentStack>
-                </EditForm>
+                <p class="muted">Discussion board is not available yet.</p>
             }
-
-            @foreach (var issue in Issues)
+            else
             {
-                <FluentCard>
-                    <strong>@issue.Title</strong>
-                    <p>@issue.Body</p>
-                    <small>Score: @issue.Score</small>
-                </FluentCard>
+                <BoardComponent BoardId="PackageBoardId"
+                                BoardName="Issues"
+                                BoardDescription="Report bugs and discuss package problems with the community."
+                                IsLocked="IsPackageBoardLocked"
+                                FilterPostType="BoardPostType.Issue"
+                                ShowPostTypeSelector="false"
+                                DefaultPostType="BoardPostType.Issue"
+                                NewPostButtonText="Report issue"
+                                CreateDialogTitle="Report issue"
+                                EmptyStateText="No issues reported yet."
+                                ViewDiscussionButtonText="View issue" />
             }
         </FluentCard>
     }

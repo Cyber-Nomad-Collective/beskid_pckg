@@ -1,33 +1,120 @@
 @page "/packages"
 @rendermode InteractiveServer
-@using Microsoft.EntityFrameworkCore
 @using Server.Components.Shared
-@using Server.Data
-
-@inject ApplicationDbContext DbContext
 
 <PageTitle>Browse Packages</PageTitle>
-<FluentCard Class="section-card package-browse-hero">
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+<section class="package-browse-page">
+    <FluentCard Class="section-card package-browse-hero">
         <header class="section-card-header">
             <h1>Browse Packages</h1>
-            <p class="muted">Discover published packages and open details for versions, changelogs, and usage.</p>
+            <p class="muted">Discover public packages, filter by signals, and sort by popularity, status, and community trust.</p>
         </header>
-        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.Left" VerticalGap="8" Wrap="true" Class="package-browse-toolbar">
-            <FluentSearch @bind-Value="Search" Placeholder="Search packages, category, description..." Class="package-browse-search" />
-            <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
-            <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
-        </FluentStack>
-    </FluentStack>
-</FluentCard>
 
-<FluentCard Class="section-card">
-    @if (Rows.Count == 0)
-    {
-        <p class="muted">No packages matched your query.</p>
-    }
-    else
-    {
-        <PackageGrid Packages="Rows" ShowActions="false" />
-    }
-</FluentCard>
+        <div class="search-shell">
+            <div class="search-shell-main">
+                <FluentSearch @bind-Value="Search" Placeholder="Search packages, categories, tags, descriptions..." Class="package-browse-search" />
+                <FluentButton Appearance="Appearance.Accent" @onclick="LoadAsync">Search</FluentButton>
+                <FluentButton Appearance="Appearance.Outline" @onclick="ResetAsync">Reset</FluentButton>
+            </div>
+
+            <div class="search-shell-filters">
+                <FluentSelect TOption="string" Label="Sort by" @bind-Value="SelectedSort" @onchange="ApplyFiltersAsync">
+                    <FluentOption TOption="string" Value="popularity">Popularity</FluentOption>
+                    <FluentOption TOption="string" Value="status">Status score</FluentOption>
+                    <FluentOption TOption="string" Value="reviews">Reviews</FluentOption>
+                    <FluentOption TOption="string" Value="updated">Recently updated</FluentOption>
+                </FluentSelect>
+
+                <FluentButton Appearance="Appearance.Stealth" @onclick="ToggleSortDirectionAsync">
+                    @(SortDescending ? "Descending" : "Ascending")
+                </FluentButton>
+
+                <FluentSelect TOption="string" Label="Status" @bind-Value="SelectedStatus" @onchange="ApplyFiltersAsync">
+                    <FluentOption TOption="string" Value="all">All</FluentOption>
+                    <FluentOption TOption="string" Value="thriving">Thriving</FluentOption>
+                    <FluentOption TOption="string" Value="rising">Rising</FluentOption>
+                    <FluentOption TOption="string" Value="steady">Steady</FluentOption>
+                    <FluentOption TOption="string" Value="at-risk">At Risk</FluentOption>
+                </FluentSelect>
+
+                <FluentSelect TOption="string" Label="Tag" @bind-Value="SelectedTag" @onchange="ApplyFiltersAsync">
+                    <FluentOption TOption="string" Value="all">All tags</FluentOption>
+                    @foreach (var tag in AvailableTags)
+                    {
+                        <FluentOption TOption="string" Value="@tag">@tag</FluentOption>
+                    }
+                </FluentSelect>
+
+                <FluentSelect TOption="string" Label="Topic" @bind-Value="SelectedTopic" @onchange="ApplyFiltersAsync">
+                    <FluentOption TOption="string" Value="all">All topics</FluentOption>
+                    @foreach (var topic in AvailableTopics)
+                    {
+                        <FluentOption TOption="string" Value="@topic">@topic</FluentOption>
+                    }
+                </FluentSelect>
+
+                <FluentNumberField Label="Min reviews" Min="0" @bind-Value="MinReviews" @onchange="ApplyFiltersAsync" />
+            </div>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="section-card package-results-card">
+        @if (Rows.Count == 0)
+        {
+            <p class="muted">No packages matched your query and active filters.</p>
+        }
+        else
+        {
+            <div class="package-results-grid">
+                @foreach (var package in Rows)
+                {
+                    <article class="package-result-item">
+                        <div class="package-tile-icon">@package.Name[..1].ToUpperInvariant()</div>
+
+                        <div class="package-result-main">
+                            <div class="package-result-header">
+                                <div>
+                                    <h3><a href="@($"/packages/{package.Name}")">@package.Name</a></h3>
+                                    <p class="muted">@package.Description</p>
+                                </div>
+                                <FluentBadge Appearance="Appearance.Accent">@package.Status.State / @package.Status.SubState</FluentBadge>
+                            </div>
+
+                            <div class="package-rating-row">
+                                <FluentRatingPicker ReadOnly="true" Value="@(Convert.ToInt32(Math.Round(package.AverageRating, MidpointRounding.AwayFromZero)))" />
+                                <span>@package.AverageRating.ToString("0.0")</span>
+                                <span class="muted">(@package.ReviewCount reviews)</span>
+                            </div>
+
+                            <div class="package-result-metrics">
+                                <span>@package.TotalDownloads.ToString("N0") downloads</span>
+                                <span>Updated @package.UpdatedAtUtc.ToString("yyyy-MM-dd")</span>
+                                <span>Topic: @package.Topic</span>
+                            </div>
+
+                            @if (package.Tags.Count > 0)
+                            {
+                                <div class="package-result-tags">
+                                    @foreach (var tag in package.Tags)
+                                    {
+                                        <FluentBadge Appearance="Appearance.Neutral">@tag</FluentBadge>
+                                    }
+                                </div>
+                            }
+
+                            <div class="package-result-signals muted">
+                                <span>Update: @package.Status.UpdateRate.State / @package.Status.UpdateRate.SubState</span>
+                                <span>Downloads: @package.Status.Downloads.State / @package.Status.Downloads.SubState</span>
+                                <span>Reviews: @package.Status.Reviews.State / @package.Status.Reviews.SubState</span>
+                            </div>
+                        </div>
+
+                        <div class="package-card-actions">
+                            <FluentButton Appearance="Appearance.Accent" Href="@($"/packages/{package.Name}")">View</FluentButton>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </FluentCard>
+</section>

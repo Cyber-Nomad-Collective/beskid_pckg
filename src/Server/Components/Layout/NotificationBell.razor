@@ -1,0 +1,89 @@
+@inject HttpClient Http
+
+<div class="notif-bell">
+    <FluentButton Appearance="Appearance.Outline" OnClick="ToggleOpen" IconStart="@(new Icons.Regular.Size16.Alert())">
+        @if (UnreadCount > 0)
+        {
+            <FluentBadge Appearance="Appearance.Accent">@UnreadCount</FluentBadge>
+        }
+    </FluentButton>
+
+    @if (IsOpen)
+    {
+        <div class="notif-dropdown">
+            @if (Items.Count == 0)
+            {
+                <div class="muted" style="padding:8px 12px;">No notifications</div>
+            }
+            else
+            {
+                @foreach (var n in Items)
+                {
+                    <div class="notif-item @(n.IsRead ? "is-read" : "")">
+                        <div class="title">@n.Title</div>
+                        @if (!string.IsNullOrWhiteSpace(n.Message))
+                        {
+                            <div class="message">@n.Message</div>
+                        }
+                        <div class="meta">@n.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+                    </div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool IsOpen;
+    private int UnreadCount;
+    private List<NotificationItem> Items = new();
+    private System.Timers.Timer? _timer;
+
+    protected override Task OnInitializedAsync()
+    {
+        _timer = new System.Timers.Timer(10000);
+        _timer.Elapsed += async (_, _) => await LoadAsync();
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+        _ = LoadAsync();
+        return Task.CompletedTask;
+    }
+
+    private void ToggleOpen()
+    {
+        IsOpen = !IsOpen;
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ListNotificationsResponse>("/api/users/notifications");
+            if (resp is null) return;
+            Items = resp.Items;
+            UnreadCount = Items.Count(i => !i.IsRead);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+    }
+
+    public class ListNotificationsResponse
+    {
+        public List<NotificationItem> Items { get; set; } = new();
+    }
+
+    public class NotificationItem
+    {
+        public Guid Id { get; set; }
+        public int Type { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Message { get; set; }
+        public bool IsRead { get; set; }
+        public DateTimeOffset CreatedAtUtc { get; set; }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

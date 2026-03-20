@@ -20,15 +20,29 @@ public sealed class GetBoardPostsEndpoint : EndpointWithoutRequest<GetBoardPosts
         var boardId = Route<int>("boardId");
         var page = Query<int>("page", isRequired: false);
         var pageSize = Query<int>("pageSize", isRequired: false);
+        var postTypeQuery = Query<string>("postType", isRequired: false);
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        BoardPostType? postTypeFilter = null;
+
+        if (!string.IsNullOrWhiteSpace(postTypeQuery) && Enum.TryParse<BoardPostType>(postTypeQuery, true, out var parsedType))
+        {
+            postTypeFilter = parsedType;
+        }
 
         if (page <= 0) page = 1;
         if (pageSize <= 0 || pageSize > 100) pageSize = 20;
 
         var skip = (page - 1) * pageSize;
 
-        var postsQuery = Db.BoardPosts
-            .Where(p => p.BoardId == boardId && !p.IsDeleted)
+        var postsBaseQuery = Db.BoardPosts
+            .Where(p => p.BoardId == boardId && !p.IsDeleted);
+
+        if (postTypeFilter is not null)
+        {
+            postsBaseQuery = postsBaseQuery.Where(p => p.PostType == postTypeFilter.Value);
+        }
+
+        var postsQuery = postsBaseQuery
             .OrderByDescending(p => p.IsPinned)
             .ThenByDescending(p => p.CreatedAtUtc)
             .Skip(skip)
@@ -63,9 +77,7 @@ public sealed class GetBoardPostsEndpoint : EndpointWithoutRequest<GetBoardPosts
             posts = posts.Select(p => p with { CurrentUserVote = userVotes.GetValueOrDefault(p.Id, 0) }).ToList();
         }
 
-        var totalCount = await Db.BoardPosts
-            .Where(p => p.BoardId == boardId && !p.IsDeleted)
-            .CountAsync(ct);
+        var totalCount = await postsBaseQuery.CountAsync(ct);
 
         await Send.OkAsync(new GetBoardPostsResponse(posts, totalCount, page, pageSize), ct);
     }

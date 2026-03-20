@@ -36,6 +36,7 @@ public partial class Profile
     {
         await LoadProfileAsync();
         await LoadEmailsAsync();
+        await LoadNotificationPrefsAsync();
     }
 
     private static string? BuildCacheBustedImageUrl(string? imageUrl, long cacheToken)
@@ -321,6 +322,92 @@ public partial class Profile
         {
             IsSaving = false;
         }
+    }
+
+    private readonly List<NotifPrefItem> NotificationPrefs =
+    [
+        new() { Type =  (int)Server.Data.NotificationType.PackageUpdated, Label = "Package updated" },
+        new() { Type =  (int)Server.Data.NotificationType.PackagePublished, Label = "Package published" },
+        new() { Type =  (int)Server.Data.NotificationType.PackageFollowedPublisherUpdate, Label = "Followed publisher update" }
+    ];
+
+    private async Task LoadNotificationPrefsAsync()
+    {
+        try
+        {
+            var resp = await ApiHttp.GetAsync("/api/users/notification-preferences");
+            if (!resp.IsSuccessStatusCode) return;
+            var payload = await resp.Content.ReadFromJsonAsync<GetNotificationPreferencesResponse>();
+            if (payload is null) return;
+            foreach (var item in NotificationPrefs)
+            {
+                var match = payload.Items.FirstOrDefault(p => (int)p.Type == item.Type);
+                if (match is not null)
+                {
+                    item.SendEmail = match.SendEmail;
+                    item.IncludeInSpotlight = match.IncludeInSpotlight;
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task SaveNotificationPrefsAsync()
+    {
+        IsSaving = true;
+        try
+        {
+            var req = new UpdateNotificationPreferencesRequest
+            {
+                Items = NotificationPrefs.Select(p => new PreferenceItem
+                {
+                    Type = p.Type,
+                    SendEmail = p.SendEmail,
+                    IncludeInSpotlight = p.IncludeInSpotlight
+                }).ToList()
+            };
+            await ApiHttp.PostAsJsonAsync("/api/users/notification-preferences", req);
+            SetFeedback("Notification preferences saved.", false);
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private static void ToggleEmail(NotifPrefItem item, bool value) => item.SendEmail = value;
+    private static void ToggleSpotlight(NotifPrefItem item, bool value) => item.IncludeInSpotlight = value;
+
+    private sealed class NotifPrefItem
+    {
+        public int Type { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public bool SendEmail { get; set; }
+        public bool IncludeInSpotlight { get; set; }
+    }
+
+    private sealed class GetNotificationPreferencesResponse
+    {
+        public List<NotificationPreferenceDto> Items { get; set; } = new();
+    }
+
+    private sealed class NotificationPreferenceDto
+    {
+        public int Type { get; set; }
+        public bool SendEmail { get; set; }
+        public bool IncludeInSpotlight { get; set; }
+    }
+
+    private sealed class UpdateNotificationPreferencesRequest
+    {
+        public List<PreferenceItem> Items { get; set; } = new();
+    }
+
+    private sealed class PreferenceItem
+    {
+        public int Type { get; set; }
+        public bool SendEmail { get; set; }
+        public bool IncludeInSpotlight { get; set; }
     }
 
     private async Task RemoveEmailAsync(int emailId)

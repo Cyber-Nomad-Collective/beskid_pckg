@@ -21,6 +21,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<BoardPostVoteEntity> BoardPostVotes => Set<BoardPostVoteEntity>();
     public DbSet<BoardCommentVoteEntity> BoardCommentVotes => Set<BoardCommentVoteEntity>();
     public DbSet<ResourcePermissionEntity> ResourcePermissions => Set<ResourcePermissionEntity>();
+    public DbSet<NotificationEntity> Notifications => Set<NotificationEntity>();
+    public DbSet<UserNotificationPreferenceEntity> NotificationPreferences => Set<UserNotificationPreferenceEntity>();
+    public DbSet<EmailSettingsEntity> EmailSettings => Set<EmailSettingsEntity>();
+    public DbSet<FollowPackageEntity> PackageFollows => Set<FollowPackageEntity>();
+    public DbSet<FollowPublisherEntity> PublisherFollows => Set<FollowPublisherEntity>();
+    public DbSet<PackageTagEntity> PackageTags => Set<PackageTagEntity>();
+    public DbSet<TopicEntity> Topics => Set<TopicEntity>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -218,6 +225,67 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.GrantedByUserId).IsRequired().HasMaxLength(450);
             entity.HasIndex(x => new { x.UserId, x.ResourceType, x.ResourceId });
             entity.HasIndex(x => new { x.ResourceType, x.ResourceId });
+        });
+
+        builder.Entity<NotificationEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.Title).IsRequired().HasMaxLength(256);
+            entity.Property(x => x.Type).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(2000);
+            entity.Property(x => x.DataJson);
+            entity.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAtUtc });
+        });
+
+        builder.Entity<UserNotificationPreferenceEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.Type).IsRequired();
+            entity.HasIndex(x => new { x.UserId, x.Type }).IsUnique();
+        });
+
+        builder.Entity<EmailSettingsEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.FromEmail).IsRequired().HasMaxLength(256);
+            entity.Property(x => x.FromName).IsRequired().HasMaxLength(128);
+        });
+
+        builder.Entity<FollowPackageEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.PackageId).IsRequired().HasMaxLength(64);
+            entity.HasIndex(x => new { x.UserId, x.PackageId }).IsUnique();
+        });
+
+        builder.Entity<FollowPublisherEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired().HasMaxLength(450);
+            entity.Property(x => x.PublisherUserId).IsRequired().HasMaxLength(450);
+            entity.HasIndex(x => new { x.UserId, x.PublisherUserId }).IsUnique();
+        });
+
+        builder.Entity<PackageTagEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Tag).IsRequired().HasMaxLength(48);
+            entity.HasIndex(x => x.PackageId);
+            entity.HasIndex(x => x.Tag);
+        });
+
+        builder.Entity<TopicEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.Slug).IsRequired().HasMaxLength(128);
+            entity.Property(x => x.Description).HasMaxLength(768);
+            entity.Property(x => x.CreatedByUserId).IsRequired().HasMaxLength(450);
+            entity.HasIndex(x => x.Slug).IsUnique();
+            entity.HasIndex(x => x.BoardId).IsUnique();
         });
     }
 }

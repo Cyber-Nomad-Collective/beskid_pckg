@@ -18,6 +18,9 @@ public partial class PublicProfile
     private string? FeedbackMessage;
     private PublicProfilePayload? Profile;
     private IReadOnlyList<SocialLinkViewModel> SocialLinks => BuildSocialLinks(Profile);
+    [Inject] private IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+    private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+    private bool IsFollowingPublisher;
 
     private static IReadOnlyList<SocialLinkViewModel> BuildSocialLinks(PublicProfilePayload? profile)
     {
@@ -59,6 +62,7 @@ public partial class PublicProfile
 
         LoadedUserId = UserId;
         await LoadProfileAsync();
+        await LoadFollowAsync();
     }
 
     private async Task LoadProfileAsync()
@@ -86,6 +90,37 @@ public partial class PublicProfile
             IsLoading = false;
         }
     }
+
+    private async Task LoadFollowAsync()
+    {
+        if (!IsAuthenticated || string.IsNullOrWhiteSpace(UserId)) return;
+        try
+        {
+            var resp = await Http.GetAsync($"/api/users/follows/publishers/is-following?publisherUserId={Uri.EscapeDataString(UserId)}");
+            if (!resp.IsSuccessStatusCode) return;
+            var payload = await resp.Content.ReadFromJsonAsync<IsFollowingResponse>();
+            if (payload is not null) IsFollowingPublisher = payload.IsFollowing;
+        }
+        catch { }
+    }
+
+    private async Task ToggleFollowPublisherAsync()
+    {
+        if (!IsAuthenticated || string.IsNullOrWhiteSpace(UserId)) return;
+        try
+        {
+            var payload = new TogglePublisherFollowRequest { PublisherUserId = UserId };
+            var resp = await Http.PostAsJsonAsync("/api/users/follows/publishers/toggle", payload);
+            if (!resp.IsSuccessStatusCode) return;
+            var result = await resp.Content.ReadFromJsonAsync<TogglePublisherFollowResponse>();
+            if (result is not null) IsFollowingPublisher = result.IsFollowing;
+        }
+        catch { }
+    }
+
+    private sealed class IsFollowingResponse { public bool IsFollowing { get; set; } }
+    private sealed class TogglePublisherFollowRequest { public string PublisherUserId { get; set; } = string.Empty; }
+    private sealed class TogglePublisherFollowResponse { public bool IsFollowing { get; set; } }
 
     private static bool IsJsonResponse(HttpResponseMessage response)
     {
@@ -134,6 +169,11 @@ public partial class PublicProfile
     {
         return activityType.ToLowerInvariant() switch
         {
+            "version" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box(),
+            "review" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Star(),
+            "issue" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Alert(),
+            "board-post" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Chat(),
+            "board-comment" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Comment(),
             "package_published" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box(),
             "package_updated" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.ArrowSync(),
             "package_downloaded" => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.ArrowDownload(),

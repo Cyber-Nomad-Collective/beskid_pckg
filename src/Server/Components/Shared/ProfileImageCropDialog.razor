@@ -19,19 +19,39 @@
         else
         {
             <FluentCard Class="app-dialog-surface">
-                <div class="profile-crop-preview" style="@BuildPreviewStyle()"></div>
+                <div class="profile-crop-preview">
+                    <img @ref="CropImageElement"
+                         class="profile-crop-image"
+                         src="@SourceDataUrl"
+                         alt="Profile image crop preview" />
+                </div>
             </FluentCard>
 
             <FluentCard Class="app-dialog-surface">
                 <FluentStack Orientation="Orientation.Vertical" Gap="10px">
                     <FluentLabel>Zoom (@Zoom.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal" Min="1m" Max="3m" Step="0.05m" @bind-Value="Zoom" />
+                    <FluentSlider TValue="decimal"
+                                  Min="1m"
+                                  Max="3m"
+                                  Step="0.05m"
+                                  Value="@Zoom"
+                                  ValueChanged="OnZoomChanged" />
 
                     <FluentLabel>Horizontal (@OffsetX.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal" Min="-1m" Max="1m" Step="0.05m" @bind-Value="OffsetX" />
+                    <FluentSlider TValue="decimal"
+                                  Min="-1m"
+                                  Max="1m"
+                                  Step="0.05m"
+                                  Value="@OffsetX"
+                                  ValueChanged="OnOffsetXChanged" />
 
                     <FluentLabel>Vertical (@OffsetY.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal" Min="-1m" Max="1m" Step="0.05m" @bind-Value="OffsetY" />
+                    <FluentSlider TValue="decimal"
+                                  Min="-1m"
+                                  Max="1m"
+                                  Step="0.05m"
+                                  Value="@OffsetY"
+                                  ValueChanged="OnOffsetYChanged" />
                 </FluentStack>
             </FluentCard>
         }
@@ -51,7 +71,13 @@
         margin: 0 auto;
         border-radius: 12px;
         border: 1px solid var(--neutral-stroke-rest);
-        background-repeat: no-repeat;
         background-color: var(--neutral-layer-2);
+        overflow: hidden;
+    }
+
+    .profile-crop-image {
+        display: block;
+        width: 100%;
+        max-width: 100%;
     }
 </style>

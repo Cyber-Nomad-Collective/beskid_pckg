@@ -1,0 +1,45 @@
+.topic-page-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 16px;
+    align-items: start;
+}
+
+.topic-main-feed,
+.topic-sidebar {
+    display: grid;
+    gap: 12px;
+}
+
+.topic-hero-card h1 {
+    margin: 0;
+}
+
+.topic-hero-card p {
+    margin: 6px 0 0;
+}
+
+.topic-side-card {
+    display: grid;
+    gap: 8px;
+}
+
+.topic-side-card h3 {
+    margin: 0;
+}
+
+.topic-side-card p {
+    margin: 0;
+}
+
+.topic-side-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+@media (max-width: 960px) {
+    .topic-page-layout {
+        grid-template-columns: 1fr;
+    }
+}

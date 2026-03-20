@@ -1,0 +1,48 @@
+@page "/topics"
+@rendermode InteractiveServer
+
+<PageTitle>Topics</PageTitle>
+
+<section class="topics-page">
+    <FluentCard Class="section-card topics-header-card">
+        <header>
+            <h1>Public Topics</h1>
+            <p class="muted">Community spaces for focused package and ecosystem discussions.</p>
+        </header>
+
+        @if (CanCreateTopic)
+        {
+            <div class="topic-create-form">
+                <FluentTextField @bind-Value="NewTopicName" Label="Topic name" Placeholder="e.g. Runtime Internals" />
+                <FluentTextArea @bind-Value="NewTopicDescription" Label="Description" Placeholder="What is this topic for?" />
+                <FluentButton Appearance="Appearance.Accent" @onclick="CreateTopicAsync" Disabled="string.IsNullOrWhiteSpace(NewTopicName)">Create topic</FluentButton>
+            </div>
+        }
+        else
+        {
+            <p class="muted">Sign in to create a topic.</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+        {
+            <div class="feedback-message is-error">@FeedbackMessage</div>
+        }
+    </FluentCard>
+
+    <div class="topic-list-grid">
+        @foreach (var topic in TopicsList)
+        {
+            <article class="topic-list-item">
+                <div class="topic-list-item-main">
+                    <h3><a href="@($"/topics/{topic.Slug}")">@topic.Name</a></h3>
+                    <p class="muted">@topic.Description</p>
+                </div>
+                <div class="topic-list-item-meta muted">
+                    <span>@topic.PostCount posts</span>
+                    <span>@topic.CommentCount comments</span>
+                    <span>Created @topic.CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+                </div>
+            </article>
+        }
+    </div>
+</section>

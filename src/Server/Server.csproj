@@ -18,6 +18,8 @@
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.14.0" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.13.10" />
+    <PackageReference Include="WolverineFx" Version="5.21.0" />
+    <PackageReference Include="WolverineFx.SignalR" Version="5.21.0" />
   </ItemGroup>
   <!-- Ensure files under Features/Packages are compiled even if some environments
        exclude "packages" folders by default; avoid duplicates locally. -->

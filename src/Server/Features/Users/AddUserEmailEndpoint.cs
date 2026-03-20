@@ -8,6 +8,7 @@ namespace Server.Features.Users;
 public sealed class AddUserEmailEndpoint : Endpoint<AddUserEmailRequest, AddUserEmailResponse>
 {
     public ApplicationDbContext Db { get; set; } = default!;
+    public Server.Services.Notifications.INotificationService Notifications { get; set; } = default!;
 
     public override void Configure()
     {
@@ -45,6 +46,8 @@ public sealed class AddUserEmailEndpoint : Endpoint<AddUserEmailRequest, AddUser
 
         Db.UserEmails.Add(newEmail);
         await Db.SaveChangesAsync(ct);
+
+        await Notifications.PublishAsync(userId, NotificationType.System, "Email added", $"{req.Email} was added to your account.", ct: ct);
 
         await Send.OkAsync(new AddUserEmailResponse(true, "Email added successfully."), ct);
     }

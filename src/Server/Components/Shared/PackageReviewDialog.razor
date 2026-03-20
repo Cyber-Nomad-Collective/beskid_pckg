@@ -1,0 +1,23 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialogHeader ShowDismiss="false">
+    <FluentLabel Typo="Typography.PaneHeader">Write a Review</FluentLabel>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" Gap="14px" Class="review-dialog-stack">
+        <p class="muted">Share your experience with <strong>@Content.PackageName</strong>.</p>
+
+        <div class="review-rating-block">
+            <FluentLabel>Rating</FluentLabel>
+            <FluentRatingPicker Value="Content.Rating" ValueChanged="OnRatingChanged" />
+        </div>
+
+        <FluentTextArea @bind-Value="Content.Comment" Label="Review" Placeholder="What worked well? What should improve?" Resize="TextAreaResize.Vertical" Rows="5" />
+    </FluentStack>
+</FluentDialogBody>
+
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Outline" OnClick="CancelAsync">Cancel</FluentButton>
+    <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync" Disabled="string.IsNullOrWhiteSpace(Content.Comment)">Post review</FluentButton>
+</FluentDialogFooter>

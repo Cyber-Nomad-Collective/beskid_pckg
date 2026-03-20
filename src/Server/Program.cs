@@ -12,6 +12,15 @@ using Server.Components;
 using Server.Components.Account;
 using Server.Data;
 using Server.Services;
+using Server.Hubs;
+using Server.Services.Notifications;
+using Server.Services.Email;
+using Server.Services.Notifications;
+using Wolverine;
+using Wolverine.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Server.Features.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +83,7 @@ builder.Services.SwaggerDocument(o =>
 });
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSignalR();
 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
@@ -149,11 +159,34 @@ builder.Services.AddScoped<IStartupSeeder, StartupSeeder>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
 builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+// Prefer Wolverine transport for notifications broadcast
+builder.Services.AddScoped<INotificationBroadcaster, WolverineNotificationBroadcaster>();
+builder.Services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddSingleton<INotificationActionHandler, DefaultNotificationActionHandler>();
 
 builder.Services.AddHttpLogging(logging =>
 {
     logging.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.All;
     logging.CombineLogs = true;
+});
+
+// Wolverine messaging with SignalR transport
+builder.UseWolverine(opts =>
+{
+    // Wire in SignalR transport for websocket/browser messaging
+    opts.UseSignalR(o =>
+    {
+        // Reasonable default; can be tuned
+        o.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    });
+
+    // Publish our notification message type to SignalR
+    opts.Publish(x =>
+    {
+        x.Message<NotificationPushed>().ToSignalR();
+    });
 });
 
 var app = builder.Build();
@@ -234,6 +267,87 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>().DisableAntiforgery();
+
+// System email flows (email confirmation + password reset)
+app.MapPost("/api/auth/request-email-confirmation",
+    async (HttpContext http,
+           UserManager<ApplicationUser> userManager,
+           IEmailSender emailSender,
+           IEmailTemplateService templater,
+           CancellationToken ct) =>
+    {
+        var user = await userManager.GetUserAsync(http.User);
+        if (user is null) return Results.Unauthorized();
+
+        var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        var url = $"{http.Request.Scheme}://{http.Request.Host}/api/auth/confirm-email?userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
+
+        var body = templater.Render("Confirm your email",
+            $"<p>Please confirm your email by clicking the link below:</p><p><a href=\"{url}\">Confirm email</a></p>");
+        await emailSender.SendAsync(user.Id, "Confirm your email", body, ct);
+
+        return Results.Ok(new { ok = true });
+    })
+    .RequireAuthorization();
+
+app.MapGet("/api/auth/confirm-email",
+    async (HttpContext http,
+           string userId,
+           string token,
+           UserManager<ApplicationUser> userManager) =>
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null) return Results.BadRequest("Invalid user.");
+
+        var result = await userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded) return Results.BadRequest("Invalid token.");
+
+        return Results.Redirect("/auth?confirmed=1");
+    })
+    .AllowAnonymous();
+
+app.MapPost("/api/auth/request-password-reset",
+    async (HttpContext http,
+           RequestPasswordResetRequest req,
+           UserManager<ApplicationUser> userManager,
+           IEmailSender emailSender,
+           IEmailTemplateService templater,
+           CancellationToken ct) =>
+    {
+        if (string.IsNullOrWhiteSpace(req.Email)) return Results.Ok(new { ok = true });
+        var user = await userManager.FindByEmailAsync(req.Email);
+        if (user is null) return Results.Ok(new { ok = true });
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var url = $"{http.Request.Scheme}://{http.Request.Host}/auth?mode=reset&userId={Uri.EscapeDataString(user.Id)}&token={Uri.EscapeDataString(token)}";
+
+        var body = templater.Render("Reset your password",
+            $"<p>You requested a password reset. Click the link below to set a new password:</p><p><a href=\"{url}\">Reset password</a></p>");
+        await emailSender.SendAsync(user.Id, "Reset your password", body, ct);
+
+        return Results.Ok(new { ok = true });
+    })
+    .AllowAnonymous();
+
+app.MapPost("/api/auth/reset-password",
+    async (ResetPasswordRequest req,
+           UserManager<ApplicationUser> userManager) =>
+    {
+        var user = await userManager.FindByIdAsync(req.UserId);
+        if (user is null) return Results.BadRequest("Invalid user.");
+        var result = await userManager.ResetPasswordAsync(user, req.Token, req.NewPassword);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(";", result.Errors.Select(e => e.Description));
+            return Results.BadRequest(errors);
+        }
+        return Results.Ok(new { ok = true });
+    })
+    .AllowAnonymous();
+
+app.MapHub<NotificationsHub>("/hubs/notifications");
+// Default Wolverine SignalR hub for WebSocket messages
+app.MapWolverineSignalRHub("/api/messages");
 app.MapPost("/auth/login", async (
     HttpContext context,
     SignInManager<ApplicationUser> signInManager) =>

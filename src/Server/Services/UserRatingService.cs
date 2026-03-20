@@ -27,6 +27,7 @@ public sealed class UserRatingService : IUserRatingService
             rating = new UserRatingEntity
             {
                 UserId = userId,
+                KarmaPoints = 0,
                 ReviewCount = 0,
                 BoardPostCount = 0,
                 BoardCommentCount = 0,
@@ -38,6 +39,7 @@ public sealed class UserRatingService : IUserRatingService
         }
 
         var score = CalculateScore(
+            rating.KarmaPoints,
             rating.ReviewCount,
             rating.BoardPostCount,
             rating.BoardCommentCount,
@@ -74,6 +76,18 @@ public sealed class UserRatingService : IUserRatingService
         await RecalculateUserRatingAsync(userId);
     }
 
+    public async Task AdjustKarmaAsync(string userId, int delta)
+    {
+        if (delta == 0)
+        {
+            return;
+        }
+
+        var rating = await GetOrCreateRatingAsync(userId);
+        rating.KarmaPoints += delta;
+        await RecalculateUserRatingAsync(userId);
+    }
+
     private async Task<UserRatingEntity> GetOrCreateRatingAsync(string userId)
     {
         var rating = await _db.UserRatings.FirstOrDefaultAsync(r => r.UserId == userId);
@@ -83,6 +97,7 @@ public sealed class UserRatingService : IUserRatingService
             rating = new UserRatingEntity
             {
                 UserId = userId,
+                KarmaPoints = 0,
                 ReviewCount = 0,
                 BoardPostCount = 0,
                 BoardCommentCount = 0,
@@ -97,14 +112,16 @@ public sealed class UserRatingService : IUserRatingService
         return rating;
     }
 
-    private static double CalculateScore(int reviews, int posts, int comments, int helpfulVotes)
+    private static double CalculateScore(int karmaPoints, int reviews, int posts, int comments, int helpfulVotes)
     {
+        const double karmaWeight = 1.0;
         const double reviewWeight = 5.0;
         const double postWeight = 2.0;
         const double commentWeight = 1.0;
         const double voteWeight = 0.5;
 
-        return (reviews * reviewWeight) + 
+        return (karmaPoints * karmaWeight) +
+               (reviews * reviewWeight) + 
                (posts * postWeight) + 
                (comments * commentWeight) + 
                (helpfulVotes * voteWeight);

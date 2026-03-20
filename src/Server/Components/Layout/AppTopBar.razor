@@ -22,6 +22,12 @@
                 <ThemeToggle />
 
                 <AuthorizeView>
+                    <Authorized>
+                        <NotificationButton UnreadCount="NotificationUnreadCount" OnClick="ToggleNotificationCenter" />
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView>
                     <Authorized Context="authState">
                         <div class="top-nav-user">
                             <UserMenu DisplayName="@(authState.User.Identity?.Name ?? "Account")" @bind-IsOpen="IsOpen" />
@@ -37,3 +43,11 @@
             </div>
         </div>
 </header>
+
+<AuthorizeView>
+    <Authorized>
+        <NotificationCenter IsOpen="IsNotificationCenterOpen"
+                            OnClose="CloseNotificationCenter"
+                            UnreadCountChanged="OnNotificationUnreadCountChanged" />
+    </Authorized>
+</AuthorizeView>

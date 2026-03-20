@@ -1,0 +1,50 @@
+@page "/topics/{Slug}"
+@rendermode InteractiveServer
+@using Server.Components.Shared
+
+<PageTitle>@(TopicName ?? "Topic")</PageTitle>
+
+@if (IsLoading)
+{
+    <FluentCard Class="section-card"><p class="muted">Loading topic…</p></FluentCard>
+}
+else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <FluentCard Class="section-card"><div class="feedback-message is-error">@ErrorMessage</div></FluentCard>
+}
+else
+{
+    <section class="topic-page-layout">
+        <main class="topic-main-feed">
+            <FluentCard Class="section-card topic-hero-card">
+                <h1>@TopicName</h1>
+                <p class="muted">@TopicDescription</p>
+            </FluentCard>
+
+            @if (BoardId > 0)
+            {
+                <FluentCard Class="section-card">
+                    <div class="muted">Board feed coming soon.</div>
+                </FluentCard>
+            }
+        </main>
+
+        <aside class="topic-sidebar">
+            <FluentCard Class="section-card topic-side-card">
+                <h3>About</h3>
+                <p class="muted">@TopicDescription</p>
+                <div class="topic-side-metrics muted">
+                    <span>@PostCount posts</span>
+                    <span>@CommentCount comments</span>
+                    <span>Created @CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+                </div>
+            </FluentCard>
+
+            <FluentCard Class="section-card topic-side-card">
+                <h3>Browse</h3>
+                <FluentAnchor Href="/topics">All topics</FluentAnchor>
+                <FluentAnchor Href="/packages">Public packages</FluentAnchor>
+            </FluentCard>
+        </aside>
+    </section>
+}

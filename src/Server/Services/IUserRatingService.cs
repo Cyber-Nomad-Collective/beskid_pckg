@@ -7,4 +7,5 @@ public interface IUserRatingService
     Task IncrementReviewCountAsync(string userId);
     Task IncrementBoardActivityAsync(string userId, bool isPost);
     Task IncrementHelpfulVoteAsync(string userId);
+    Task AdjustKarmaAsync(string userId, int delta);
 }

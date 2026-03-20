@@ -172,6 +172,27 @@
                         </div>
                     </section>
 
+                    <!-- Notification Preferences Section -->
+                    <section class="settings-section">
+                        <header class="settings-section-header">
+                            <h2>Notification preferences</h2>
+                            <p class="muted">Choose how you'd like to receive notifications.</p>
+                        </header>
+                        <div class="settings-section-content">
+                            <FluentStack Orientation="Orientation.Vertical" Gap="10px">
+                                @foreach (var pref in NotificationPrefs)
+                                {
+                                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
+                                        <div style="width: 220px;">@pref.Label</div>
+                                        <FluentCheckbox Label="Email" Checked="@pref.SendEmail" CheckedChanged="@((bool v) => ToggleEmail(pref, v))" />
+                                        <FluentCheckbox Label="Weekly spotlight" Checked="@pref.IncludeInSpotlight" CheckedChanged="@((bool v) => ToggleSpotlight(pref, v))" />
+                                    </FluentStack>
+                                }
+                                <FluentButton Appearance="Appearance.Outline" Disabled="@IsSaving" OnClick="SaveNotificationPrefsAsync">Save preferences</FluentButton>
+                            </FluentStack>
+                        </div>
+                    </section>
+
                     <!-- Social Links Section -->
                     <section class="settings-section">
                         <header class="settings-section-header">

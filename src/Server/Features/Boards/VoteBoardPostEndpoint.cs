@@ -21,6 +21,7 @@ public sealed class VoteBoardPostEndpoint : Endpoint<VoteBoardPostRequest, VoteB
     {
         var postId = Route<int>("postId");
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var normalizedVote = req.VoteValue is 1 or -1 ? req.VoteValue : 0;
 
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -38,24 +39,29 @@ public sealed class VoteBoardPostEndpoint : Endpoint<VoteBoardPostRequest, VoteB
         var existingVote = await Db.BoardPostVotes
             .FirstOrDefaultAsync(v => v.PostId == postId && v.UserId == userId, ct);
 
+        var previousVote = 0;
+        var newVote = normalizedVote;
+
         if (existingVote is not null)
         {
             var oldValue = existingVote.VoteValue;
+            previousVote = oldValue;
 
             // If same vote value, remove the vote (toggle behavior like Reddit)
-            if (oldValue == req.VoteValue)
+            if (oldValue == normalizedVote)
             {
                 Db.BoardPostVotes.Remove(existingVote);
                 if (oldValue == 1) post.UpvoteCount--;
                 else if (oldValue == -1) post.DownvoteCount--;
+                newVote = 0;
             }
             else
             {
-                existingVote.VoteValue = req.VoteValue;
+                existingVote.VoteValue = normalizedVote;
                 if (oldValue == 1) post.UpvoteCount--;
                 else if (oldValue == -1) post.DownvoteCount--;
-                if (req.VoteValue == 1) post.UpvoteCount++;
-                else if (req.VoteValue == -1) post.DownvoteCount++;
+                if (normalizedVote == 1) post.UpvoteCount++;
+                else if (normalizedVote == -1) post.DownvoteCount++;
             }
         }
         else
@@ -64,19 +70,24 @@ public sealed class VoteBoardPostEndpoint : Endpoint<VoteBoardPostRequest, VoteB
             {
                 PostId = postId,
                 UserId = userId,
-                VoteValue = req.VoteValue,
+                VoteValue = normalizedVote,
                 CreatedAtUtc = DateTime.UtcNow
             });
 
-            if (req.VoteValue == 1) post.UpvoteCount++;
-            else if (req.VoteValue == -1) post.DownvoteCount++;
+            if (normalizedVote == 1) post.UpvoteCount++;
+            else if (normalizedVote == -1) post.DownvoteCount++;
         }
 
         await Db.SaveChangesAsync(ct);
 
-        if (req.VoteValue == 1)
+        var karmaDelta = newVote - previousVote;
+        if (karmaDelta != 0 && !string.Equals(post.AuthorUserId, userId, StringComparison.Ordinal))
         {
-            await RatingService.IncrementHelpfulVoteAsync(post.AuthorUserId);
+            await RatingService.AdjustKarmaAsync(post.AuthorUserId, karmaDelta);
+            if (karmaDelta > 0)
+            {
+                await RatingService.IncrementHelpfulVoteAsync(post.AuthorUserId);
+            }
         }
 
         await Send.OkAsync(new VoteBoardPostResponse(true, "Vote recorded.", post.UpvoteCount, post.DownvoteCount), ct);

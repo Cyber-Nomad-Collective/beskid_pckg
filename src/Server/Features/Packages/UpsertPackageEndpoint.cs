@@ -39,6 +39,7 @@ public sealed class UpsertPackageEndpoint(
         }
 
         var entity = await dbContext.Packages.SingleOrDefaultAsync(x => x.Name == normalizedName, ct);
+        var isNew = entity is null;
         if (entity is null)
         {
             entity = new PackageEntity
@@ -47,6 +48,7 @@ public sealed class UpsertPackageEndpoint(
                 OwnerUserId = userId,
                 Name = normalizedName,
                 Description = req.Description?.Trim() ?? string.Empty,
+                Category = req.Category?.Trim() ?? string.Empty,
                 RepositoryUrl = NormalizeUrl(req.RepositoryUrl),
                 WebsiteUrl = NormalizeUrl(req.WebsiteUrl),
                 IsPublic = req.IsPublic,
@@ -64,6 +66,7 @@ public sealed class UpsertPackageEndpoint(
         else
         {
             entity.Description = req.Description?.Trim() ?? string.Empty;
+            entity.Category = req.Category?.Trim() ?? string.Empty;
             entity.RepositoryUrl = NormalizeUrl(req.RepositoryUrl);
             entity.WebsiteUrl = NormalizeUrl(req.WebsiteUrl);
             entity.IsPublic = req.IsPublic;
@@ -89,7 +92,62 @@ public sealed class UpsertPackageEndpoint(
             reviewId = review.Id;
         }
 
+        var normalizedTags = (req.Tags ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(16)
+            .ToList();
+
+        var existingTags = await dbContext.PackageTags
+            .Where(x => x.PackageId == entity.Id)
+            .ToListAsync(ct);
+        if (existingTags.Count > 0)
+        {
+            dbContext.PackageTags.RemoveRange(existingTags);
+        }
+
+        if (normalizedTags.Count > 0)
+        {
+            dbContext.PackageTags.AddRange(normalizedTags.Select(tag => new PackageTagEntity
+            {
+                PackageId = entity.Id,
+                Tag = tag,
+                CreatedAtUtc = DateTimeOffset.UtcNow
+            }));
+        }
+
         await dbContext.SaveChangesAsync(ct);
+
+        // If existing package was updated, notify followers
+        if (!isNew)
+        {
+            var pId = entity.Id.ToString();
+            var followerIds = await dbContext.PackageFollows
+                .AsNoTracking()
+                .Where(f => f.PackageId == pId)
+                .Select(f => f.UserId)
+                .ToListAsync(ct);
+
+            var publisherFollowerIds = await dbContext.PublisherFollows
+                .AsNoTracking()
+                .Where(f => f.PublisherUserId == entity.OwnerUserId)
+                .Select(f => f.UserId)
+                .ToListAsync(ct);
+
+            var targets = followerIds.Concat(publisherFollowerIds)
+                .Where(uid => uid != userId)
+                .Distinct()
+                .ToList();
+
+            var notifier = Resolve<Server.Services.Notifications.INotificationService>();
+            foreach (var fid in targets)
+            {
+                await notifier.PublishAsync(fid, NotificationType.PackageUpdated,
+                    $"{entity.Name} details updated",
+                    $"{entity.Name} package information has been updated by the owner.", ct: ct);
+            }
+        }
 
         var pendingReviewCount = await dbContext.PackageReviews
             .Where(x => x.PackageId == entity.Id && x.Status == "Pending")
@@ -107,8 +165,10 @@ public sealed class UpsertPackageEndpoint(
                 entity.Id,
                 entity.Name,
                 entity.Description,
+                entity.Category,
                 entity.RepositoryUrl,
                 entity.WebsiteUrl,
+                normalizedTags,
                 entity.IsPublic,
                 entity.TotalDownloads,
                 entity.UpdatedAtUtc,

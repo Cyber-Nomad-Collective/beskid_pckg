@@ -1,0 +1,143 @@
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+@if (IsOpen)
+{
+    <div class="notif-center-panel">
+        <div class="notif-center-header">
+            <span class="notif-center-title">Notification Center</span>
+            <span class="spacer"></span>
+            <FluentButton Appearance="Appearance.Stealth" OnClick="MarkAllReadAsync" Disabled="@IsSaving">Mark all read</FluentButton>
+            <FluentButton Appearance="Appearance.Stealth" OnClick="CloseAsync" IconStart="@(new Icons.Regular.Size16.Dismiss())">Close</FluentButton>
+        </div>
+
+        @if (Unread.Count == 0)
+        {
+            <div class="notif-empty-state muted">
+                <FluentIcon Value="@(new Icons.Regular.Size20.CheckmarkCircle())" />
+                <span>You're all caught up</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var n in Unread)
+            {
+                <div class="mb-item">
+                    <FluentMessageBar>
+                        <div class="mb-title">
+                            <FluentIcon Value="@GetNotificationIcon(n.Type)" />
+                            <span>@n.Title</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(n.Message))
+                        {
+                            <div class="mb-body">@n.Message</div>
+                        }
+                        <div class="mb-time muted">@n.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</div>
+                        <div class="mb-actions">
+                            <FluentButton Size="FluentSize.Small" Appearance="Appearance.Outline" OnClick="@(() => MarkReadAsync(n.Id))">Mark read</FluentButton>
+                        </div>
+                    </FluentMessageBar>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> UnreadCountChanged { get; set; }
+
+    private bool IsSaving;
+    private int UnreadCount;
+    private readonly List<NotificationItem> Unread = new();
+    private System.Timers.Timer? _timer;
+
+    protected override Task OnInitializedAsync()
+    {
+        _timer = new System.Timers.Timer(12000);
+        _timer.Elapsed += async (_, _) => await LoadAsync();
+        _timer.AutoReset = true;
+        _timer.Enabled = true;
+        _ = LoadAsync();
+        return Task.CompletedTask;
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var resp = await Http.GetFromJsonAsync<ListNotificationsResponse>("/api/users/notifications");
+            if (resp is null) return;
+            var items = resp.Items ?? new List<NotificationItem>();
+            UpdateUnreadState(items);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+    }
+
+    private void UpdateUnreadState(List<NotificationItem> items)
+    {
+        Unread.Clear();
+        Unread.AddRange(items.Where(i => !i.IsRead).OrderByDescending(i => i.CreatedAtUtc));
+        UnreadCount = Unread.Count;
+        _ = UnreadCountChanged.InvokeAsync(UnreadCount);
+    }
+
+    private async Task MarkReadAsync(Guid id)
+    {
+        try
+        {
+            await Http.PostAsJsonAsync("/api/users/notifications/mark-read", new MarkReadRequest { NotificationId = id });
+            await LoadAsync();
+        }
+        catch { }
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        IsSaving = true;
+        try
+        {
+            await Http.PostAsync("/api/users/notifications/mark-all-read", null);
+            await LoadAsync();
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    public sealed class ListNotificationsResponse
+    {
+        public List<NotificationItem> Items { get; set; } = new();
+    }
+
+    public sealed class NotificationItem
+    {
+        public Guid Id { get; set; }
+        public int Type { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Message { get; set; }
+        public bool IsRead { get; set; }
+        public DateTimeOffset CreatedAtUtc { get; set; }
+    }
+
+    public sealed class MarkReadRequest
+    {
+        public Guid NotificationId { get; set; }
+    }
+
+    private static Icon GetNotificationIcon(int type)
+        => type switch
+        {
+            0 => new Icons.Regular.Size16.Info(),
+            1 => new Icons.Regular.Size16.Box(),
+            2 => new Icons.Regular.Size16.Star(),
+            _ => new Icons.Regular.Size16.Alert()
+        };
+
+    public void Dispose() => _timer?.Dispose();
+}

@@ -1,0 +1,29 @@
+.fluent-rating-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.rating-star,
+::deep .rating-star-button {
+    color: var(--neutral-foreground-hint);
+}
+
+.rating-star.is-active,
+::deep .rating-star-button .is-active,
+::deep .rating-star-button:hover {
+    color: #f5a524;
+}
+
+::deep .rating-star-button::part(control) {
+    min-width: 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.fluent-rating-picker.is-readonly .rating-star {
+    display: inline-flex;
+    align-items: center;
+}

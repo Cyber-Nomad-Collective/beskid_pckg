@@ -1,0 +1,35 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<div class="fluent-rating-picker @(ReadOnly ? "is-readonly" : "")" role="group" aria-label="Rating">
+    @for (var star = 1; star <= Max; star++)
+    {
+        var current = star;
+        var active = current <= Value;
+        if (ReadOnly)
+        {
+            <span class="rating-star @(active ? "is-active" : "")" aria-hidden="true">
+                @if (active)
+                {
+                    <FluentIcon Value="@(new Icons.Filled.Size16.Star())" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Star())" />
+                }
+            </span>
+        }
+        else
+        {
+            <FluentButton Appearance="Appearance.Stealth" Class="rating-star-button" OnClick="@(() => SelectAsync(current))" Title="@($"Rate {current} of {Max}")">
+                @if (active)
+                {
+                    <FluentIcon Value="@(new Icons.Filled.Size16.Star())" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Star())" />
+                }
+            </FluentButton>
+        }
+    }
+</div>

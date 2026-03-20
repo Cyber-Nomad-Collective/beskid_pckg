@@ -89,3 +89,22 @@
         <FluentButton Appearance="Appearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
     </FluentDialogFooter>
 </FluentDialog>
+
+    <FluentCard Class="dashboard-card" Style="margin-top: 16px;">
+        <div style="margin-bottom: 16px;">
+            <h3>Email Settings</h3>
+            <p class="muted">Configure SMTP for notification emails. Managed by SuperAdmins.</p>
+        </div>
+        <EditForm Model="EmailSettings" OnValidSubmit="SaveEmailSettingsAsync">
+            <FluentStack Orientation="Orientation.Vertical" Gap="10px" Style="max-width: 680px;">
+                <FluentTextField @bind-Value="EmailSettings.SmtpHost" Placeholder="SMTP host" />
+                <FluentNumberField @bind-Value="EmailSettings.SmtpPort" Min="1" Max="65535" />
+                <FluentCheckbox Label="Enable SSL" Checked="@EmailSettings.EnableSsl" CheckedChanged="@((bool v) => EmailSettings.EnableSsl = v)" />
+                <FluentTextField @bind-Value="EmailSettings.Username" Placeholder="Username (optional)" />
+                <FluentTextField @bind-Value="EmailSettings.Password" Placeholder="Password (leave blank to keep)" Type="TextFieldType.Password" />
+                <FluentTextField @bind-Value="EmailSettings.FromEmail" Placeholder="From email" />
+                <FluentTextField @bind-Value="EmailSettings.FromName" Placeholder="From name" />
+                <FluentButton Appearance="Appearance.Accent" Disabled="@IsSaving">Save email settings</FluentButton>
+            </FluentStack>
+        </EditForm>
+    </FluentCard>

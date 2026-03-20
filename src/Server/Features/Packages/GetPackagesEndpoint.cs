@@ -51,12 +51,21 @@ public sealed class GetPackagesEndpoint(
             .Select(group => new { group.Key, Average = group.Average(x => x.Rating) })
             .ToDictionaryAsync(x => x.Key, x => x.Average, ct);
 
+        var tagsByPackageId = await dbContext.PackageTags
+            .AsNoTracking()
+            .Where(x => packageIds.Contains(x.PackageId))
+            .GroupBy(x => x.PackageId)
+            .Select(group => new { group.Key, Tags = group.Select(x => x.Tag).OrderBy(tag => tag).ToList() })
+            .ToDictionaryAsync(x => x.Key, x => (IReadOnlyList<string>)x.Tags, ct);
+
         var response = packages.Select(x => new PackageSummaryResponse(
                 x.Id,
                 x.Name,
                 x.Description,
+                x.Category,
                 x.RepositoryUrl,
                 x.WebsiteUrl,
+                tagsByPackageId.GetValueOrDefault(x.Id) ?? [],
                 x.IsPublic,
                 x.TotalDownloads,
                 x.UpdatedAtUtc,

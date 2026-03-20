@@ -10,7 +10,8 @@ public sealed class PublishPackageVersionEndpoint(
     ApplicationDbContext dbContext,
     IApiPrincipalResolver principalResolver,
     IPackageArtifactStore artifactStore,
-    IPackageArtifactValidator artifactValidator)
+    IPackageArtifactValidator artifactValidator,
+    Server.Services.Notifications.INotificationService notifications)
     : EndpointWithoutRequest<PublishPackageVersionResponse>
 {
     private const long MaxArtifactSizeBytes = 64 * 1024 * 1024;
@@ -146,6 +147,38 @@ public sealed class PublishPackageVersionEndpoint(
         dbContext.PackageVersions.Add(entity);
         package.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(ct);
+
+        // Notify the owner about the publish
+        await notifications.PublishAsync(userId, NotificationType.PackagePublished,
+            $"{package.Name} {entity.Version} published",
+            $"Your package {package.Name} has been published with version {entity.Version}.", ct: ct);
+
+        // Notify followers of the package and the publisher
+        var pId = package.Id.ToString();
+        var packageFollowerIds = await dbContext.PackageFollows
+            .AsNoTracking()
+            .Where(f => f.PackageId == pId)
+            .Select(f => f.UserId)
+            .ToListAsync(ct);
+
+        var publisherFollowerIds = await dbContext.PublisherFollows
+            .AsNoTracking()
+            .Where(f => f.PublisherUserId == package.OwnerUserId)
+            .Select(f => f.UserId)
+            .ToListAsync(ct);
+
+        var targetFollowerIds = packageFollowerIds
+            .Concat(publisherFollowerIds)
+            .Where(uid => uid != userId) // exclude owner
+            .Distinct()
+            .ToList();
+
+        foreach (var fid in targetFollowerIds)
+        {
+            await notifications.PublishAsync(fid, NotificationType.PackagePublished,
+                $"{package.Name} {entity.Version} published",
+                $"{package.Name} has a new version {entity.Version}.", ct: ct);
+        }
 
         var response = new PackageVersionSummaryResponse(
             entity.Id,

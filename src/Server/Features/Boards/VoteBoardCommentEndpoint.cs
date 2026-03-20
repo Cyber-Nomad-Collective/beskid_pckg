@@ -21,6 +21,7 @@ public sealed class VoteBoardCommentEndpoint : Endpoint<VoteBoardCommentRequest,
     {
         var commentId = Route<int>("commentId");
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var normalizedVote = req.VoteValue is 1 or -1 ? req.VoteValue : 0;
 
         if (string.IsNullOrWhiteSpace(userId))
         {
@@ -38,24 +39,29 @@ public sealed class VoteBoardCommentEndpoint : Endpoint<VoteBoardCommentRequest,
         var existingVote = await Db.BoardCommentVotes
             .FirstOrDefaultAsync(v => v.CommentId == commentId && v.UserId == userId, ct);
 
+        var previousVote = 0;
+        var newVote = normalizedVote;
+
         if (existingVote is not null)
         {
             var oldValue = existingVote.VoteValue;
+            previousVote = oldValue;
             
             // If same vote value, remove the vote (toggle behavior)
-            if (oldValue == req.VoteValue)
+            if (oldValue == normalizedVote)
             {
                 Db.BoardCommentVotes.Remove(existingVote);
                 if (oldValue == 1) comment.UpvoteCount--;
                 else if (oldValue == -1) comment.DownvoteCount--;
+                newVote = 0;
             }
             else
             {
-                existingVote.VoteValue = req.VoteValue;
+                existingVote.VoteValue = normalizedVote;
                 if (oldValue == 1) comment.UpvoteCount--;
                 else if (oldValue == -1) comment.DownvoteCount--;
-                if (req.VoteValue == 1) comment.UpvoteCount++;
-                else if (req.VoteValue == -1) comment.DownvoteCount++;
+                if (normalizedVote == 1) comment.UpvoteCount++;
+                else if (normalizedVote == -1) comment.DownvoteCount++;
             }
         }
         else
@@ -64,19 +70,24 @@ public sealed class VoteBoardCommentEndpoint : Endpoint<VoteBoardCommentRequest,
             {
                 CommentId = commentId,
                 UserId = userId,
-                VoteValue = req.VoteValue,
+                VoteValue = normalizedVote,
                 CreatedAtUtc = DateTime.UtcNow
             });
 
-            if (req.VoteValue == 1) comment.UpvoteCount++;
-            else if (req.VoteValue == -1) comment.DownvoteCount++;
+            if (normalizedVote == 1) comment.UpvoteCount++;
+            else if (normalizedVote == -1) comment.DownvoteCount++;
         }
 
         await Db.SaveChangesAsync(ct);
 
-        if (req.VoteValue == 1)
+        var karmaDelta = newVote - previousVote;
+        if (karmaDelta != 0 && !string.Equals(comment.AuthorUserId, userId, StringComparison.Ordinal))
         {
-            await RatingService.IncrementHelpfulVoteAsync(comment.AuthorUserId);
+            await RatingService.AdjustKarmaAsync(comment.AuthorUserId, karmaDelta);
+            if (karmaDelta > 0)
+            {
+                await RatingService.IncrementHelpfulVoteAsync(comment.AuthorUserId);
+            }
         }
 
         await Send.OkAsync(new VoteBoardCommentResponse(

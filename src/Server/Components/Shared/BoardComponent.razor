@@ -16,7 +16,7 @@
                     @if (!IsLocked)
                     {
                         <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreatePostDialog" IconStart="@(new Icons.Regular.Size20.Add())">
-                            New Post
+                            @NewPostButtonText
                         </FluentButton>
                     }
                 </Authorized>
@@ -35,7 +35,7 @@
     {
         <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
             <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Neutral"/>
-            <p class="muted" style="text-align: center;">No posts yet. Be the first to start a discussion!</p>
+            <p class="muted" style="text-align: center;">@EmptyStateText</p>
         </FluentStack>
     }
     else
@@ -95,7 +95,7 @@
                             </FluentStack>
                             <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => ViewPost(post.Id))" OnClick:stopPropagation="true">
                                 <FluentIcon Value="@(new Icons.Regular.Size20.Comment())" Style="margin-right: 6px;" />
-                                View Discussion
+                                @ViewDiscussionButtonText
                             </FluentButton>
                         </FluentStack>
                     </FluentStack>
@@ -139,30 +139,33 @@
 
 <FluentDialog @bind-IsOpen="IsCreatePostDialogOpen" Modal="true" Style="min-width: 500px;">
     <FluentDialogHeader>
-        <h3 style="margin: 0;">Create New Post</h3>
+        <h3 style="margin: 0;">@CreateDialogTitle</h3>
     </FluentDialogHeader>
     <FluentDialogBody>
         <FluentStack Orientation="Orientation.Vertical" Gap="16px">
-            <div>
-                <label class="fluent-label">Post Type</label>
-                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 8px;">
-                    <FluentButton Appearance="@(NewPostType == BoardPostType.Issue ? Appearance.Accent : Appearance.Outline)"
-                                  OnClick="@(() => NewPostType = BoardPostType.Issue)"
-                                  Style="@(NewPostType == BoardPostType.Issue ? $"background-color: {GetPostTypeColor(BoardPostType.Issue)};" : "")">
-                        Issue
-                    </FluentButton>
-                    <FluentButton Appearance="@(NewPostType == BoardPostType.FeatureRequest ? Appearance.Accent : Appearance.Outline)"
-                                  OnClick="@(() => NewPostType = BoardPostType.FeatureRequest)"
-                                  Style="@(NewPostType == BoardPostType.FeatureRequest ? $"background-color: {GetPostTypeColor(BoardPostType.FeatureRequest)};" : "")">
-                        Feature Request
-                    </FluentButton>
-                    <FluentButton Appearance="@(NewPostType == BoardPostType.Suggestion ? Appearance.Accent : Appearance.Outline)"
-                                  OnClick="@(() => NewPostType = BoardPostType.Suggestion)"
-                                  Style="@(NewPostType == BoardPostType.Suggestion ? $"background-color: {GetPostTypeColor(BoardPostType.Suggestion)};" : "")">
-                        Suggestion
-                    </FluentButton>
-                </FluentStack>
-            </div>
+            @if (ShowPostTypeSelector && FilterPostType is null)
+            {
+                <div>
+                    <label class="fluent-label">Post Type</label>
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 8px;">
+                        <FluentButton Appearance="@(NewPostType == BoardPostType.Issue ? Appearance.Accent : Appearance.Outline)"
+                                      OnClick="@(() => NewPostType = BoardPostType.Issue)"
+                                      Style="@(NewPostType == BoardPostType.Issue ? $"background-color: {GetPostTypeColor(BoardPostType.Issue)};" : "")">
+                            Issue
+                        </FluentButton>
+                        <FluentButton Appearance="@(NewPostType == BoardPostType.FeatureRequest ? Appearance.Accent : Appearance.Outline)"
+                                      OnClick="@(() => NewPostType = BoardPostType.FeatureRequest)"
+                                      Style="@(NewPostType == BoardPostType.FeatureRequest ? $"background-color: {GetPostTypeColor(BoardPostType.FeatureRequest)};" : "")">
+                            Feature Request
+                        </FluentButton>
+                        <FluentButton Appearance="@(NewPostType == BoardPostType.Suggestion ? Appearance.Accent : Appearance.Outline)"
+                                      OnClick="@(() => NewPostType = BoardPostType.Suggestion)"
+                                      Style="@(NewPostType == BoardPostType.Suggestion ? $"background-color: {GetPostTypeColor(BoardPostType.Suggestion)};" : "")">
+                            Suggestion
+                        </FluentButton>
+                    </FluentStack>
+                </div>
+            }
             <FluentTextField @bind-Value="NewPostTitle" Label="Title" Placeholder="Give your post a descriptive title" Style="width: 100%;" />
             <div>
                 <FluentTextArea @bind-Value="NewPostContent" Label="Content" Placeholder="Describe your issue, request, or suggestion. You can use Markdown for formatting." Style="width: 100%; min-height: 150px;" />

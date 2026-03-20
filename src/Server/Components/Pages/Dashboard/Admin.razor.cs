@@ -27,6 +27,7 @@ public partial class Admin
     protected override async Task OnInitializedAsync()
     {
         await LoadUsersAsync();
+        await LoadEmailSettingsAsync();
     }
 
     private async Task LoadUsersAsync()
@@ -150,6 +151,57 @@ public partial class Admin
         FeedbackMessage = message;
         FeedbackIsError = isError;
     }
+
+    // Email settings
+    private EmailSettingsModel EmailSettings = new();
+    private async Task LoadEmailSettingsAsync()
+    {
+        try
+        {
+            var resp = await ApiHttp.GetAsync("/api/admin/email-settings");
+            if (!resp.IsSuccessStatusCode) return;
+            var payload = await resp.Content.ReadFromJsonAsync<GetEmailSettingsResponse>();
+            if (payload is null) return;
+            EmailSettings = new EmailSettingsModel
+            {
+                SmtpHost = payload.SmtpHost,
+                SmtpPort = payload.SmtpPort,
+                EnableSsl = payload.EnableSsl,
+                Username = payload.Username,
+                Password = payload.Password ?? string.Empty,
+                FromEmail = payload.FromEmail,
+                FromName = payload.FromName
+            };
+        }
+        catch { }
+    }
+
+    private async Task SaveEmailSettingsAsync()
+    {
+        IsSaving = true;
+        try
+        {
+            await ApiHttp.PostAsJsonAsync("/api/admin/email-settings", EmailSettings);
+            SetFeedback("Email settings saved.", false);
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private sealed class EmailSettingsModel
+    {
+        public string? SmtpHost { get; set; }
+        public int SmtpPort { get; set; } = 587;
+        public bool EnableSsl { get; set; } = true;
+        public string? Username { get; set; }
+        public string Password { get; set; } = string.Empty;
+        public string FromEmail { get; set; } = "no-reply@beskid";
+        public string FromName { get; set; } = "Beskid Pckg";
+    }
+
+    private sealed record GetEmailSettingsResponse(string? SmtpHost, int SmtpPort, bool EnableSsl, string? Username, string? Password, string FromEmail, string FromName);
 
     private sealed record ListUsersResponse(List<UserDto> Users, int TotalCount, int Page, int PageSize);
     private sealed record UserDto(string Id, string Email, string DisplayName, bool EmailConfirmed, List<string> Roles, double Rating);

@@ -106,6 +106,12 @@ public sealed class GetPublicProfileEndpoint(
             .Select(x => x.CalculatedScore)
             .FirstOrDefaultAsync(ct);
 
+        var karmaPoints = await dbContext.UserRatings
+            .AsNoTracking()
+            .Where(x => x.UserId == user.Id)
+            .Select(x => x.KarmaPoints)
+            .FirstOrDefaultAsync(ct);
+
         var versionActivities = packageIds.Count == 0
             ? []
             : await dbContext.PackageVersions
@@ -168,9 +174,71 @@ public sealed class GetPublicProfileEndpoint(
             .Take(6)
             .ToList();
 
+        var boardPosts = await dbContext.BoardPosts
+            .AsNoTracking()
+            .Where(x => x.AuthorUserId == user.Id && !x.IsDeleted)
+            .Select(x => new { x.Id, x.BoardId, x.Title, x.CreatedAtUtc })
+            .ToListAsync(ct);
+
+        var boardPostBoardIds = boardPosts.Select(x => x.BoardId).Distinct().ToList();
+        var boardSlugById = boardPostBoardIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await dbContext.Boards
+                .AsNoTracking()
+                .Where(x => boardPostBoardIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Slug, ct);
+
+        var boardPostActivities = boardPosts
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(6)
+            .Select(x =>
+            {
+                var boardSlug = boardSlugById.GetValueOrDefault(x.BoardId);
+                var topicSlug = string.IsNullOrWhiteSpace(boardSlug)
+                    ? string.Empty
+                    : (boardSlug.StartsWith("t-", StringComparison.Ordinal) ? boardSlug[2..] : boardSlug);
+                return new PublicProfileActivityItem(
+                    "board-post",
+                    "Community",
+                    $"Created post: {Truncate(x.Title, 72)}",
+                    x.CreatedAtUtc,
+                    BuildTopicLink(topicSlug));
+            })
+            .ToList();
+
+        var boardComments = await dbContext.BoardPostComments
+            .AsNoTracking()
+            .Where(x => x.AuthorUserId == user.Id && !x.IsDeleted)
+            .Join(
+                dbContext.BoardPosts.AsNoTracking(),
+                comment => comment.PostId,
+                post => post.Id,
+                (comment, post) => new { comment.Content, comment.CreatedAtUtc, post.BoardId })
+            .ToListAsync(ct);
+
+        var boardCommentActivities = boardComments
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(6)
+            .Select(x =>
+            {
+                var boardSlug = boardSlugById.GetValueOrDefault(x.BoardId);
+                var topicSlug = string.IsNullOrWhiteSpace(boardSlug)
+                    ? string.Empty
+                    : (boardSlug.StartsWith("t-", StringComparison.Ordinal) ? boardSlug[2..] : boardSlug);
+                return new PublicProfileActivityItem(
+                    "board-comment",
+                    "Community",
+                    $"Commented: {Truncate(x.Content, 80)}",
+                    x.CreatedAtUtc,
+                    BuildTopicLink(topicSlug));
+            })
+            .ToList();
+
         var recentActivity = versionActivities
             .Concat(reviewActivities)
             .Concat(issueActivities)
+            .Concat(boardPostActivities)
+            .Concat(boardCommentActivities)
             .OrderByDescending(x => x.OccurredAtUtc)
             .Take(10)
             .ToList();
@@ -181,6 +249,7 @@ public sealed class GetPublicProfileEndpoint(
             reviewCount,
             issueCount,
             packages.Sum(x => x.TotalDownloads),
+            karmaPoints,
             Math.Round(contributorScore, 1),
             packageSummaries.Count == 0 ? 0d : Math.Round(packageSummaries.Average(x => x.AverageRating), 2));
 
@@ -205,6 +274,11 @@ public sealed class GetPublicProfileEndpoint(
 
     private static string BuildPackageLink(string packageName)
         => $"/packages/{Uri.EscapeDataString(packageName)}";
+
+    private static string BuildTopicLink(string topicSlug)
+        => string.IsNullOrWhiteSpace(topicSlug)
+            ? "/topics"
+            : $"/topics/{Uri.EscapeDataString(topicSlug)}";
 
     private static string Truncate(string value, int maxLength)
     {
@@ -239,6 +313,7 @@ public sealed record PublicProfileStats(
     int ReviewCount,
     int IssueCount,
     long TotalDownloads,
+    int KarmaPoints,
     double ContributorScore,
     double AveragePackageRating);
 

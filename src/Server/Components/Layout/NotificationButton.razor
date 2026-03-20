@@ -1,0 +1,11 @@
+<FluentButton Class="notification-icon-button"
+              Appearance="@(UnreadCount > 0 ? Appearance.Accent : Appearance.Outline)"
+              OnClick="OnClick"
+              IconStart="@(new Icons.Regular.Size16.Alert())"
+              Title="Open notifications"
+              AriaLabel="Open notifications" />
+
+@code {
+    [Parameter] public int UnreadCount { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+}

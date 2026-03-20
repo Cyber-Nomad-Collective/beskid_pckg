@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Server.Components.Shared;
 using Server.Data;
 using Server.Features.Packages;
 
@@ -8,28 +10,69 @@ namespace Server.Components.Pages;
 
 public partial class PackageDetails
 {
+    private const string PackageBoardEntityType = "Package";
+
     [Parameter] public string PackageName { get; set; } = string.Empty;
     private PackageEntity? Package;
     private string ActiveTab = "versions";
     private readonly List<PackageCommunityReviewEntity> Reviews = [];
-    private readonly List<IssueRow> Issues = [];
-    private readonly ReviewInput ReviewForm = new();
-    private readonly IssueInput IssueForm = new();
     private readonly List<PackageVersionSummaryResponse> Versions = [];
+    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+    private bool IsFollowing;
+    private int PackageBoardId;
+    private bool IsPackageBoardLocked;
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
+    private double AverageReviewRating => Reviews.Count == 0 ? 0d : Reviews.Average(x => x.Rating);
 
     protected override async Task OnParametersSetAsync()
     {
         Package = await DbContext.Packages.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Name == PackageName && x.IsPublic);
+        await EnsurePackageBoardAsync();
         await LoadSecondaryDataAsync();
+        await LoadFollowAsync();
+    }
+
+    private async Task EnsurePackageBoardAsync()
+    {
+        PackageBoardId = 0;
+        IsPackageBoardLocked = false;
+
+        if (Package is null)
+        {
+            return;
+        }
+
+        var entityId = Package.Id.ToString();
+        var board = await DbContext.Boards
+            .SingleOrDefaultAsync(x => x.EntityType == PackageBoardEntityType && x.EntityId == entityId);
+
+        if (board is null)
+        {
+            board = new BoardEntity
+            {
+                Name = $"{Package.Name} discussions",
+                Slug = $"pkg-{Package.Id:N}",
+                Description = $"Community discussions for {Package.Name}",
+                EntityType = PackageBoardEntityType,
+                EntityId = entityId,
+                CreatedAtUtc = DateTime.UtcNow,
+                IsLocked = false
+            };
+
+            DbContext.Boards.Add(board);
+            await DbContext.SaveChangesAsync();
+        }
+
+        PackageBoardId = board.Id;
+        IsPackageBoardLocked = board.IsLocked;
     }
 
     private async Task LoadSecondaryDataAsync()
     {
         Reviews.Clear();
-        Issues.Clear();
         Versions.Clear();
 
         if (Package is null)
@@ -45,26 +88,6 @@ public partial class PackageDetails
         Reviews.AddRange(reviewRows
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(30));
-
-        var issueRows = await DbContext.PackageIssues
-            .AsNoTracking()
-            .Where(x => x.PackageId == Package.Id)
-            .ToListAsync();
-
-        issueRows = issueRows
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .Take(50)
-            .ToList();
-
-        var issueIds = issueRows.Select(x => x.Id).ToList();
-        var scores = await DbContext.PackageIssueVotes
-            .AsNoTracking()
-            .Where(x => issueIds.Contains(x.IssueId))
-            .GroupBy(x => x.IssueId)
-            .Select(g => new { g.Key, Score = g.Sum(v => v.Value) })
-            .ToDictionaryAsync(x => x.Key, x => x.Score);
-
-        Issues.AddRange(issueRows.Select(x => new IssueRow(x.Id, x.Title, x.Body, scores.GetValueOrDefault(x.Id))));
 
         var versionRows = await DbContext.PackageVersions
             .AsNoTracking()
@@ -87,10 +110,42 @@ public partial class PackageDetails
             x.YankedAtUtc)));
     }
 
-    private async Task AddReviewAsync()
+    private async Task OpenReviewDialogAsync()
+    {
+        if (!IsAuthenticated || Package is null)
+        {
+            return;
+        }
+
+        var content = new PackageReviewDialog.ReviewInput
+        {
+            PackageName = Package.Name,
+            Rating = 5,
+            Comment = string.Empty
+        };
+
+        var parameters = new DialogParameters
+        {
+            Width = "min(620px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<PackageReviewDialog>(content, parameters);
+        var result = await dialog.Result;
+        if (result?.Cancelled != false || result.Data is not PackageReviewDialog.ReviewInput review)
+        {
+            return;
+        }
+
+        await AddReviewAsync(review.Rating, review.Comment);
+    }
+
+    private async Task AddReviewAsync(int rating, string comment)
     {
         var userId = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Package is null || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(ReviewForm.Comment))
+        if (Package is null || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(comment))
         {
             return;
         }
@@ -100,71 +155,20 @@ public partial class PackageDetails
             Id = Guid.NewGuid(),
             PackageId = Package.Id,
             UserId = userId,
-            Rating = Math.Clamp(ReviewForm.Rating, 1, 5),
-            Comment = ReviewForm.Comment.Trim(),
+            Rating = Math.Clamp(rating, 1, 5),
+            Comment = comment.Trim(),
             CreatedAtUtc = DateTimeOffset.UtcNow,
         });
         await DbContext.SaveChangesAsync();
 
-        ReviewForm.Rating = 5;
-        ReviewForm.Comment = string.Empty;
         await LoadSecondaryDataAsync();
     }
 
-    private async Task AddIssueAsync()
-    {
-        var userId = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Package is null || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(IssueForm.Title) ||
-            string.IsNullOrWhiteSpace(IssueForm.Body))
-        {
-            return;
-        }
+    private int GetReviewCountFor(int rating)
+        => Reviews.Count(x => x.Rating == rating);
 
-        DbContext.PackageIssues.Add(new PackageIssueEntity
-        {
-            Id = Guid.NewGuid(),
-            PackageId = Package.Id,
-            AuthorUserId = userId,
-            Title = IssueForm.Title.Trim(),
-            Body = IssueForm.Body.Trim(),
-            CreatedAtUtc = DateTimeOffset.UtcNow,
-        });
-        await DbContext.SaveChangesAsync();
-
-        IssueForm.Title = string.Empty;
-        IssueForm.Body = string.Empty;
-        await LoadSecondaryDataAsync();
-    }
-
-    private async Task VoteAsync(Guid issueId, int value)
-    {
-        var userId = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId) || value is not (1 or -1))
-        {
-            return;
-        }
-
-        var existing =
-            await DbContext.PackageIssueVotes.SingleOrDefaultAsync(x => x.IssueId == issueId && x.UserId == userId);
-        if (existing is null)
-        {
-            DbContext.PackageIssueVotes.Add(new PackageIssueVoteEntity
-            {
-                Id = Guid.NewGuid(),
-                IssueId = issueId,
-                UserId = userId,
-                Value = value,
-                CreatedAtUtc = DateTimeOffset.UtcNow,
-            });
-        }
-        else
-        {
-            existing.Value = value;
-        }
-
-        await DbContext.SaveChangesAsync();
-        await LoadSecondaryDataAsync();
-    }
+    private double GetReviewDistributionPercent(int rating)
+        => Reviews.Count == 0 ? 0d : (GetReviewCountFor(rating) * 100d) / Reviews.Count;
 
     private async Task DeleteVersionAsync(PackageVersionSummaryResponse version)
     {
@@ -182,6 +186,37 @@ public partial class PackageDetails
         }
     }
 
+    private async Task LoadFollowAsync()
+    {
+        if (!IsAuthenticated || Package is null) return;
+        try
+        {
+            var resp = await Http.GetAsync($"/api/users/follows/packages/is-following?packageId={Uri.EscapeDataString(Package.Id.ToString())}");
+            if (!resp.IsSuccessStatusCode) return;
+            var payload = await resp.Content.ReadFromJsonAsync<IsFollowingResponse>();
+            if (payload is not null) IsFollowing = payload.IsFollowing;
+        }
+        catch { }
+    }
+
+    private async Task ToggleFollowAsync()
+    {
+        if (!IsAuthenticated || Package is null) return;
+        try
+        {
+            var payload = new TogglePackageFollowRequest { PackageId = Package.Id.ToString() };
+            var resp = await Http.PostAsJsonAsync("/api/users/follows/packages/toggle", payload);
+            if (!resp.IsSuccessStatusCode) return;
+            var result = await resp.Content.ReadFromJsonAsync<TogglePackageFollowResponse>();
+            if (result is not null) IsFollowing = result.IsFollowing;
+        }
+        catch { }
+    }
+
+    private sealed class IsFollowingResponse { public bool IsFollowing { get; set; } }
+    private sealed class TogglePackageFollowRequest { public string PackageId { get; set; } = string.Empty; }
+    private sealed class TogglePackageFollowResponse { public bool IsFollowing { get; set; } }
+
     private static string FormatSize(long bytes)
     {
         string[] suf = { "B", "KB", "MB", "GB", "TB" };
@@ -191,18 +226,4 @@ public partial class PackageDetails
         var num = Math.Round(bytesDouble / Math.Pow(1024, place), 1);
         return $"{num} {suf[place]}";
     }
-
-    private sealed class ReviewInput
-    {
-        public int Rating { get; set; } = 5;
-        public string Comment { get; set; } = string.Empty;
-    }
-
-    private sealed class IssueInput
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Body { get; set; } = string.Empty;
-    }
-
-    private sealed record IssueRow(Guid Id, string Title, string Body, int Score);
 }

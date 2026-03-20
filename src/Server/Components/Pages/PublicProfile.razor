@@ -31,12 +31,18 @@
                     </div>
                 }
 
-                <div class="public-profile-title">
+                <div class="public-profile-title" style="display:flex; align-items:center; gap:12px;">
                     <h1>@Profile.DisplayName</h1>
                     <p class="muted">Public profile</p>
                     <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
                         <FluentBadge Appearance="Appearance.Accent">Publisher</FluentBadge>
                     </FluentStack>
+                    @if (IsAuthenticated)
+                    {
+                        <FluentButton Appearance="@(IsFollowingPublisher ? Appearance.Accent : Appearance.Outline)" OnClick="ToggleFollowPublisherAsync">
+                            @(IsFollowingPublisher ? "Following" : "Follow")
+                        </FluentButton>
+                    }
                 </div>
             </div>
         </header>
@@ -56,6 +62,10 @@
                         <div class="stat">
                             <span class="stat-number">@Profile.Stats.TotalDownloads.ToString("N0")</span>
                             <span class="stat-label">Downloads</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-number">@Profile.Stats.KarmaPoints</span>
+                            <span class="stat-label">Karma</span>
                         </div>
                     </div>
                 }
@@ -95,8 +105,26 @@
                                     <FluentIcon Value="@GetActivityIcon(activity.Kind)" />
                                 </div>
                                 <div class="activity-content">
-                                    <div class="activity-description">@activity.Label</div>
-                                    <div class="activity-detail muted">@activity.Detail</div>
+                                    <div class="activity-description">
+                                        @if (!string.IsNullOrWhiteSpace(activity.LinkUrl))
+                                        {
+                                            <a href="@activity.LinkUrl">@activity.Label</a>
+                                        }
+                                        else
+                                        {
+                                            @activity.Label
+                                        }
+                                    </div>
+                                    <div class="activity-detail muted">
+                                        @if (!string.IsNullOrWhiteSpace(activity.LinkUrl))
+                                        {
+                                            <a href="@activity.LinkUrl">@activity.Detail</a>
+                                        }
+                                        else
+                                        {
+                                            @activity.Detail
+                                        }
+                                    </div>
                                     <div class="activity-time">@activity.OccurredAtUtc.ToString("MMM dd, yyyy")</div>
                                 </div>
                             </div>

@@ -66,6 +66,9 @@
                             <FluentTextField @bind-Value="MetadataForm.PackageName" Label="Package name" Disabled />
                             <FluentTextArea @bind-Value="MetadataForm.Description" Label="Description" Placeholder="Describe what this package provides" />
 
+                            <FluentTextField @bind-Value="MetadataForm.Topic" Label="Topic" Placeholder="e.g. tooling, runtime, ai" />
+                            <FluentTextField @bind-Value="MetadataForm.TagsInput" Label="Tags" Placeholder="Comma-separated: starter, official, demo" />
+
                             <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="true">
                                 <FluentTextField @bind-Value="MetadataForm.RepositoryUrl" Label="Repository URL" Placeholder="https://..." />
                                 <FluentTextField @bind-Value="MetadataForm.WebsiteUrl" Label="Website URL" Placeholder="https://..." />

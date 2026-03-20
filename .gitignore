@@ -419,3 +419,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+src/Server/pckg.db
+src/Server/pckg.db-shm
+src/Server/pckg.db-wal
