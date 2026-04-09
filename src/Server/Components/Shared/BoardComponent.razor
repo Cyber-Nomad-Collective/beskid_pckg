@@ -15,7 +15,7 @@
                 <Authorized>
                     @if (!IsLocked)
                     {
-                        <FluentButton Appearance="Appearance.Accent" OnClick="ShowCreatePostDialog" IconStart="@(new Icons.Regular.Size20.Add())">
+                        <FluentButton Appearance="Appearance.Accent" OnClick="OpenComposer" IconStart="@(new Icons.Regular.Size20.Add())">
                             @NewPostButtonText
                         </FluentButton>
                     }
@@ -24,7 +24,149 @@
         </FluentStack>
     </header>
 
-    @if (IsLoading)
+    @if (IsComposerOpen)
+    {
+        <FluentCard Class="board-composer-card">
+            <FluentStack Orientation="Orientation.Vertical" Gap="20px" Class="composer-inner">
+                <div class="composer-header">
+                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12px" Wrap="true" Class="composer-header-row">
+                        <div class="composer-header-titles">
+                            <h4 class="composer-title">Create new thread</h4>
+                            <p class="composer-subtitle muted">Describe a problem, a feature you need, or an improvement idea.</p>
+                        </div>
+                        <FluentBadge Appearance="Appearance.Neutral" Class="composer-tracker-badge">Issue tracker</FluentBadge>
+                        <span class="composer-header-spacer"></span>
+                        <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowLeft())" OnClick="CancelComposer" Class="composer-back-btn">
+                            Back to threads
+                        </FluentButton>
+                    </FluentStack>
+                </div>
+
+                @if (ShowPostTypeSelector && FilterPostType is null)
+                {
+                    <div class="composer-section">
+                        <label class="fluent-label" id="composer-post-type-label">Thread type</label>
+                        <p class="composer-field-hint">Choose the category that best matches your post.</p>
+                        <div class="post-type-tiles" role="group" aria-labelledby="composer-post-type-label">
+                            <button type="button"
+                                    class="post-type-tile @(NewPostType == BoardPostType.Issue ? "selected" : "")"
+                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.Issue);"
+                                    @onclick="@(() => NewPostType = BoardPostType.Issue)">
+                                <span class="post-type-tile-icon" aria-hidden="true">
+                                    @if (NewPostType == BoardPostType.Issue)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.ErrorCircle())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.Issue)" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.ErrorCircle())" Color="Color.Neutral" />
+                                    }
+                                </span>
+                                <span class="post-type-tile-text">
+                                    <span class="post-type-tile-label">Issue</span>
+                                    <span class="post-type-tile-desc">Bug or something broken</span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                    class="post-type-tile @(NewPostType == BoardPostType.FeatureRequest ? "selected" : "")"
+                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.FeatureRequest);"
+                                    @onclick="@(() => NewPostType = BoardPostType.FeatureRequest)">
+                                <span class="post-type-tile-icon" aria-hidden="true">
+                                    @if (NewPostType == BoardPostType.FeatureRequest)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.Rocket())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.FeatureRequest)" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.Rocket())" Color="Color.Neutral" />
+                                    }
+                                </span>
+                                <span class="post-type-tile-text">
+                                    <span class="post-type-tile-label">Feature</span>
+                                    <span class="post-type-tile-desc">New capability</span>
+                                </span>
+                            </button>
+                            <button type="button"
+                                    class="post-type-tile @(NewPostType == BoardPostType.Suggestion ? "selected" : "")"
+                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.Suggestion);"
+                                    @onclick="@(() => NewPostType = BoardPostType.Suggestion)">
+                                <span class="post-type-tile-icon" aria-hidden="true">
+                                    @if (NewPostType == BoardPostType.Suggestion)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.LightbulbFilament())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.Suggestion)" />
+                                    }
+                                    else
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.LightbulbFilament())" Color="Color.Neutral" />
+                                    }
+                                </span>
+                                <span class="post-type-tile-text">
+                                    <span class="post-type-tile-label">Suggestion</span>
+                                    <span class="post-type-tile-desc">Idea or tweak</span>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="composer-section">
+                    <FluentTextField @bind-Value="NewPostTitle"
+                                     Label="Title"
+                                     Placeholder="Short, specific title"
+                                     Style="width: 100%;" />
+                </div>
+
+                <div class="composer-section">
+                    <label class="fluent-label">Tags</label>
+                    <p class="composer-field-hint">Optional keywords so others can find this thread.</p>
+                    <div class="composer-tags-row">
+                        <FluentTextField @bind-Value="NewTagInput" Placeholder="e.g. bug, docs, performance" Class="composer-tag-input" />
+                        <FluentButton Appearance="Appearance.Outline" OnClick="AddTag" Disabled="@string.IsNullOrWhiteSpace(NewTagInput)">Add tag</FluentButton>
+                    </div>
+                    @if (NewPostTags.Count > 0)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true" Style="margin-top: 10px;">
+                            @foreach (var tag in NewPostTags)
+                            {
+                                <FluentBadge Appearance="Appearance.Neutral" Class="composer-tag-chip">
+                                    #@tag
+                                    <FluentButton Appearance="Appearance.Stealth" Class="composer-tag-remove" OnClick="@(() => RemoveTag(tag))" Title="Remove tag">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Dismiss())" />
+                                    </FluentButton>
+                                </FluentBadge>
+                            }
+                        </FluentStack>
+                    }
+                </div>
+
+                <div class="composer-section composer-section-body">
+                    <ThemedRichTextEditor Class="composer-rich-text"
+                                          Label="Main content"
+                                          Placeholder="Describe the issue or idea clearly. Include context, expected behavior, and steps if relevant."
+                                          HintText="Use headings, lists, code blocks, and links. Select text to format."
+                                          @ref="ComposerEditor"
+                                          @bind-Value="NewPostContent" />
+                </div>
+
+                <div class="composer-section">
+                    <UploadDropzone Label="Attachment"
+                                    PrimaryText="Choose file"
+                                    SecondaryText="Optional attachment"
+                                    HintText="Drop files here or click to browse"
+                                    AriaLabel="Choose attachment" />
+                </div>
+
+                <FluentStack Orientation="Orientation.Horizontal" Gap="10px" Class="composer-actions" Wrap="true">
+                    <FluentButton Appearance="Appearance.Accent" OnClick="CreatePostAsync" Disabled="@(string.IsNullOrWhiteSpace(NewPostTitle) || IsSubmittingPost)">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Send())" Style="margin-right: 6px;" />
+                        @(IsSubmittingPost ? "Posting..." : "Post thread")
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" OnClick="CancelComposer" Disabled="IsSubmittingPost">Cancel</FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (IsLoading)
     {
         <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
             <FluentProgressRing />
@@ -59,7 +201,7 @@
                             <span class="muted post-date">@post.CreatedAtUtc.ToString("MMM d, yyyy")</span>
                         </FluentStack>
                         <h4 class="post-title">@post.Title</h4>
-                        <div class="post-content markdown-content">@RenderMarkdown(TruncateContent(post.Content, 200))</div>
+                        <div class="post-content">@RenderContentPreview(post.Content)</div>
                         <FluentStack Orientation="Orientation.Horizontal" Gap="16px" VerticalAlignment="VerticalAlignment.Center" Class="post-actions">
                             <FluentStack Orientation="Orientation.Horizontal" Gap="4px" VerticalAlignment="VerticalAlignment.Center" Class="vote-buttons">
                                 <FluentButton Appearance="@(post.CurrentUserVote == 1 ? Appearance.Accent : Appearance.Stealth)"
@@ -136,48 +278,3 @@
         }
     }
 </div>
-
-<FluentDialog @bind-IsOpen="IsCreatePostDialogOpen" Modal="true" Style="min-width: 500px;">
-    <FluentDialogHeader>
-        <h3 style="margin: 0;">@CreateDialogTitle</h3>
-    </FluentDialogHeader>
-    <FluentDialogBody>
-        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
-            @if (ShowPostTypeSelector && FilterPostType is null)
-            {
-                <div>
-                    <label class="fluent-label">Post Type</label>
-                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 8px;">
-                        <FluentButton Appearance="@(NewPostType == BoardPostType.Issue ? Appearance.Accent : Appearance.Outline)"
-                                      OnClick="@(() => NewPostType = BoardPostType.Issue)"
-                                      Style="@(NewPostType == BoardPostType.Issue ? $"background-color: {GetPostTypeColor(BoardPostType.Issue)};" : "")">
-                            Issue
-                        </FluentButton>
-                        <FluentButton Appearance="@(NewPostType == BoardPostType.FeatureRequest ? Appearance.Accent : Appearance.Outline)"
-                                      OnClick="@(() => NewPostType = BoardPostType.FeatureRequest)"
-                                      Style="@(NewPostType == BoardPostType.FeatureRequest ? $"background-color: {GetPostTypeColor(BoardPostType.FeatureRequest)};" : "")">
-                            Feature Request
-                        </FluentButton>
-                        <FluentButton Appearance="@(NewPostType == BoardPostType.Suggestion ? Appearance.Accent : Appearance.Outline)"
-                                      OnClick="@(() => NewPostType = BoardPostType.Suggestion)"
-                                      Style="@(NewPostType == BoardPostType.Suggestion ? $"background-color: {GetPostTypeColor(BoardPostType.Suggestion)};" : "")">
-                            Suggestion
-                        </FluentButton>
-                    </FluentStack>
-                </div>
-            }
-            <FluentTextField @bind-Value="NewPostTitle" Label="Title" Placeholder="Give your post a descriptive title" Style="width: 100%;" />
-            <div>
-                <FluentTextArea @bind-Value="NewPostContent" Label="Content" Placeholder="Describe your issue, request, or suggestion. You can use Markdown for formatting." Style="width: 100%; min-height: 150px;" />
-                <small class="muted">Markdown is supported: **bold**, *italic*, `code`, [links](url), lists, and more.</small>
-            </div>
-        </FluentStack>
-    </FluentDialogBody>
-    <FluentDialogFooter>
-        <FluentButton Appearance="Appearance.Accent" OnClick="CreatePostAsync" Disabled="@(string.IsNullOrWhiteSpace(NewPostTitle) || string.IsNullOrWhiteSpace(NewPostContent))">
-            <FluentIcon Value="@(new Icons.Regular.Size20.Send())" Style="margin-right: 6px;" />
-            Post
-        </FluentButton>
-        <FluentButton Appearance="Appearance.Outline" OnClick="CloseCreatePostDialog">Cancel</FluentButton>
-    </FluentDialogFooter>
-</FluentDialog>

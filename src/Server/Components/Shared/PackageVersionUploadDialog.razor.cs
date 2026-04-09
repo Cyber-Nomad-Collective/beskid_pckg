@@ -10,7 +10,6 @@ public partial class PackageVersionUploadDialog : IDialogContentComponent<Packag
     [CascadingParameter] public FluentDialog Dialog { get; set; } = default!;
 
     private IBrowserFile? Artifact { get; set; }
-    private string? SelectedArtifactName => Artifact?.Name;
 
     private void HandleArtifactSelected(InputFileChangeEventArgs args)
     {

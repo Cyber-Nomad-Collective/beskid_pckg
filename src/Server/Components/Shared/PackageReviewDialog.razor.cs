@@ -10,11 +10,16 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
 
     private Task CancelAsync() => Dialog.CancelAsync();
 
-    private Task SubmitAsync()
+    private async Task SubmitAsync()
     {
         Content.Comment = Content.Comment.Trim();
+        if (string.IsNullOrWhiteSpace(Content.Comment))
+        {
+            return;
+        }
+
         Content.Rating = Math.Clamp(Content.Rating, 1, 5);
-        return Dialog.CloseAsync(Content);
+        await Dialog.CloseAsync(Content);
     }
 
     private Task OnRatingChanged(int value)

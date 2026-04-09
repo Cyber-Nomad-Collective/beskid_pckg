@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -15,37 +16,43 @@ namespace Server.Tests.Integration;
 public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
     private readonly string _tempRoot;
-    private readonly string _dbPath;
-    private readonly string _keysPath;
     private readonly string _artifactRoot;
+    private readonly string _dataProtectionKeysPath;
 
     public TestApplicationFactory()
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), "pckg_server_tests", Guid.NewGuid().ToString("N"));
-        _dbPath = Path.Combine(_tempRoot, "test.db");
-        _keysPath = Path.Combine(_tempRoot, "keys");
         _artifactRoot = Path.Combine(_tempRoot, "artifacts");
+        _dataProtectionKeysPath = Path.Combine(_tempRoot, "data-protection-keys");
         Directory.CreateDirectory(_tempRoot);
-        Directory.CreateDirectory(_keysPath);
         Directory.CreateDirectory(_artifactRoot);
+        Directory.CreateDirectory(_dataProtectionKeysPath);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        // Must apply before Program.cs reads configuration (ConfigureAppConfiguration runs too late for top-level statements).
+        builder.UseSetting("Security:PersistDataProtectionKeysToDatabase", "false");
+        builder.UseSetting("Security:DataProtectionKeysPath", _dataProtectionKeysPath);
 
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
             configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:DefaultConnection"] = $"Data Source={_dbPath}",
-                ["Security:DataProtectionKeysPath"] = _keysPath,
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5432;Database=pckgdb-tests;Username=postgres;Password=postgres",
                 ["Security:UseHttpsRedirection"] = "false",
             });
         });
 
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+            services.RemoveAll<ApplicationDbContext>();
+            services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseInMemoryDatabase($"pckg_integration_tests_{Guid.NewGuid():N}"));
+
             services.RemoveAll<IPackageArtifactStore>();
             services.AddSingleton<IPackageArtifactStore>(sp =>
             {

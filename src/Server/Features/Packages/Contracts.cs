@@ -30,6 +30,11 @@ public sealed record PublishPackageVersionResponse(
     string Message,
     PackageVersionSummaryResponse? Version);
 
+public sealed record PackageVersionLifecycleResponse(
+    bool Success,
+    string Message,
+    PackageVersionSummaryResponse? Version);
+
 public sealed record UpsertPackageRequest(
     string Name,
     string? Description,
@@ -91,3 +96,39 @@ public sealed record PackageIssueResponse(
     int Score);
 
 public sealed record VoteIssueRequest(Guid IssueId, int Value);
+
+public sealed record PackageDependencyResponse(
+    string Name,
+    string? Version,
+    string Source,
+    string? Registry);
+
+public sealed record PackageHealthSnapshotResponse(
+    string State,
+    string SubState,
+    double Score,
+    string UpdateRateState,
+    string UpdateRateSubState,
+    double UpdateRateNormalized,
+    double UpdateRateWeight,
+    string DownloadsState,
+    string DownloadsSubState,
+    double DownloadsNormalized,
+    double DownloadsWeight,
+    string ReviewsState,
+    string ReviewsSubState,
+    double ReviewsNormalized,
+    double ReviewsWeight);
+
+public sealed record PackageSearchResponse(
+    PackageSummaryResponse Package,
+    int ReviewCount,
+    PackageHealthSnapshotResponse Health);
+
+public sealed record PackageDetailsResponse(
+    PackageSummaryResponse Package,
+    IReadOnlyList<PackageVersionSummaryResponse> Versions,
+    IReadOnlyList<PackageDependencyResponse> Dependencies,
+    int DependentsCount,
+    string? Readme,
+    PackageHealthSnapshotResponse Health);

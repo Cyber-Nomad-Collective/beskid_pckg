@@ -1,8 +1,10 @@
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -15,14 +17,16 @@ using Server.Services;
 using Server.Hubs;
 using Server.Services.Notifications;
 using Server.Services.Email;
-using Server.Services.Notifications;
 using Wolverine;
 using Wolverine.SignalR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
+using System.Threading.RateLimiting;
 using Server.Features.Auth;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 var internalApiBaseAddress = builder.Configuration["HttpClient:InternalBaseAddress"];
 if (string.IsNullOrWhiteSpace(internalApiBaseAddress))
@@ -84,32 +88,82 @@ builder.Services.SwaggerDocument(o =>
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSignalR();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("search", limiter =>
+    {
+        limiter.Window = TimeSpan.FromSeconds(30);
+        limiter.PermitLimit = 120;
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+    options.AddFixedWindowLimiter("download", limiter =>
+    {
+        limiter.Window = TimeSpan.FromSeconds(30);
+        limiter.PermitLimit = 80;
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+    options.AddFixedWindowLimiter("publish", limiter =>
+    {
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.PermitLimit = 20;
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+});
 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
-var dataProtectionKeysPath = builder.Configuration["Security:DataProtectionKeysPath"];
-if (string.IsNullOrWhiteSpace(dataProtectionKeysPath))
-{
-    dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "data", ".data-protection-keys");
-}
-try
-{
-    Directory.CreateDirectory(dataProtectionKeysPath);
-}
-catch (UnauthorizedAccessException)
-{
-    dataProtectionKeysPath = Path.Combine(Path.GetTempPath(), "pckg-dpkeys");
-    Directory.CreateDirectory(dataProtectionKeysPath);
-}
-builder.Services
-    .AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
-    .SetApplicationName("pckg");
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=pckg.db";
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+var aspireConnection = builder.Configuration.GetConnectionString("pckgdb");
+var connectionString = defaultConnection
+                       ?? aspireConnection
+                       ?? "Host=localhost;Port=5432;Database=pckgdb;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+{
+    options.UseNpgsql(connectionString);
+});
+
+// Data Protection backs antiforgery and auth cookies. Default: PostgreSQL so Docker restarts and all replicas share one key ring.
+// Set Security:PersistDataProtectionKeysToDatabase=false + Security:DataProtectionKeysPath when swapping EF to InMemory (integration tests).
+var persistDpKeysToDatabase = builder.Configuration.GetValue("Security:PersistDataProtectionKeysToDatabase", true);
+var dataProtectionBuilder = builder.Services.AddDataProtection().SetApplicationName("pckg");
+if (persistDpKeysToDatabase)
+{
+    dataProtectionBuilder.PersistKeysToDbContext<ApplicationDbContext>();
+}
+else
+{
+    var dataProtectionKeysPath = builder.Configuration["Security:DataProtectionKeysPath"];
+    if (string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+    {
+        dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "data", ".data-protection-keys");
+    }
+
+    try
+    {
+        Directory.CreateDirectory(dataProtectionKeysPath);
+    }
+    catch (UnauthorizedAccessException)
+    {
+        dataProtectionKeysPath = Path.Combine(Path.GetTempPath(), "pckg-dpkeys");
+        Directory.CreateDirectory(dataProtectionKeysPath);
+    }
+
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+
+var dataProtectionCertificatePath = builder.Configuration["Security:DataProtectionCertificatePath"];
+var dataProtectionCertificatePassword = builder.Configuration["Security:DataProtectionCertificatePassword"];
+if (!string.IsNullOrWhiteSpace(dataProtectionCertificatePath))
+{
+    var certificate = string.IsNullOrWhiteSpace(dataProtectionCertificatePassword)
+        ? X509CertificateLoader.LoadPkcs12FromFile(dataProtectionCertificatePath, password: null)
+        : X509CertificateLoader.LoadPkcs12FromFile(dataProtectionCertificatePath, dataProtectionCertificatePassword);
+    dataProtectionBuilder.ProtectKeysWithCertificate(certificate);
+}
 
 builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
     .AddRoles<IdentityRole>()
@@ -159,6 +213,7 @@ builder.Services.AddScoped<IStartupSeeder, StartupSeeder>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
 builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
+builder.Services.AddSingleton<IHtmlSanitizationService, HtmlSanitizationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 // Prefer Wolverine transport for notifications broadcast
 builder.Services.AddScoped<INotificationBroadcaster, WolverineNotificationBroadcaster>();
@@ -190,6 +245,8 @@ builder.UseWolverine(opts =>
 });
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 app.UseHttpLogging();
 
@@ -223,6 +280,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 // Redirect to onboarding if no users exist.
 app.Use(async (context, next) =>

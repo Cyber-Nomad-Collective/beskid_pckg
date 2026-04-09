@@ -126,4 +126,60 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
         Assert.NotNull(persisted);
         Assert.Equal(digest, persisted!.ChecksumSha256);
     }
+
+    [Fact]
+    public async Task SearchEndpoint_Returns_Package_By_Query()
+    {
+        var (_, _, package) = await _factory.SeedOwnerWithPackageAsync("Search.Demo", isPublic: true);
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/search?q={package.Name}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadAsStringAsync();
+        Assert.Contains(package.Name, payload, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PackageDetails_Can_Be_Fetched_By_Name()
+    {
+        var (_, _, package) = await _factory.SeedOwnerWithPackageAsync("Details.Demo", isPublic: true);
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/packages/{package.Name}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadAsStringAsync();
+        Assert.Contains(package.Name, payload, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Yank_And_Unyank_Controls_Download_Availability()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Yank.Demo", isPublic: true);
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0");
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new ByteArrayContent(artifact), "artifact", "yank-demo.bpk" },
+        };
+        var publishResponse = await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        Assert.Equal(HttpStatusCode.OK, publishResponse.StatusCode);
+
+        var yankResponse = await client.PostAsync($"/api/packages/{package.Name}/versions/1.0.0/yank", content: null);
+        Assert.Equal(HttpStatusCode.OK, yankResponse.StatusCode);
+
+        var yankedDownload = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/download");
+        Assert.Equal(HttpStatusCode.NotFound, yankedDownload.StatusCode);
+
+        var unyankResponse = await client.PostAsync($"/api/packages/{package.Name}/versions/1.0.0/unyank", content: null);
+        Assert.Equal(HttpStatusCode.OK, unyankResponse.StatusCode);
+
+        var restoredDownload = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/download");
+        Assert.Equal(HttpStatusCode.OK, restoredDownload.StatusCode);
+    }
 }

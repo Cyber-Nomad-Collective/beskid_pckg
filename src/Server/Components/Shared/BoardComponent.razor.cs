@@ -47,7 +47,7 @@ public partial class BoardComponent
     public NavigationManager Navigation { get; set; } = default!;
 
     [Inject]
-    public IMarkdownService MarkdownService { get; set; } = default!;
+    public IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
 
     private List<BoardPostDto> Posts = [];
     private bool IsLoading = true;
@@ -55,9 +55,13 @@ public partial class BoardComponent
     private int PageSize = 20;
     private int TotalCount;
     private int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    private bool IsCreatePostDialogOpen;
+    private bool IsComposerOpen;
+    private bool IsSubmittingPost;
     private string NewPostTitle = string.Empty;
     private string NewPostContent = string.Empty;
+    private string NewTagInput = string.Empty;
+    private readonly List<string> NewPostTags = [];
+    private ThemedRichTextEditor? ComposerEditor;
     private BoardPostType NewPostType = BoardPostType.Issue;
     private int? _loadedBoardId;
     private BoardPostType? _loadedFilterPostType;
@@ -78,11 +82,8 @@ public partial class BoardComponent
         _ => "#6c757d"
     };
 
-    private MarkupString RenderMarkdown(string content)
-    {
-        var html = MarkdownService.ToSafeHtml(content);
-        return new MarkupString(html);
-    }
+    private string RenderContentPreview(string content)
+        => TruncateContent(HtmlSanitization.ToPlainText(content), 200);
 
     private static string TruncateContent(string content, int maxLength)
     {
@@ -168,36 +169,81 @@ public partial class BoardComponent
         }
     }
 
-    private void ShowCreatePostDialog()
+    private void OpenComposer()
     {
         NewPostType = FilterPostType ?? DefaultPostType;
-        IsCreatePostDialogOpen = true;
+        IsComposerOpen = true;
     }
 
-    private void CloseCreatePostDialog()
+    private void CancelComposer()
     {
-        IsCreatePostDialogOpen = false;
+        IsComposerOpen = false;
+        IsSubmittingPost = false;
         NewPostTitle = string.Empty;
         NewPostContent = string.Empty;
+        NewTagInput = string.Empty;
+        NewPostTags.Clear();
         NewPostType = FilterPostType ?? DefaultPostType;
+    }
+
+    private void AddTag()
+    {
+        var normalized = NewTagInput.Trim().Trim('#').ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized) || NewPostTags.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        NewPostTags.Add(normalized);
+        NewTagInput = string.Empty;
+    }
+
+    private void RemoveTag(string tag)
+    {
+        NewPostTags.Remove(tag);
+    }
+
+    private string BuildPostContent()
+    {
+        if (NewPostTags.Count == 0)
+        {
+            return NewPostContent.Trim();
+        }
+
+        var tagsLine = string.Join(' ', NewPostTags.Select(tag => $"#{tag}"));
+        return $"{tagsLine}{Environment.NewLine}{Environment.NewLine}{NewPostContent.Trim()}";
     }
 
     private async Task CreatePostAsync()
     {
+        if (ComposerEditor is not null)
+        {
+            NewPostContent = await ComposerEditor.GetHtmlAsync();
+            await ComposerEditor.SyncToBoundValueAsync();
+        }
+
         if (string.IsNullOrWhiteSpace(NewPostTitle) || string.IsNullOrWhiteSpace(NewPostContent))
         {
             return;
         }
 
-        var response = await ApiHttp.PostAsJsonAsync(
-            $"/api/boards/{BoardId}/posts",
-            new CreateBoardPostRequest(NewPostTitle, NewPostContent, FilterPostType ?? NewPostType));
-
-        if (response.IsSuccessStatusCode)
+        IsSubmittingPost = true;
+        try
         {
-            CloseCreatePostDialog();
-            CurrentPage = 1;
-            await LoadPostsAsync();
+            var response = await ApiHttp.PostAsJsonAsync(
+                $"/api/boards/{BoardId}/posts",
+                new CreateBoardPostRequest(NewPostTitle.Trim(), BuildPostContent(), FilterPostType ?? NewPostType));
+
+            if (response.IsSuccessStatusCode)
+            {
+                CancelComposer();
+                CurrentPage = 1;
+                await LoadPostsAsync();
+            }
+        }
+        finally
+        {
+            IsSubmittingPost = false;
         }
     }
 

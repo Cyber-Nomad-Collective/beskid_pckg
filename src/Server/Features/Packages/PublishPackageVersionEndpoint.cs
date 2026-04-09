@@ -11,7 +11,8 @@ public sealed class PublishPackageVersionEndpoint(
     IApiPrincipalResolver principalResolver,
     IPackageArtifactStore artifactStore,
     IPackageArtifactValidator artifactValidator,
-    Server.Services.Notifications.INotificationService notifications)
+    Server.Services.Notifications.INotificationService notifications,
+    ILogger<PublishPackageVersionEndpoint> logger)
     : EndpointWithoutRequest<PublishPackageVersionResponse>
 {
     private const long MaxArtifactSizeBytes = 64 * 1024 * 1024;
@@ -22,7 +23,11 @@ public sealed class PublishPackageVersionEndpoint(
     public override void Configure()
     {
         Post("/packages/{PackageName}/publish");
-        Options(x => x.RequireAuthorization());
+        Options(x =>
+        {
+            x.RequireAuthorization();
+            x.RequireRateLimiting("publish");
+        });
         Summary(s => s.Summary = "Publish a package artifact version for an owned package.");
     }
 
@@ -69,6 +74,7 @@ public sealed class PublishPackageVersionEndpoint(
         var form = await HttpContext.Request.ReadFormAsync(ct);
         var version = form["version"].FirstOrDefault()?.Trim();
         var expectedChecksum = form["checksumSha256"].FirstOrDefault()?.Trim().ToLowerInvariant();
+        var inlineManifestJson = form["manifestJson"].FirstOrDefault();
         var artifact = form.Files.GetFile("artifact");
 
         if (string.IsNullOrWhiteSpace(version) || artifact is null)
@@ -96,9 +102,35 @@ public sealed class PublishPackageVersionEndpoint(
 
         var existing = await dbContext.PackageVersions
             .AsNoTracking()
-            .AnyAsync(x => x.PackageId == package.Id && x.Version == version, ct);
-        if (existing)
+            .SingleOrDefaultAsync(x => x.PackageId == package.Id && x.Version == version, ct);
+        if (existing is not null)
         {
+            if (!string.IsNullOrWhiteSpace(expectedChecksum)
+                && string.Equals(existing.ChecksumSha256, expectedChecksum, StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogInformation(
+                    "Idempotent publish accepted for package {PackageName} version {Version}.",
+                    package.Name,
+                    version);
+
+                await Send.OkAsync(
+                    new PublishPackageVersionResponse(
+                        true,
+                        "Package version already exists with matching checksum.",
+                        new PackageVersionSummaryResponse(
+                            existing.Id,
+                            existing.PackageId,
+                            package.Name,
+                            existing.Version,
+                            existing.IsYanked,
+                            existing.ChecksumSha256,
+                            existing.SizeBytes,
+                            existing.PublishedAtUtc,
+                            existing.YankedAtUtc)),
+                    ct);
+                return;
+            }
+
             HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
             await Send.OkAsync(new PublishPackageVersionResponse(false, "Version already exists and is immutable.", null), ct);
             return;
@@ -124,6 +156,14 @@ public sealed class PublishPackageVersionEndpoint(
         artifactStream.Position = 0;
         var (storageKey, computedChecksum, sizeBytes) = await artifactStore.SaveAsync(package.Name, version, artifactStream, ct);
 
+        if (!string.IsNullOrWhiteSpace(inlineManifestJson))
+        {
+            logger.LogDebug(
+                "Publish payload included optional manifestJson for {PackageName} {Version}; server persisted manifest from artifact.",
+                package.Name,
+                version);
+        }
+
         if (!string.Equals(computedChecksum, validation.ArtifactChecksumSha256, StringComparison.OrdinalIgnoreCase))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
@@ -147,6 +187,11 @@ public sealed class PublishPackageVersionEndpoint(
         dbContext.PackageVersions.Add(entity);
         package.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "Published package {PackageName} version {Version} by user {UserId}.",
+            package.Name,
+            entity.Version,
+            userId);
 
         // Notify the owner about the publish
         await notifications.PublishAsync(userId, NotificationType.PackagePublished,
@@ -177,7 +222,10 @@ public sealed class PublishPackageVersionEndpoint(
         {
             await notifications.PublishAsync(fid, NotificationType.PackagePublished,
                 $"{package.Name} {entity.Version} published",
-                $"{package.Name} has a new version {entity.Version}.", ct: ct);
+                $"{package.Name} has a new version {entity.Version}.",
+                preferenceScope: NotificationPreferenceScope.Package,
+                preferenceScopeId: package.Id.ToString(),
+                ct: ct);
         }
 
         var response = new PackageVersionSummaryResponse(

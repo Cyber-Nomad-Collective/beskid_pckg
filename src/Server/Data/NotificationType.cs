@@ -6,5 +6,6 @@ public enum NotificationType
     PackageUpdated = 1,
     PackagePublished = 2,
     PackageFollowedPublisherUpdate = 3,
+    BoardThreadActivity = 4,
     System = 1000
 }

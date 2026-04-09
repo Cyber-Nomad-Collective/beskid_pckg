@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
-using Server.Features.Users;
+using System.Data.Common;
+using Npgsql;
 
 namespace Server.Services;
 
@@ -12,23 +13,464 @@ public interface IStartupSeeder
 
 public sealed class StartupSeeder(
     ApplicationDbContext dbContext,
-    RoleManager<IdentityRole> roleManager) : IStartupSeeder
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager,
+    IConfiguration configuration,
+    ILogger<StartupSeeder> logger) : IStartupSeeder
 {
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        dbContext.Database.EnsureCreated();
-        await EnsureUserProfileSchemaAsync(cancellationToken);
-        await EnsureUserRatingSchemaAsync(cancellationToken);
-        await EnsurePackageSchemaAsync(cancellationToken);
-        await EnsurePackageTagSchemaAsync(cancellationToken);
-        await EnsurePackageVersionSchemaAsync(cancellationToken);
-        await EnsureTopicSchemaAsync(cancellationToken);
-        await SeedExamplePackageAndTopicAsync(cancellationToken);
+        await ApplyPostgresSchemaAsync(cancellationToken);
         await EnsureRoleAsync("SuperAdmin");
-            await EnsureNotificationsSchemaAsync(cancellationToken);
-            await EnsureNotificationPreferencesSchemaAsync(cancellationToken);
-            await EnsureEmailSettingsSchemaAsync(cancellationToken);
-            await EnsureFollowsSchemaAsync(cancellationToken);
+        await EnsureInitialAdminUserAsync(cancellationToken);
+        await SeedExamplePackageAndTopicAsync(cancellationToken);
+    }
+
+    private async Task ApplyPostgresSchemaAsync(CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return;
+        }
+
+        const int maxAttempts = 12;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await dbContext.Database.MigrateAsync(cancellationToken);
+                await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
+                await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
+                await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+                return;
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P07")
+            {
+                // Existing databases may already contain tables but miss EF history.
+                // Record the baseline migration and continue with compatibility fixes.
+                await EnsureCurrentMigrationRecordedAsync(cancellationToken);
+                await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
+                await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
+                await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+                return;
+            }
+            catch (Exception ex) when (IsTransientStartupFailure(ex) && attempt < maxAttempts)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Min(2 * attempt, 15));
+                logger.LogWarning(
+                    ex,
+                    "Database startup not ready yet (attempt {Attempt}/{MaxAttempts}). Retrying in {DelaySeconds}s...",
+                    attempt,
+                    maxAttempts,
+                    delay.TotalSeconds);
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
+
+        await dbContext.Database.MigrateAsync(cancellationToken);
+        await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
+        await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
+        await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+    }
+
+    private async Task EnsurePostgresLegacyBooleanColumnsAsync(CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return;
+        }
+
+        // Older bootstrap flows created a few logical booleans as INTEGER.
+        // Normalize them before EF starts writing boolean parameters.
+        var legacyBooleanColumns = new (string Table, string Column)[]
+        {
+            ("AspNetUsers", "EmailConfirmed"),
+            ("AspNetUsers", "PhoneNumberConfirmed"),
+            ("AspNetUsers", "TwoFactorEnabled"),
+            ("AspNetUsers", "LockoutEnabled"),
+            ("Boards", "IsLocked"),
+            ("BoardPosts", "IsPinned"),
+            ("BoardPosts", "IsLocked"),
+            ("BoardPosts", "IsDeleted"),
+            ("BoardPostComments", "IsDeleted"),
+            ("Notifications", "IsRead"),
+            ("UserEmails", "IsVerified"),
+            ("UserEmails", "IsPrimary"),
+            ("EmailSettings", "EnableSsl"),
+            ("Packages", "IsPublic"),
+            ("PackageVersions", "IsYanked")
+        };
+
+        foreach (var (table, column) in legacyBooleanColumns)
+        {
+            var sql = (table, column) switch
+            {
+                ("AspNetUsers", "EmailConfirmed") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'AspNetUsers' AND column_name = 'EmailConfirmed'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "EmailConfirmed" DROP DEFAULT;
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "EmailConfirmed" TYPE boolean USING ("EmailConfirmed" <> 0);
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "EmailConfirmed" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("AspNetUsers", "PhoneNumberConfirmed") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'AspNetUsers' AND column_name = 'PhoneNumberConfirmed'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "PhoneNumberConfirmed" DROP DEFAULT;
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "PhoneNumberConfirmed" TYPE boolean USING ("PhoneNumberConfirmed" <> 0);
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "PhoneNumberConfirmed" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("AspNetUsers", "TwoFactorEnabled") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'AspNetUsers' AND column_name = 'TwoFactorEnabled'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "TwoFactorEnabled" DROP DEFAULT;
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "TwoFactorEnabled" TYPE boolean USING ("TwoFactorEnabled" <> 0);
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "TwoFactorEnabled" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("AspNetUsers", "LockoutEnabled") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'AspNetUsers' AND column_name = 'LockoutEnabled'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "LockoutEnabled" DROP DEFAULT;
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "LockoutEnabled" TYPE boolean USING ("LockoutEnabled" <> 0);
+                            ALTER TABLE "AspNetUsers" ALTER COLUMN "LockoutEnabled" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("Boards", "IsLocked") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'Boards' AND column_name = 'IsLocked'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "Boards" ALTER COLUMN "IsLocked" DROP DEFAULT;
+                            ALTER TABLE "Boards" ALTER COLUMN "IsLocked" TYPE boolean USING ("IsLocked" <> 0);
+                            ALTER TABLE "Boards" ALTER COLUMN "IsLocked" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("BoardPosts", "IsPinned") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'BoardPosts' AND column_name = 'IsPinned'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsPinned" DROP DEFAULT;
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsPinned" TYPE boolean USING ("IsPinned" <> 0);
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsPinned" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("BoardPosts", "IsLocked") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'BoardPosts' AND column_name = 'IsLocked'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsLocked" DROP DEFAULT;
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsLocked" TYPE boolean USING ("IsLocked" <> 0);
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsLocked" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("BoardPosts", "IsDeleted") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'BoardPosts' AND column_name = 'IsDeleted'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsDeleted" DROP DEFAULT;
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsDeleted" TYPE boolean USING ("IsDeleted" <> 0);
+                            ALTER TABLE "BoardPosts" ALTER COLUMN "IsDeleted" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("BoardPostComments", "IsDeleted") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'BoardPostComments' AND column_name = 'IsDeleted'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "BoardPostComments" ALTER COLUMN "IsDeleted" DROP DEFAULT;
+                            ALTER TABLE "BoardPostComments" ALTER COLUMN "IsDeleted" TYPE boolean USING ("IsDeleted" <> 0);
+                            ALTER TABLE "BoardPostComments" ALTER COLUMN "IsDeleted" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("Notifications", "IsRead") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'Notifications' AND column_name = 'IsRead'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "Notifications" ALTER COLUMN "IsRead" DROP DEFAULT;
+                            ALTER TABLE "Notifications" ALTER COLUMN "IsRead" TYPE boolean USING ("IsRead" <> 0);
+                            ALTER TABLE "Notifications" ALTER COLUMN "IsRead" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("UserEmails", "IsVerified") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'UserEmails' AND column_name = 'IsVerified'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsVerified" DROP DEFAULT;
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsVerified" TYPE boolean USING ("IsVerified" <> 0);
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsVerified" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("UserEmails", "IsPrimary") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'UserEmails' AND column_name = 'IsPrimary'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsPrimary" DROP DEFAULT;
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsPrimary" TYPE boolean USING ("IsPrimary" <> 0);
+                            ALTER TABLE "UserEmails" ALTER COLUMN "IsPrimary" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("EmailSettings", "EnableSsl") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'EmailSettings' AND column_name = 'EnableSsl'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "EmailSettings" ALTER COLUMN "EnableSsl" DROP DEFAULT;
+                            ALTER TABLE "EmailSettings" ALTER COLUMN "EnableSsl" TYPE boolean USING ("EnableSsl" <> 0);
+                            ALTER TABLE "EmailSettings" ALTER COLUMN "EnableSsl" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("Packages", "IsPublic") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'Packages' AND column_name = 'IsPublic'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "Packages" ALTER COLUMN "IsPublic" DROP DEFAULT;
+                            ALTER TABLE "Packages" ALTER COLUMN "IsPublic" TYPE boolean USING ("IsPublic" <> 0);
+                            ALTER TABLE "Packages" ALTER COLUMN "IsPublic" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                ("PackageVersions", "IsYanked") => """
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = 'PackageVersions' AND column_name = 'IsYanked'
+                              AND data_type IN ('smallint', 'integer', 'bigint')
+                        ) THEN
+                            ALTER TABLE "PackageVersions" ALTER COLUMN "IsYanked" DROP DEFAULT;
+                            ALTER TABLE "PackageVersions" ALTER COLUMN "IsYanked" TYPE boolean USING ("IsYanked" <> 0);
+                            ALTER TABLE "PackageVersions" ALTER COLUMN "IsYanked" SET DEFAULT false;
+                        END IF;
+                    END
+                    $$;
+                    """,
+                _ => null
+            };
+
+            if (!string.IsNullOrWhiteSpace(sql))
+            {
+                await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+            }
+        }
+    }
+
+    private async Task EnsurePostgresLegacyGuidColumnsAsync(CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return;
+        }
+
+        // Earlier SQLite-first bootstraps persisted Guid columns as text.
+        // Normalize to native uuid for Npgsql readers.
+        var legacyGuidColumns = new (string Table, string Column)[]
+        {
+            ("ApiKeys", "Id"),
+            ("Packages", "Id"),
+            ("PackageCommunityReviews", "Id"),
+            ("PackageCommunityReviews", "PackageId"),
+            ("PackageIssues", "Id"),
+            ("PackageIssues", "PackageId"),
+            ("PackageIssueVotes", "Id"),
+            ("PackageIssueVotes", "IssueId"),
+            ("PackageReviews", "Id"),
+            ("PackageReviews", "PackageId"),
+            ("PackageVersions", "Id"),
+            ("PackageVersions", "PackageId"),
+            ("PackageFollows", "Id"),
+            ("PublisherFollows", "Id"),
+            ("Notifications", "Id"),
+            ("PackageTags", "PackageId")
+        };
+
+        foreach (var (table, column) in legacyGuidColumns)
+        {
+            var sql = $"""
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = '{table}' AND column_name = '{column}'
+                          AND data_type IN ('text', 'character varying')
+                    ) THEN
+                        ALTER TABLE "{table}" ALTER COLUMN "{column}" DROP DEFAULT;
+                        ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE uuid USING ("{column}"::uuid);
+                    END IF;
+                END
+                $$;
+                """;
+
+            await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
+        }
+    }
+
+    private static bool IsTransientStartupFailure(Exception ex)
+    {
+        if (ex is TimeoutException or DbException)
+        {
+            return true;
+        }
+
+        if (ex.GetType().FullName is "Npgsql.NpgsqlException" or "Npgsql.PostgresException")
+        {
+            return true;
+        }
+
+        var message = ex.ToString();
+        return message.Contains("connection refused", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("database system is starting up", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("failed to connect", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("transient failure", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task EnsurePostgresLegacyIdentityColumnsAsync(CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return;
+        }
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'Boards'
+                      AND column_name = 'Id'
+                      AND data_type IN ('smallint', 'integer', 'bigint')
+                      AND COALESCE(is_identity, 'NO') = 'NO'
+                ) THEN
+                    IF to_regclass('public."Boards_Id_seq"') IS NULL THEN
+                        CREATE SEQUENCE "Boards_Id_seq";
+                    END IF;
+
+                    ALTER TABLE "Boards" ALTER COLUMN "Id" SET DEFAULT nextval('"Boards_Id_seq"');
+                    PERFORM setval(
+                        '"Boards_Id_seq"',
+                        COALESCE((SELECT MAX("Id") FROM "Boards"), 0) + 1,
+                        false
+                    );
+                END IF;
+            END
+            $$;
+            """,
+            cancellationToken);
+    }
+
+    private async Task EnsureCurrentMigrationRecordedAsync(CancellationToken cancellationToken)
+    {
+        var currentMigrationId = dbContext.Database.GetMigrations().LastOrDefault();
+        if (string.IsNullOrWhiteSpace(currentMigrationId))
+        {
+            return;
+        }
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+                "MigrationId" character varying(150) NOT NULL,
+                "ProductVersion" character varying(32) NOT NULL,
+                CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+            );
+            """,
+            cancellationToken);
+
+        await dbContext.Database.ExecuteSqlAsync(
+            $"""
+            INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+            VALUES ({currentMigrationId}, {"10.0.5"})
+            ON CONFLICT ("MigrationId") DO NOTHING;
+            """,
+            cancellationToken);
     }
 
     private async Task EnsureRoleAsync(string roleName)
@@ -39,194 +481,50 @@ public sealed class StartupSeeder(
         }
     }
 
-    private async Task EnsureUserProfileSchemaAsync(CancellationToken cancellationToken)
+    private async Task EnsureInitialAdminUserAsync(CancellationToken cancellationToken)
     {
-        var existingColumns = await dbContext.Database
-            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('AspNetUsers')")
-            .ToListAsync(cancellationToken);
-
-        if (!existingColumns.Contains("DisplayName", StringComparer.OrdinalIgnoreCase))
+        var hasUsers = await dbContext.Users.AsNoTracking().AnyAsync(cancellationToken);
+        if (hasUsers)
         {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN DisplayName TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
+            return;
         }
 
-        if (!existingColumns.Contains("Bio", StringComparer.OrdinalIgnoreCase))
+        var adminEmail = configuration["Security:BootstrapAdminEmail"];
+        if (string.IsNullOrWhiteSpace(adminEmail))
         {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN Bio TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
+            adminEmail = "admin@local.pckg";
         }
 
-        if (!existingColumns.Contains("GitHubUrl", StringComparer.OrdinalIgnoreCase))
+        var adminPassword = configuration["Security:BootstrapAdminPassword"];
+        if (string.IsNullOrWhiteSpace(adminPassword))
         {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN GitHubUrl TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
+            adminPassword = "ChangeMe123!";
+            logger.LogWarning("Security:BootstrapAdminPassword not set. Using development default bootstrap password.");
         }
 
-        if (!existingColumns.Contains("WebsiteUrl", StringComparer.OrdinalIgnoreCase))
+        var adminUser = new ApplicationUser
         {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN WebsiteUrl TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
+            UserName = adminEmail,
+            Email = adminEmail,
+            EmailConfirmed = true,
+            DisplayName = "Administrator"
+        };
+
+        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+        if (!createResult.Succeeded)
+        {
+            var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to create bootstrap admin user: {errors}");
         }
 
-        if (!existingColumns.Contains("XUrl", StringComparer.OrdinalIgnoreCase))
+        var roleResult = await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
+        if (!roleResult.Succeeded)
         {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN XUrl TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
-        }
-
-        if (!existingColumns.Contains("ProfileImageUrl", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN ProfileImageUrl TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
-        }
-
-        if (!existingColumns.Contains("SocialLinksJson", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE AspNetUsers ADD COLUMN SocialLinksJson TEXT NOT NULL DEFAULT '';",
-                cancellationToken);
-        }
-
-        var users = await dbContext.Users.ToListAsync(cancellationToken);
-        var hasChanges = false;
-
-        foreach (var user in users)
-        {
-            var normalizedJson = ProfileSocialLinks.Serialize(ProfileSocialLinks.FromUser(user));
-            if (string.Equals(user.SocialLinksJson, normalizedJson, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            user.SocialLinksJson = normalizedJson;
-            hasChanges = true;
-        }
-
-        if (hasChanges)
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
+            var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to assign SuperAdmin role to bootstrap user: {errors}");
         }
     }
 
-    private async Task EnsurePackageSchemaAsync(CancellationToken cancellationToken)
-    {
-        var existingColumns = await dbContext.Database
-            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('Packages')")
-            .ToListAsync(cancellationToken);
-
-        if (!existingColumns.Contains("Category", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE Packages ADD COLUMN Category TEXT NOT NULL DEFAULT 'General';",
-                cancellationToken);
-        }
-
-        if (!existingColumns.Contains("IconUrl", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE Packages ADD COLUMN IconUrl TEXT NULL;",
-                cancellationToken);
-        }
-
-        if (!existingColumns.Contains("TotalDownloads", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE Packages ADD COLUMN TotalDownloads INTEGER NOT NULL DEFAULT 0;",
-                cancellationToken);
-        }
-    }
-
-    private async Task EnsurePackageVersionSchemaAsync(CancellationToken cancellationToken)
-    {
-        await dbContext.Database.ExecuteSqlRawAsync(
-            @"CREATE TABLE IF NOT EXISTS PackageVersions (
-                Id TEXT NOT NULL PRIMARY KEY,
-                PackageId TEXT NOT NULL,
-                Version TEXT NOT NULL,
-                ManifestJson TEXT NOT NULL,
-                ChecksumSha256 TEXT NOT NULL,
-                StorageKey TEXT NOT NULL,
-                ContentType TEXT NOT NULL,
-                SizeBytes INTEGER NOT NULL,
-                IsYanked INTEGER NOT NULL DEFAULT 0,
-                PublishedAtUtc TEXT NOT NULL,
-                YankedAtUtc TEXT NULL,
-                FOREIGN KEY(PackageId) REFERENCES Packages(Id) ON DELETE CASCADE
-            );",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE UNIQUE INDEX IF NOT EXISTS IX_PackageVersions_PackageId_Version ON PackageVersions(PackageId, Version);",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_PackageVersions_PublishedAtUtc ON PackageVersions(PublishedAtUtc);",
-            cancellationToken);
-    }
-
-    private async Task EnsurePackageTagSchemaAsync(CancellationToken cancellationToken)
-    {
-        await dbContext.Database.ExecuteSqlRawAsync(
-            @"CREATE TABLE IF NOT EXISTS PackageTags (
-                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                PackageId TEXT NOT NULL,
-                Tag TEXT NOT NULL,
-                CreatedAtUtc TEXT NOT NULL
-            );",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_PackageTags_PackageId ON PackageTags(PackageId);",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE INDEX IF NOT EXISTS IX_PackageTags_Tag ON PackageTags(Tag);",
-            cancellationToken);
-    }
-
-    private async Task EnsureTopicSchemaAsync(CancellationToken cancellationToken)
-    {
-        await dbContext.Database.ExecuteSqlRawAsync(
-            @"CREATE TABLE IF NOT EXISTS Topics (
-                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                Slug TEXT NOT NULL,
-                Description TEXT NULL,
-                CreatedByUserId TEXT NOT NULL,
-                BoardId INTEGER NOT NULL,
-                CreatedAtUtc TEXT NOT NULL
-            );",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE UNIQUE INDEX IF NOT EXISTS IX_Topics_Slug ON Topics(Slug);",
-            cancellationToken);
-
-        await dbContext.Database.ExecuteSqlRawAsync(
-            "CREATE UNIQUE INDEX IF NOT EXISTS IX_Topics_BoardId ON Topics(BoardId);",
-            cancellationToken);
-    }
-
-    private async Task EnsureUserRatingSchemaAsync(CancellationToken cancellationToken)
-    {
-        var existingColumns = await dbContext.Database
-            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('UserRatings')")
-            .ToListAsync(cancellationToken);
-
-        if (!existingColumns.Contains("KarmaPoints", StringComparer.OrdinalIgnoreCase))
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "ALTER TABLE UserRatings ADD COLUMN KarmaPoints INTEGER NOT NULL DEFAULT 0;",
-                cancellationToken);
-        }
-    }
 
     private async Task SeedExamplePackageAndTopicAsync(CancellationToken cancellationToken)
     {
@@ -287,90 +585,4 @@ public sealed class StartupSeeder(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-        private async Task EnsureNotificationsSchemaAsync(CancellationToken cancellationToken)
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE TABLE IF NOT EXISTS Notifications (
-                    Id TEXT NOT NULL PRIMARY KEY,
-                    UserId TEXT NOT NULL,
-                    Type INTEGER NOT NULL,
-                    Title TEXT NOT NULL,
-                    Message TEXT NULL,
-                    DataJson TEXT NULL,
-                    IsRead INTEGER NOT NULL DEFAULT 0,
-                    CreatedAtUtc TEXT NOT NULL
-                );",
-                cancellationToken);
-
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "CREATE INDEX IF NOT EXISTS IX_Notifications_UserId_IsRead_CreatedAtUtc ON Notifications(UserId, IsRead, CreatedAtUtc);",
-                cancellationToken);
-        }
-
-        private async Task EnsureNotificationPreferencesSchemaAsync(CancellationToken cancellationToken)
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE TABLE IF NOT EXISTS NotificationPreferences (
-                    Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    UserId TEXT NOT NULL,
-                    Type INTEGER NOT NULL,
-                    SendEmail INTEGER NOT NULL DEFAULT 0,
-                    IncludeInSpotlight INTEGER NOT NULL DEFAULT 0
-                );",
-                cancellationToken);
-
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "CREATE UNIQUE INDEX IF NOT EXISTS IX_NotificationPreferences_UserId_Type ON NotificationPreferences(UserId, Type);",
-                cancellationToken);
-        }
-
-        private async Task EnsureEmailSettingsSchemaAsync(CancellationToken cancellationToken)
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE TABLE IF NOT EXISTS EmailSettings (
-                    Id INTEGER NOT NULL PRIMARY KEY,
-                    SmtpHost TEXT NULL,
-                    SmtpPort INTEGER NOT NULL DEFAULT 587,
-                    EnableSsl INTEGER NOT NULL DEFAULT 1,
-                    Username TEXT NULL,
-                    Password TEXT NULL,
-                    FromEmail TEXT NOT NULL DEFAULT 'no-reply@beskid',
-                    FromName TEXT NOT NULL DEFAULT 'Beskid Pckg'
-                );",
-                cancellationToken);
-
-            // Ensure a single default row exists
-            await dbContext.Database.ExecuteSqlRawAsync(
-                "INSERT OR IGNORE INTO EmailSettings (Id) VALUES (1);",
-                cancellationToken);
-        }
-
-        private async Task EnsureFollowsSchemaAsync(CancellationToken cancellationToken)
-        {
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE TABLE IF NOT EXISTS PackageFollows (
-                    Id TEXT NOT NULL PRIMARY KEY,
-                    UserId TEXT NOT NULL,
-                    PackageId TEXT NOT NULL,
-                    CreatedAtUtc TEXT NOT NULL
-                );",
-                cancellationToken);
-
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE UNIQUE INDEX IF NOT EXISTS IX_PackageFollows_User_Package ON PackageFollows(UserId, PackageId);",
-                cancellationToken);
-
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE TABLE IF NOT EXISTS PublisherFollows (
-                    Id TEXT NOT NULL PRIMARY KEY,
-                    UserId TEXT NOT NULL,
-                    PublisherUserId TEXT NOT NULL,
-                    CreatedAtUtc TEXT NOT NULL
-                );",
-                cancellationToken);
-
-            await dbContext.Database.ExecuteSqlRawAsync(
-                @"CREATE UNIQUE INDEX IF NOT EXISTS IX_PublisherFollows_User_Publisher ON PublisherFollows(UserId, PublisherUserId);",
-                cancellationToken);
-        }
 }

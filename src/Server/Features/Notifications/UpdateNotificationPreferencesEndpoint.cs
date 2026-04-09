@@ -26,14 +26,25 @@ public sealed class UpdateNotificationPreferencesEndpoint : Endpoint<UpdateNotif
 
         foreach (var item in req.Items)
         {
+            var normalizedScopeId = item.Scope == NotificationPreferenceScope.None
+                ? string.Empty
+                : (item.ScopeId ?? string.Empty).Trim();
+
             var existing = await Db.NotificationPreferences
-                .FirstOrDefaultAsync(p => p.UserId == userId && p.Type == item.Type, ct);
+                .FirstOrDefaultAsync(p =>
+                    p.UserId == userId
+                    && p.Type == item.Type
+                    && p.Scope == item.Scope
+                    && p.ScopeId == normalizedScopeId,
+                    ct);
             if (existing is null)
             {
                 existing = new UserNotificationPreferenceEntity
                 {
                     UserId = userId,
                     Type = item.Type,
+                    Scope = item.Scope,
+                    ScopeId = normalizedScopeId,
                     SendEmail = item.SendEmail,
                     IncludeInSpotlight = item.IncludeInSpotlight
                 };
@@ -41,6 +52,8 @@ public sealed class UpdateNotificationPreferencesEndpoint : Endpoint<UpdateNotif
             }
             else
             {
+                existing.Scope = item.Scope;
+                existing.ScopeId = normalizedScopeId;
                 existing.SendEmail = item.SendEmail;
                 existing.IncludeInSpotlight = item.IncludeInSpotlight;
             }
@@ -60,6 +73,8 @@ public sealed class UpdateNotificationPreferencesRequest
 public sealed class PreferenceItem
 {
     public NotificationType Type { get; set; }
+    public NotificationPreferenceScope Scope { get; set; }
+    public string ScopeId { get; set; } = string.Empty;
     public bool SendEmail { get; set; }
     public bool IncludeInSpotlight { get; set; }
 }

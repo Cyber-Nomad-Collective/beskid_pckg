@@ -145,7 +145,10 @@ public sealed class UpsertPackageEndpoint(
             {
                 await notifier.PublishAsync(fid, NotificationType.PackageUpdated,
                     $"{entity.Name} details updated",
-                    $"{entity.Name} package information has been updated by the owner.", ct: ct);
+                    $"{entity.Name} package information has been updated by the owner.",
+                    preferenceScope: NotificationPreferenceScope.Package,
+                    preferenceScopeId: entity.Id.ToString(),
+                    ct: ct);
             }
         }
 

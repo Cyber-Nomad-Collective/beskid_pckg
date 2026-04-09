@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Server.Data;
 
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : IdentityDbContext<ApplicationUser>(options)
+    : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
 {
     public DbSet<ApiKeyEntity> ApiKeys => Set<ApiKeyEntity>();
     public DbSet<PackageEntity> Packages => Set<PackageEntity>();
@@ -28,6 +29,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<FollowPublisherEntity> PublisherFollows => Set<FollowPublisherEntity>();
     public DbSet<PackageTagEntity> PackageTags => Set<PackageTagEntity>();
     public DbSet<TopicEntity> Topics => Set<TopicEntity>();
+
+    /// <summary>ASP.NET Core Data Protection keys (antiforgery, auth cookies). Stored in PostgreSQL so Docker restarts and multiple replicas share one key ring.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

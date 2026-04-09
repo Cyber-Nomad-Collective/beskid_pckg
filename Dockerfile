@@ -30,7 +30,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-ENV ASPNETCORE_URLS=http://+:8082 \
+ENV HTTP_PORTS=8082 \
     Logging__LogLevel__Default=Information
 EXPOSE 8082
 

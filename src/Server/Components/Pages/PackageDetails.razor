@@ -13,200 +13,241 @@
 
 @if (Package is null)
 {
-    <FluentCard Class="section-card">
+    <div class="package-empty-state">
         <h1>Package not found</h1>
         <p>The package <strong>@PackageName</strong> does not exist yet.</p>
-    </FluentCard>
+    </div>
 }
 else
 {
-    <FluentCard Class="package-header section-card">
-        <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
-        <div style="flex:1;">
-            <h1>@Package.Name</h1>
-            <p>@Package.Description</p>
-            <p>
-                <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
-                <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
-            </p>
-        </div>
-        @if (IsAuthenticated)
-        {
-            <div>
-                <FluentButton Appearance="@(IsFollowing ? Appearance.Accent : Appearance.Outline)" OnClick="ToggleFollowAsync">
-                    @(IsFollowing ? "Following" : "Follow")
-                </FluentButton>
-            </div>
-        }
-    </FluentCard>
-
-    <FluentCard Class="section-card">
-        <FluentStack Orientation="Orientation.Horizontal" Wrap="true">
-            <FluentButton Appearance="@(ActiveTab == "versions" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "versions"'>Versions</FluentButton>
-            <FluentButton Appearance="@(ActiveTab == "dependencies" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "dependencies"'>Dependencies</FluentButton>
-            <FluentButton Appearance="@(ActiveTab == "dependents" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "dependents"'>Dependents</FluentButton>
-            <FluentButton Appearance="@(ActiveTab == "reviews" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "reviews"'>Reviews</FluentButton>
-            <FluentButton Appearance="@(ActiveTab == "voting" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "voting"'>Feature Voting</FluentButton>
-            <FluentButton Appearance="@(ActiveTab == "issues" ? Appearance.Accent : Appearance.Outline)" @onclick='() => ActiveTab = "issues"'>Issues</FluentButton>
-        </FluentStack>
-    </FluentCard>
-
-    @if (ActiveTab == "versions")
-    {
-        <FluentCard Class="section-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2>Versions</h2>
-            </div>
-            @if (Versions.Count == 0)
-            {
-                <p class="muted">No versions published yet.</p>
-            }
-            else
-            {
-                <FluentDataGrid TGridItem="PackageVersionSummaryResponse" Items="@Versions.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
-                    <ChildContent>
-                        <TemplateColumn Title="Version" Context="version">
-                            <strong>@version.Version</strong>
-                        </TemplateColumn>
-                        <TemplateColumn Title="Status" Context="version">
-                            @if (version.IsYanked)
-                            {
-                                <FluentBadge Appearance="Appearance.Neutral">Yanked</FluentBadge>
-                            }
-                            else
-                            {
-                                <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
-                            }
-                        </TemplateColumn>
-                        <TemplateColumn Title="Size" Context="version">
-                            @(FormatSize(version.SizeBytes))
-                        </TemplateColumn>
-                        <TemplateColumn Title="Published" Context="version">
-                            @version.PublishedAtUtc.ToString("u")
-                        </TemplateColumn>
-                        <TemplateColumn Title="Actions" Context="version">
-                            @if (CanManageVersions)
-                            {
-                                <FluentButton Appearance="Appearance.Stealth" 
-                                              IconStart="@(new Icons.Regular.Size16.Delete())" 
-                                              Title="Delete Version"
-                                              OnClick="@(() => DeleteVersionAsync(version))" />
-                            }
-                        </TemplateColumn>
-                    </ChildContent>
-                </FluentDataGrid>
-            }
-        </FluentCard>
-    }
-    else if (ActiveTab == "dependencies")
-    {
-        <FluentCard Class="section-card">
-            <h2>Dependencies</h2>
-            <p>No dependency metadata published yet.</p>
-        </FluentCard>
-    }
-    else if (ActiveTab == "dependents")
-    {
-        <FluentCard Class="section-card">
-            <h2>Dependents</h2>
-            <p>Dependent package analytics will appear after usage tracking is wired.</p>
-        </FluentCard>
-    }
-    else if (ActiveTab == "reviews")
-    {
-        <FluentCard Class="section-card">
-            <div class="reviews-header-row">
-                <h2>Community reviews</h2>
-                @if (IsAuthenticated)
-                {
-                    <FluentButton Appearance="Appearance.Accent" OnClick="OpenReviewDialogAsync" IconStart="@(new Icons.Regular.Size16.Edit())">Write review</FluentButton>
-                }
-            </div>
-
-            <div class="reviews-summary-card">
-                <div class="reviews-summary-score">
-                    <div class="reviews-score-value">@AverageReviewRating.ToString("0.0")</div>
-                    <FluentRatingPicker ReadOnly="true" Value="@(Convert.ToInt32(Math.Round(AverageReviewRating, MidpointRounding.AwayFromZero)))" />
-                    <div class="muted">@Reviews.Count review(s)</div>
-                </div>
-                <div class="reviews-distribution">
-                    @for (var rating = 5; rating >= 1; rating--)
+    <div class="package-page-shell">
+        <header class="package-header">
+            <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
+            <div class="package-hero-main">
+                <h1>@Package.Name</h1>
+                <p class="package-description">@Package.Description</p>
+                <div class="package-meta-badges">
+                    <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
+                    <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
+                    @if (HealthStatus is not null)
                     {
-                        var count = GetReviewCountFor(rating);
-                        var width = GetReviewDistributionPercent(rating);
-                        <div class="distribution-row">
-                            <span class="distribution-label">@rating</span>
-                            <div class="distribution-track">
-                                <div class="distribution-fill" style="width:@($"{width:0.##}%")"></div>
-                            </div>
-                            <span class="distribution-count">@count</span>
-                        </div>
+                        <FluentBadge Appearance="Appearance.Lightweight">Score @HealthPercent.ToString("0")%</FluentBadge>
                     }
                 </div>
             </div>
-
             @if (IsAuthenticated)
             {
-                <p class="muted">Your review is public and helps others choose reliable packages.</p>
+                <div class="package-hero-actions">
+                    <FluentButton Appearance="@(IsFollowing ? Appearance.Accent : Appearance.Outline)" OnClick="ToggleFollowAsync">
+                        @(IsFollowing ? "Following" : "Follow")
+                    </FluentButton>
+                </div>
             }
-            @foreach (var review in Reviews)
-            {
-                <FluentCard Class="review-entry-card">
-                    <div class="review-entry-head">
-                        <FluentRatingPicker ReadOnly="true" Value="review.Rating" />
-                        <span class="muted">@review.CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+        </header>
+
+        <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
+            <FluentTab Id="pkg-tab-versions" Label="Versions">
+                <div class="content-section package-tab-content">
+                    <div class="content-section-title-row">
+                        <h2>Versions</h2>
                     </div>
-                    <p>@review.Comment</p>
-                </FluentCard>
-            }
-        </FluentCard>
-    }
-    else if (ActiveTab == "voting")
-    {
-        <FluentCard Class="section-card">
-            <h2>Feature voting board</h2>
-            @if (PackageBoardId <= 0)
-            {
-                <p class="muted">Discussion board is not available yet.</p>
-            }
-            else
-            {
-                <BoardComponent BoardId="PackageBoardId"
-                                BoardName="Feature voting"
-                                BoardDescription="Request and vote on features for this package."
-                                IsLocked="IsPackageBoardLocked"
-                                FilterPostType="BoardPostType.FeatureRequest"
-                                ShowPostTypeSelector="false"
-                                DefaultPostType="BoardPostType.FeatureRequest"
-                                NewPostButtonText="New feature request"
-                                CreateDialogTitle="Create feature request"
-                                EmptyStateText="No feature requests yet. Be the first to suggest one."
-                                ViewDiscussionButtonText="View request" />
-            }
-        </FluentCard>
-    }
-    else
-    {
-        <FluentCard Class="section-card">
-            <h2>Issue board</h2>
-            @if (PackageBoardId <= 0)
-            {
-                <p class="muted">Discussion board is not available yet.</p>
-            }
-            else
-            {
-                <BoardComponent BoardId="PackageBoardId"
-                                BoardName="Issues"
-                                BoardDescription="Report bugs and discuss package problems with the community."
-                                IsLocked="IsPackageBoardLocked"
-                                FilterPostType="BoardPostType.Issue"
-                                ShowPostTypeSelector="false"
-                                DefaultPostType="BoardPostType.Issue"
-                                NewPostButtonText="Report issue"
-                                CreateDialogTitle="Report issue"
-                                EmptyStateText="No issues reported yet."
-                                ViewDiscussionButtonText="View issue" />
-            }
-        </FluentCard>
-    }
+                    @if (LatestVersion is not null)
+                    {
+                        <FluentCard Class="reviews-summary-card">
+                            <div class="summary-group-label">Latest artifact provenance</div>
+                            <div class="package-result-metrics">
+                                <span>Checksum: @LatestVersion.ChecksumSha256</span>
+                                <span>Published: @LatestVersion.PublishedAtUtc.ToString("u")</span>
+                                <span>Status: @(LatestVersion.IsYanked ? "Yanked" : "Active")</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(LatestReadme))
+                            {
+                                <p class="muted">Readme: @LatestReadme</p>
+                            }
+                        </FluentCard>
+                    }
+                    @if (Versions.Count == 0)
+                    {
+                        <p class="muted">No versions published yet.</p>
+                    }
+                    else
+                    {
+                        <FluentDataGrid TGridItem="PackageVersionSummaryResponse" Items="@Versions.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+                            <ChildContent>
+                                <TemplateColumn Title="Version" Context="version">
+                                    <strong>@version.Version</strong>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Status" Context="version">
+                                    @if (version.IsYanked)
+                                    {
+                                        <FluentBadge Appearance="Appearance.Neutral">Yanked</FluentBadge>
+                                    }
+                                    else
+                                    {
+                                        <FluentBadge Appearance="Appearance.Accent">Active</FluentBadge>
+                                    }
+                                </TemplateColumn>
+                                <TemplateColumn Title="Size" Context="version">
+                                    @(FormatSize(version.SizeBytes))
+                                </TemplateColumn>
+                                <TemplateColumn Title="Published" Context="version">
+                                    @version.PublishedAtUtc.ToString("u")
+                                </TemplateColumn>
+                                <TemplateColumn Title="Actions" Context="version">
+                                    @if (CanManageVersions)
+                                    {
+                                        <FluentButton Appearance="Appearance.Stealth"
+                                                      Title="@(version.IsYanked ? "Unyank version" : "Yank version")"
+                                                      OnClick="@(() => ToggleYankVersionAsync(version))">
+                                            @(version.IsYanked ? "Unyank" : "Yank")
+                                        </FluentButton>
+                                    }
+                                </TemplateColumn>
+                            </ChildContent>
+                        </FluentDataGrid>
+                    }
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-dependencies" Label="Dependencies">
+                <div class="content-section package-tab-content">
+                    <h2>Dependencies</h2>
+                    @if (Dependencies.Count == 0)
+                    {
+                        <p>No dependency metadata published yet.</p>
+                    }
+                    else
+                    {
+                        <FluentDataGrid TGridItem="PackageDependencyResponse" Items="@Dependencies.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+                            <ChildContent>
+                                <PropertyColumn Property="@(x => x.Name)" Title="Package" />
+                                <PropertyColumn Property="@(x => x.Version)" Title="Version" />
+                                <PropertyColumn Property="@(x => x.Source)" Title="Source" />
+                                <PropertyColumn Property="@(x => x.Registry)" Title="Registry" />
+                            </ChildContent>
+                        </FluentDataGrid>
+                    }
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-dependents" Label="Dependents">
+                <div class="content-section package-tab-content">
+                    <h2>Dependents</h2>
+                    <p>
+                        This package currently has <strong>@DependentsCount</strong> dependent package(s)
+                        based on latest published manifests.
+                    </p>
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-ratings" Label="Ratings">
+                <div class="content-section package-tab-content">
+                    <div class="reviews-header-row">
+                        <h2>Ratings & quality</h2>
+                        @if (IsAuthenticated)
+                        {
+                            <FluentButton Appearance="Appearance.Accent" OnClick="OpenReviewDialogAsync" IconStart="@(new Icons.Regular.Size16.Edit())">Write review</FluentButton>
+                        }
+                    </div>
+
+                    <div class="reviews-summary-card">
+                        <div class="reviews-summary-score">
+                            <div class="summary-group-label">Quality score</div>
+                            <div class="reviews-score-value">@HealthPercent.ToString("0")%</div>
+                            <FluentRatingPicker ReadOnly="true" Value="HealthStars" />
+                            @if (HealthStatus is not null)
+                            {
+                                <div class="muted">@HealthStatus.State • @HealthStatus.SubState</div>
+                            }
+                            <div class="muted">@Reviews.Count review(s)</div>
+                        </div>
+
+                        <div class="reviews-distribution">
+                            <div class="summary-group-label">Review distribution</div>
+                            @for (var rating = 5; rating >= 1; rating--)
+                            {
+                                var count = GetReviewCountFor(rating);
+                                var width = GetReviewDistributionPercent(rating);
+                                <div class="distribution-row">
+                                    <span class="distribution-label">@rating</span>
+                                    <div class="distribution-track">
+                                        <div class="distribution-fill" style="width:@($"{width:0.##}%")"></div>
+                                    </div>
+                                    <span class="distribution-count">@count</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (HealthStatus is not null)
+                    {
+                        <div class="quality-breakdown-card">
+                            <div class="summary-group-label">Score decomposition</div>
+
+                            <div class="quality-row">
+                                <div class="quality-row-head">
+                                    <span>Update cadence</span>
+                                    <span class="muted">@((HealthStatus.UpdateRate.Normalized * 100d).ToString("0"))% · w @HealthStatus.UpdateRate.Weight.ToString("0.00")</span>
+                                </div>
+                                <div class="distribution-track"><div class="distribution-fill" style="width:@($"{HealthStatus.UpdateRate.Normalized * 100d:0.##}%")"></div></div>
+                            </div>
+
+                            <div class="quality-row">
+                                <div class="quality-row-head">
+                                    <span>Downloads momentum</span>
+                                    <span class="muted">@((HealthStatus.Downloads.Normalized * 100d).ToString("0"))% · w @HealthStatus.Downloads.Weight.ToString("0.00")</span>
+                                </div>
+                                <div class="distribution-track"><div class="distribution-fill" style="width:@($"{HealthStatus.Downloads.Normalized * 100d:0.##}%")"></div></div>
+                            </div>
+
+                            <div class="quality-row">
+                                <div class="quality-row-head">
+                                    <span>Review confidence</span>
+                                    <span class="muted">@((HealthStatus.Reviews.Normalized * 100d).ToString("0"))% · w @HealthStatus.Reviews.Weight.ToString("0.00")</span>
+                                </div>
+                                <div class="distribution-track"><div class="distribution-fill" style="width:@($"{HealthStatus.Reviews.Normalized * 100d:0.##}%")"></div></div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (IsAuthenticated)
+                    {
+                        <p class="muted">Your review is public and helps others choose reliable packages.</p>
+                    }
+                    @foreach (var review in Reviews)
+                    {
+                        <FluentCard Class="review-entry-card">
+                            <div class="review-entry-head">
+                                <FluentRatingPicker ReadOnly="true" Value="review.Rating" />
+                                <span class="muted">@review.CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+                            </div>
+                            <div class="review-entry-body">@RenderReviewHtml(review.Comment)</div>
+                        </FluentCard>
+                    }
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-community" Label="Community">
+                <div class="content-section package-tab-content">
+                    <h2>Community board</h2>
+                    @if (PackageBoardId <= 0)
+                    {
+                        <p class="muted">Discussion board is not available yet.</p>
+                    }
+                    else
+                    {
+                        <BoardComponent BoardId="PackageBoardId"
+                                        BoardName="Community"
+                                        BoardDescription="Report issues, request features, and discuss this package with the community."
+                                        IsLocked="IsPackageBoardLocked"
+                                        ShowPostTypeSelector="true"
+                                        DefaultPostType="BoardPostType.Issue"
+                                        NewPostButtonText="New thread"
+                                        EmptyStateText="No threads yet. Start the first discussion for this package."
+                                        ViewDiscussionButtonText="Open thread" />
+                    }
+                </div>
+            </FluentTab>
+        </FluentTabs>
+    </div>
 }

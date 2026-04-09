@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Server.Components.Shared;
+using Server.Data;
 using Server.Features.Users;
 using System.Net.Http.Json;
 
@@ -326,10 +327,13 @@ public partial class Profile
 
     private readonly List<NotifPrefItem> NotificationPrefs =
     [
-        new() { Type =  (int)Server.Data.NotificationType.PackageUpdated, Label = "Package updated" },
-        new() { Type =  (int)Server.Data.NotificationType.PackagePublished, Label = "Package published" },
-        new() { Type =  (int)Server.Data.NotificationType.PackageFollowedPublisherUpdate, Label = "Followed publisher update" }
+        new() { Type = NotificationType.PackageUpdated, Label = "Package updated" },
+        new() { Type = NotificationType.PackagePublished, Label = "Package published" },
+        new() { Type = NotificationType.PackageFollowedPublisherUpdate, Label = "Followed publisher update" },
+        new() { Type = NotificationType.BoardThreadActivity, Label = "Board thread activity" }
     ];
+    private readonly List<ScopedNotifPrefItem> PackageScopedPrefs = [];
+    private readonly List<ScopedNotifPrefItem> ThreadScopedPrefs = [];
 
     private async Task LoadNotificationPrefsAsync()
     {
@@ -339,14 +343,51 @@ public partial class Profile
             if (!resp.IsSuccessStatusCode) return;
             var payload = await resp.Content.ReadFromJsonAsync<GetNotificationPreferencesResponse>();
             if (payload is null) return;
+
             foreach (var item in NotificationPrefs)
             {
-                var match = payload.Items.FirstOrDefault(p => (int)p.Type == item.Type);
+                var match = payload.Items.FirstOrDefault(p => p.Type == item.Type && p.Scope == NotificationPreferenceScope.None);
                 if (match is not null)
                 {
                     item.SendEmail = match.SendEmail;
                     item.IncludeInSpotlight = match.IncludeInSpotlight;
                 }
+            }
+
+            PackageScopedPrefs.Clear();
+            foreach (var target in payload.FollowedPackages)
+            {
+                var sendEmail = payload.Items.Any(p =>
+                    p.Scope == NotificationPreferenceScope.Package
+                    && p.ScopeId == target.ScopeId
+                    && (p.Type == NotificationType.PackageUpdated || p.Type == NotificationType.PackagePublished)
+                    && p.SendEmail);
+
+                PackageScopedPrefs.Add(new ScopedNotifPrefItem
+                {
+                    Scope = NotificationPreferenceScope.Package,
+                    ScopeId = target.ScopeId,
+                    Label = target.Label,
+                    SendEmail = sendEmail
+                });
+            }
+
+            ThreadScopedPrefs.Clear();
+            foreach (var target in payload.FollowedThreads)
+            {
+                var sendEmail = payload.Items.Any(p =>
+                    p.Scope == NotificationPreferenceScope.Thread
+                    && p.ScopeId == target.ScopeId
+                    && p.Type == NotificationType.BoardThreadActivity
+                    && p.SendEmail);
+
+                ThreadScopedPrefs.Add(new ScopedNotifPrefItem
+                {
+                    Scope = NotificationPreferenceScope.Thread,
+                    ScopeId = target.ScopeId,
+                    Label = target.Label,
+                    SendEmail = sendEmail
+                });
             }
         }
         catch { }
@@ -362,9 +403,39 @@ public partial class Profile
                 Items = NotificationPrefs.Select(p => new PreferenceItem
                 {
                     Type = p.Type,
+                    Scope = NotificationPreferenceScope.None,
+                    ScopeId = string.Empty,
                     SendEmail = p.SendEmail,
                     IncludeInSpotlight = p.IncludeInSpotlight
-                }).ToList()
+                })
+                .Concat(PackageScopedPrefs.SelectMany(p => new[]
+                {
+                    new PreferenceItem
+                    {
+                        Type = NotificationType.PackageUpdated,
+                        Scope = NotificationPreferenceScope.Package,
+                        ScopeId = p.ScopeId,
+                        SendEmail = p.SendEmail,
+                        IncludeInSpotlight = false
+                    },
+                    new PreferenceItem
+                    {
+                        Type = NotificationType.PackagePublished,
+                        Scope = NotificationPreferenceScope.Package,
+                        ScopeId = p.ScopeId,
+                        SendEmail = p.SendEmail,
+                        IncludeInSpotlight = false
+                    }
+                }))
+                .Concat(ThreadScopedPrefs.Select(p => new PreferenceItem
+                {
+                    Type = NotificationType.BoardThreadActivity,
+                    Scope = NotificationPreferenceScope.Thread,
+                    ScopeId = p.ScopeId,
+                    SendEmail = p.SendEmail,
+                    IncludeInSpotlight = false
+                }))
+                .ToList()
             };
             await ApiHttp.PostAsJsonAsync("/api/users/notification-preferences", req);
             SetFeedback("Notification preferences saved.", false);
@@ -380,22 +451,40 @@ public partial class Profile
 
     private sealed class NotifPrefItem
     {
-        public int Type { get; set; }
+        public NotificationType Type { get; set; }
         public string Label { get; set; } = string.Empty;
         public bool SendEmail { get; set; }
         public bool IncludeInSpotlight { get; set; }
     }
 
+    private sealed class ScopedNotifPrefItem
+    {
+        public NotificationPreferenceScope Scope { get; set; }
+        public string ScopeId { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public bool SendEmail { get; set; }
+    }
+
     private sealed class GetNotificationPreferencesResponse
     {
         public List<NotificationPreferenceDto> Items { get; set; } = new();
+        public List<ScopedNotificationTargetDto> FollowedPackages { get; set; } = new();
+        public List<ScopedNotificationTargetDto> FollowedThreads { get; set; } = new();
     }
 
     private sealed class NotificationPreferenceDto
     {
-        public int Type { get; set; }
+        public NotificationType Type { get; set; }
+        public NotificationPreferenceScope Scope { get; set; }
+        public string ScopeId { get; set; } = string.Empty;
         public bool SendEmail { get; set; }
         public bool IncludeInSpotlight { get; set; }
+    }
+
+    private sealed class ScopedNotificationTargetDto
+    {
+        public string ScopeId { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
     }
 
     private sealed class UpdateNotificationPreferencesRequest
@@ -405,7 +494,9 @@ public partial class Profile
 
     private sealed class PreferenceItem
     {
-        public int Type { get; set; }
+        public NotificationType Type { get; set; }
+        public NotificationPreferenceScope Scope { get; set; }
+        public string ScopeId { get; set; } = string.Empty;
         public bool SendEmail { get; set; }
         public bool IncludeInSpotlight { get; set; }
     }

@@ -30,9 +30,11 @@ public sealed class ListReviewQueueEndpoint(
             return;
         }
 
+        var isSuperAdmin = User.IsInRole("SuperAdmin");
+
         var query = from review in dbContext.PackageReviews.AsNoTracking()
                     join package in dbContext.Packages.AsNoTracking() on review.PackageId equals package.Id
-                    where package.OwnerUserId == userId
+                    where isSuperAdmin || package.OwnerUserId == userId
                     orderby review.SubmittedAtUtc descending
                     select new PackageReviewResponse(
                         review.Id,

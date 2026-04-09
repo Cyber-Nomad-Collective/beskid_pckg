@@ -57,7 +57,8 @@ public sealed class ReviewActionEndpoint(
             return;
         }
 
-        if (review.Package is null || review.Package.OwnerUserId != userId)
+        var isSuperAdmin = User.IsInRole("SuperAdmin");
+        if (review.Package is null || (!isSuperAdmin && review.Package.OwnerUserId != userId))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
             await Send.OkAsync(new ReviewActionResponse(false, "You cannot modify this review.", null), ct);

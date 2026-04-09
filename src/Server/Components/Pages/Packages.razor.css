@@ -6,6 +6,17 @@
 .package-browse-hero {
     display: grid;
     gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+}
+
+.package-browse-header {
+    display: grid;
+    gap: 6px;
+}
+
+.package-browse-header h1 {
+    margin: 0;
 }
 
 .search-shell {

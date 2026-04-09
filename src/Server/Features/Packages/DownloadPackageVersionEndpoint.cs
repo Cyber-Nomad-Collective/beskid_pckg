@@ -8,12 +8,14 @@ namespace Server.Features.Packages;
 public sealed class DownloadPackageVersionEndpoint(
     ApplicationDbContext dbContext,
     IApiPrincipalResolver principalResolver,
-    IPackageArtifactStore artifactStore)
+    IPackageArtifactStore artifactStore,
+    ILogger<DownloadPackageVersionEndpoint> logger)
     : EndpointWithoutRequest
 {
     public override void Configure()
     {
         Get("/packages/{PackageName}/versions/{Version}/download");
+        Options(x => x.RequireRateLimiting("download"));
         AllowAnonymous();
         Summary(s => s.Summary = "Download package artifact by version.");
     }
@@ -24,14 +26,14 @@ public sealed class DownloadPackageVersionEndpoint(
         var version = Route<string>("Version")?.Trim();
         if (string.IsNullOrWhiteSpace(packageName) || string.IsNullOrWhiteSpace(version))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Send.NotFoundAsync(ct);
             return;
         }
 
         var package = await dbContext.Packages.SingleOrDefaultAsync(x => x.Name == packageName, ct);
         if (package is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            await Send.NotFoundAsync(ct);
             return;
         }
 
@@ -40,7 +42,7 @@ public sealed class DownloadPackageVersionEndpoint(
             var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
             if (string.IsNullOrWhiteSpace(userId) || userId != package.OwnerUserId)
             {
-                HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await Send.NotFoundAsync(ct);
                 return;
             }
         }
@@ -51,7 +53,7 @@ public sealed class DownloadPackageVersionEndpoint(
 
         if (packageVersion is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            await Send.NotFoundAsync(ct);
             return;
         }
 
@@ -65,13 +67,17 @@ public sealed class DownloadPackageVersionEndpoint(
         var artifact = await artifactStore.OpenReadAsync(packageVersion.StorageKey, ct);
         if (artifact is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            await Send.NotFoundAsync(ct);
             return;
         }
 
         package.TotalDownloads += 1;
         package.UpdatedAtUtc = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(ct);
+        logger.LogInformation(
+            "Downloaded package {PackageName} version {Version}.",
+            package.Name,
+            packageVersion.Version);
 
         HttpContext.Response.ContentType = artifact.Value.ContentType;
         HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{package.Name}-{packageVersion.Version}.bpk\"";

@@ -50,28 +50,32 @@
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-section">
                         <div class="profile-avatar-upload @(IsSaving || IsUploadingImage ? "is-disabled" : "")">
-                            <label class="profile-avatar-upload-trigger" aria-label="Upload profile photo">
-                                @if (!string.IsNullOrWhiteSpace(ProfileImageSrc))
-                                {
-                                    <img src="@ProfileImageSrc" alt="Profile image" class="profile-avatar" />
-                                }
-                                else
-                                {
-                                    <div class="profile-avatar profile-avatar-placeholder">
-                                        <FluentIcon Value="@(new Icons.Regular.Size48.Person())" Color="Color.Neutral" />
-                                    </div>
-                                }
+                            <UploadDropzone TriggerClass="profile-avatar-upload-trigger"
+                                            AriaLabel="Upload profile photo"
+                                            Accept="image/png,image/jpeg,image/webp,image/gif"
+                                            Disabled="@(IsSaving || IsUploadingImage)"
+                                            Mode="UploadDropzone.UploadDropzoneMode.Invisible"
+                                            HideMeta="true"
+                                            ShowSelectedFileName="false"
+                                            OnFilesSelected="UploadProfileImageAsync">
+                                <TriggerContent>
+                                    @if (!string.IsNullOrWhiteSpace(ProfileImageSrc))
+                                    {
+                                        <img src="@ProfileImageSrc" alt="Profile image" class="profile-avatar" />
+                                    }
+                                    else
+                                    {
+                                        <div class="profile-avatar profile-avatar-placeholder">
+                                            <FluentIcon Value="@(new Icons.Regular.Size48.Person())" Color="Color.Neutral" />
+                                        </div>
+                                    }
 
-                                <span class="profile-avatar-overlay">
-                                    <FluentIcon Value="@(new Icons.Regular.Size24.Camera())" Color="Color.Fill" />
-                                    <span>Change photo</span>
-                                </span>
-
-                                <InputFile OnChange="UploadProfileImageAsync"
-                                           class="profile-avatar-input"
-                                           accept="image/png,image/jpeg,image/webp,image/gif"
-                                           disabled="@(IsSaving || IsUploadingImage)" />
-                            </label>
+                                    <span class="profile-avatar-overlay">
+                                        <FluentIcon Value="@(new Icons.Regular.Size24.Camera())" Color="Color.Fill" />
+                                        <span>Change photo</span>
+                                    </span>
+                                </TriggerContent>
+                            </UploadDropzone>
                         </div>
                         <div class="profile-avatar-info">
                             @if (IsUploadingImage)
@@ -176,18 +180,56 @@
                     <section class="settings-section">
                         <header class="settings-section-header">
                             <h2>Notification preferences</h2>
-                            <p class="muted">Choose how you'd like to receive notifications.</p>
+                            <p class="muted">Choose global rules and granular email overrides for followed packages and active threads.</p>
                         </header>
                         <div class="settings-section-content">
-                            <FluentStack Orientation="Orientation.Vertical" Gap="10px">
+                            <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+                                <h3 class="notif-subheader">Global defaults</h3>
                                 @foreach (var pref in NotificationPrefs)
                                 {
-                                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
-                                        <div style="width: 220px;">@pref.Label</div>
+                                    <FluentStack Orientation="Orientation.Horizontal" Gap="10px" VerticalAlignment="VerticalAlignment.Center" Class="notif-global-row" Wrap="true">
+                                        <div class="notif-label">@pref.Label</div>
                                         <FluentCheckbox Label="Email" Checked="@pref.SendEmail" CheckedChanged="@((bool v) => ToggleEmail(pref, v))" />
                                         <FluentCheckbox Label="Weekly spotlight" Checked="@pref.IncludeInSpotlight" CheckedChanged="@((bool v) => ToggleSpotlight(pref, v))" />
                                     </FluentStack>
                                 }
+
+                                <h3 class="notif-subheader">Per followed package (email override)</h3>
+                                @if (PackageScopedPrefs.Count == 0)
+                                {
+                                    <p class="muted">No followed packages yet. Follow packages to configure package-specific email preferences.</p>
+                                }
+                                else
+                                {
+                                    <div class="notif-scoped-grid">
+                                        @foreach (var pref in PackageScopedPrefs)
+                                        {
+                                            <div class="notif-scoped-item">
+                                                <span class="notif-scoped-label">@pref.Label</span>
+                                                <FluentCheckbox Label="Email" Checked="@pref.SendEmail" CheckedChanged="@((bool v) => pref.SendEmail = v)" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <h3 class="notif-subheader">Per thread (email override)</h3>
+                                @if (ThreadScopedPrefs.Count == 0)
+                                {
+                                    <p class="muted">No active threads found yet. Reply in threads to manage per-thread email notifications.</p>
+                                }
+                                else
+                                {
+                                    <div class="notif-scoped-grid">
+                                        @foreach (var pref in ThreadScopedPrefs)
+                                        {
+                                            <div class="notif-scoped-item">
+                                                <span class="notif-scoped-label">@pref.Label</span>
+                                                <FluentCheckbox Label="Email" Checked="@pref.SendEmail" CheckedChanged="@((bool v) => pref.SendEmail = v)" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
                                 <FluentButton Appearance="Appearance.Outline" Disabled="@IsSaving" OnClick="SaveNotificationPrefsAsync">Save preferences</FluentButton>
                             </FluentStack>
                         </div>

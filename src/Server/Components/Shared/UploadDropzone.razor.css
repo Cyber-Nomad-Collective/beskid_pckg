@@ -1,0 +1,100 @@
+.upload-dropzone {
+    display: grid;
+    gap: 8px;
+}
+
+.upload-dropzone.is-disabled {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+.upload-dropzone-label {
+    margin-bottom: 2px;
+}
+
+.upload-dropzone-trigger {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.upload-dropzone-surface {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px dashed color-mix(in oklab, var(--accent-fill-rest) 45%, var(--neutral-stroke-rest));
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--accent-fill-rest) 9%, var(--neutral-fill-layer-rest)),
+        color-mix(in oklab, var(--accent-fill-rest) 4%, var(--neutral-fill-layer-rest))
+    );
+    color: var(--neutral-foreground-rest);
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--accent-fill-rest) 16%, transparent);
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.upload-dropzone-trigger:hover .upload-dropzone-surface,
+.upload-dropzone-trigger:focus-within .upload-dropzone-surface {
+    border-color: var(--accent-stroke-control-hover);
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--accent-fill-rest) 14%, var(--neutral-fill-layer-rest)),
+        color-mix(in oklab, var(--accent-fill-rest) 8%, var(--neutral-fill-layer-rest))
+    );
+    box-shadow: 0 6px 18px color-mix(in oklab, var(--accent-fill-rest) 20%, transparent);
+    transform: translateY(-1px);
+}
+
+.upload-dropzone-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in oklab, var(--accent-fill-rest) 24%, transparent);
+    color: var(--accent-foreground-rest);
+}
+
+.upload-dropzone-text {
+    display: grid;
+    gap: 2px;
+}
+
+.upload-dropzone-primary {
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.upload-dropzone-secondary {
+    font-size: 0.88rem;
+    line-height: 1.2;
+}
+
+.upload-dropzone-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-dropzone-trigger.is-invisible-trigger {
+    border: 0;
+    padding: 0;
+    background: none;
+}
+
+.upload-dropzone-mode-invisible .upload-dropzone-meta {
+    margin-top: 2px;
+}
+
+.upload-dropzone-meta {
+    min-height: 1rem;
+}
+
+.upload-dropzone-selected {
+    font-size: 0.88rem;
+    color: var(--neutral-foreground-rest);
+}

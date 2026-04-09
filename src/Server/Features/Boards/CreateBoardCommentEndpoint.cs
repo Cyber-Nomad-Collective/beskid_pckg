@@ -1,5 +1,7 @@
 using FastEndpoints;
+using Microsoft.EntityFrameworkCore;
 using Server.Services;
+using Server.Services.Notifications;
 using System.Security.Claims;
 using Server.Data;
 
@@ -9,6 +11,7 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
 {
     public ApplicationDbContext Db { get; set; } = default!;
     public IUserRatingService RatingService { get; set; } = default!;
+    public INotificationService Notifications { get; set; } = default!;
 
     public override void Configure()
     {
@@ -57,6 +60,31 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
         await Db.SaveChangesAsync(ct);
 
         await RatingService.IncrementBoardActivityAsync(userId, isPost: false);
+
+        var participantIds = await Db.BoardPostComments
+            .AsNoTracking()
+            .Where(c => c.PostId == postId && !c.IsDeleted)
+            .Select(c => c.AuthorUserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var targetUserIds = participantIds
+            .Append(post.AuthorUserId)
+            .Where(id => !string.Equals(id, userId, StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var targetUserId in targetUserIds)
+        {
+            await Notifications.PublishAsync(
+                targetUserId,
+                NotificationType.BoardThreadActivity,
+                $"New reply in: {post.Title}",
+                "Someone replied in a thread you participated in.",
+                preferenceScope: NotificationPreferenceScope.Thread,
+                preferenceScopeId: postId.ToString(),
+                ct: ct);
+        }
 
         await Send.OkAsync(new CreateBoardCommentResponse(true, "Comment created successfully.", comment.Id), ct);
     }

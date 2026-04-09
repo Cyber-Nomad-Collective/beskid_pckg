@@ -8,21 +8,16 @@ namespace Server.Tests.Unit;
 
 public class ApiPrincipalResolverTests : IAsyncDisposable
 {
-    private readonly string _dbPath;
     private readonly ApplicationDbContext _dbContext;
     private readonly IPasswordHasher<ApiKeyEntity> _hasher = new PasswordHasher<ApiKeyEntity>();
 
     public ApiPrincipalResolverTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), "pckg_resolver_tests", $"{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
-
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite($"Data Source={_dbPath}")
+            .UseInMemoryDatabase($"pckg_resolver_tests_{Guid.NewGuid():N}")
             .Options;
 
         _dbContext = new ApplicationDbContext(options);
-        _dbContext.Database.EnsureCreated();
     }
 
     [Fact]
@@ -83,9 +78,5 @@ public class ApiPrincipalResolverTests : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _dbContext.DisposeAsync();
-        if (File.Exists(_dbPath))
-        {
-            File.Delete(_dbPath);
-        }
     }
 }

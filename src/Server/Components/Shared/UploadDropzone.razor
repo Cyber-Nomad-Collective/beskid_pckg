@@ -1,0 +1,52 @@
+<div class="@RootClass">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="fluent-label upload-dropzone-label">@Label</label>
+    }
+
+    <label class="@TriggerClassValue" aria-label="@AriaLabel">
+        @if (TriggerContent is not null)
+        {
+            @TriggerContent
+        }
+        else if (Mode == UploadDropzoneMode.Fluent)
+        {
+            <div class="upload-dropzone-surface">
+                <div class="upload-dropzone-icon">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUpload())" />
+                </div>
+                <div class="upload-dropzone-text">
+                    <span class="upload-dropzone-primary">@PrimaryText</span>
+                    @if (!string.IsNullOrWhiteSpace(SecondaryText))
+                    {
+                        <span class="upload-dropzone-secondary">@SecondaryText</span>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            @TriggerContent
+        }
+
+        <InputFile class="upload-dropzone-input"
+                   OnChange="HandleFilesSelectedAsync"
+                   accept="@Accept"
+                   disabled="@Disabled"
+                   multiple="@AllowMultiple" />
+    </label>
+
+    @if (!HideMeta && (ShowSelectedFileName || !string.IsNullOrWhiteSpace(HintText)))
+    {
+        <div class="upload-dropzone-meta">
+            @if (ShowSelectedFileName && !string.IsNullOrWhiteSpace(SelectedFileName))
+            {
+                <span class="upload-dropzone-selected">Selected: @SelectedFileName</span>
+            }
+            else if (!string.IsNullOrWhiteSpace(HintText))
+            {
+                <span class="muted">@HintText</span>
+            }
+        </div>
+    }
+</div>

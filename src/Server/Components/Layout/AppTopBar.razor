@@ -23,7 +23,9 @@
 
                 <AuthorizeView>
                     <Authorized>
-                        <NotificationButton UnreadCount="NotificationUnreadCount" OnClick="ToggleNotificationCenter" />
+                        <NotificationButton UnreadCount="NotificationUnreadCount"
+                                            IsOpen="IsNotificationCenterOpen"
+                                            OnClick="ToggleNotificationCenter" />
                     </Authorized>
                 </AuthorizeView>
 

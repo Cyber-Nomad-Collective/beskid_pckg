@@ -1,0 +1,248 @@
+.themed-rte {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    /* Fluent-aligned semantic aliases for consistent contrast in dark surfaces */
+    --rte-surface: color-mix(in oklab, var(--neutral-fill-layer-rest) 92%, var(--neutral-fill-stealth-rest));
+    --rte-surface-subtle: color-mix(in oklab, var(--neutral-fill-layer-rest) 78%, var(--neutral-fill-stealth-rest));
+    --rte-stroke: color-mix(in oklab, var(--neutral-stroke-rest) 84%, transparent);
+    --rte-text: var(--neutral-foreground-rest);
+    --rte-text-muted: color-mix(in oklab, var(--neutral-foreground-rest) 70%, var(--neutral-foreground-hint) 30%);
+    --rte-accent-soft: color-mix(in oklab, var(--accent-fill-rest) 18%, transparent);
+}
+
+.themed-rte-label {
+    margin-bottom: 0;
+}
+
+.themed-rte-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--rte-text-muted);
+}
+
+/* --- Toolbar: strip Quill Snow defaults, match Fluent surfaces --- */
+::deep .themed-rte .ql-toolbar.ql-snow {
+    border: 1px solid var(--rte-stroke);
+    border-bottom: 1px solid color-mix(in oklab, var(--rte-stroke) 72%, var(--neutral-stroke-divider-rest));
+    border-radius: 10px 10px 0 0;
+    background: var(--rte-surface-subtle);
+    padding: 8px 10px;
+    font-family: inherit;
+}
+
+::deep .themed-rte .ql-toolbar.ql-snow .ql-formats {
+    margin-right: 12px;
+}
+
+::deep .themed-rte .ql-toolbar.ql-snow .ql-formats:not(:last-child) {
+    padding-right: 12px;
+    border-right: 1px solid var(--neutral-stroke-divider-rest);
+}
+
+::deep .themed-rte-toolbar {
+    border: 1px solid var(--rte-stroke);
+    border-radius: 10px 10px 0 0;
+    background: var(--rte-surface-subtle);
+}
+
+::deep .themed-rte-editor {
+    min-height: 190px;
+    border: 1px solid var(--rte-stroke);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: var(--rte-surface);
+    color: var(--rte-text);
+}
+
+::deep .themed-rte .ql-container.ql-snow {
+    border: none;
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+::deep .themed-rte .ql-container {
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+::deep .themed-rte .ql-editor {
+    min-height: 190px;
+    padding: 14px 16px 18px;
+    line-height: 1.65;
+    color: var(--rte-text);
+    letter-spacing: 0.005em;
+}
+
+::deep .themed-rte .ql-editor p,
+::deep .themed-rte .ql-editor ol,
+::deep .themed-rte .ql-editor ul,
+::deep .themed-rte .ql-editor pre {
+    margin: 0 0 0.65em;
+}
+
+::deep .themed-rte .ql-editor p:last-child,
+::deep .themed-rte .ql-editor ol:last-child,
+::deep .themed-rte .ql-editor ul:last-child,
+::deep .themed-rte .ql-editor pre:last-child {
+    margin-bottom: 0;
+}
+
+::deep .themed-rte .ql-editor h1,
+::deep .themed-rte .ql-editor h2,
+::deep .themed-rte .ql-editor h3 {
+    color: var(--rte-text);
+    font-weight: 650;
+    line-height: 1.3;
+    margin: 0.85em 0 0.4em;
+}
+
+::deep .themed-rte .ql-editor h1:first-child,
+::deep .themed-rte .ql-editor h2:first-child,
+::deep .themed-rte .ql-editor h3:first-child {
+    margin-top: 0;
+}
+
+::deep .themed-rte .ql-editor h1 {
+    font-size: 1.35rem;
+}
+
+::deep .themed-rte .ql-editor h2 {
+    font-size: 1.2rem;
+}
+
+::deep .themed-rte .ql-editor h3 {
+    font-size: 1.05rem;
+}
+
+::deep .themed-rte .ql-editor a {
+    color: var(--accent-foreground-rest);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+::deep .themed-rte .ql-editor a:hover {
+    color: var(--accent-foreground-hover, var(--accent-foreground-rest));
+}
+
+::deep .themed-rte .ql-editor blockquote {
+    border-left: 3px solid var(--accent-fill-rest);
+    margin: 0.65em 0;
+    padding: 6px 0 6px 14px;
+    color: var(--rte-text-muted);
+    font-style: normal;
+}
+
+::deep .themed-rte .ql-editor code,
+::deep .themed-rte .ql-editor .ql-code-block-container {
+    font-family: 'Cascadia Code', 'Fira Code', ui-monospace, monospace;
+    font-size: 0.9em;
+}
+
+::deep .themed-rte .ql-editor :not(pre) > code {
+    background: var(--rte-surface-subtle);
+    padding: 0.15em 0.45em;
+    border-radius: 5px;
+    border: 1px solid color-mix(in oklab, var(--rte-stroke) 78%, transparent);
+}
+
+::deep .themed-rte .ql-editor pre.ql-syntax,
+::deep .themed-rte .ql-editor .ql-code-block-container {
+    background: var(--rte-surface-subtle);
+    color: var(--rte-text);
+    border: 1px solid var(--rte-stroke);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 0.65em 0;
+}
+
+::deep .themed-rte .ql-editor.ql-blank::before {
+    color: var(--rte-text-muted);
+    opacity: 1;
+    font-style: normal;
+    left: 16px;
+    right: 16px;
+}
+
+/* Icons & picker */
+::deep .themed-rte .ql-snow .ql-stroke {
+    stroke: var(--rte-text);
+}
+
+::deep .themed-rte .ql-snow .ql-fill {
+    fill: var(--rte-text);
+}
+
+::deep .themed-rte .ql-picker {
+    color: var(--rte-text);
+}
+
+::deep .themed-rte .ql-snow .ql-picker-label {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--rte-text);
+}
+
+::deep .themed-rte .ql-snow .ql-picker-label:hover,
+::deep .themed-rte .ql-snow .ql-picker-label.ql-active {
+    border-color: var(--rte-stroke);
+    background: var(--rte-accent-soft);
+}
+
+::deep .themed-rte .ql-snow .ql-picker-options {
+    background: var(--rte-surface);
+    border: 1px solid var(--rte-stroke);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px color-mix(in oklab, var(--neutral-foreground-rest) 12%, transparent);
+    padding: 6px;
+}
+
+::deep .themed-rte .ql-snow .ql-picker-item {
+    color: var(--rte-text);
+    border-radius: 6px;
+}
+
+::deep .themed-rte .ql-snow .ql-picker-item:hover,
+::deep .themed-rte .ql-snow .ql-picker-item.ql-selected {
+    color: var(--accent-foreground-rest);
+    background: var(--rte-accent-soft);
+}
+
+::deep .themed-rte .ql-toolbar.ql-snow button {
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+}
+
+::deep .themed-rte .ql-toolbar.ql-snow button:hover,
+::deep .themed-rte .ql-toolbar.ql-snow button:focus-visible {
+    background: var(--rte-accent-soft);
+    outline: none;
+}
+
+::deep .themed-rte .ql-toolbar.ql-snow button.ql-active {
+    background: color-mix(in oklab, var(--accent-fill-rest) 26%, transparent);
+}
+
+::deep .themed-rte .ql-toolbar button:hover .ql-stroke,
+::deep .themed-rte .ql-toolbar button.ql-active .ql-stroke {
+    stroke: var(--accent-foreground-rest);
+}
+
+::deep .themed-rte .ql-toolbar button:hover .ql-fill,
+::deep .themed-rte .ql-toolbar button.ql-active .ql-fill {
+    fill: var(--accent-foreground-rest);
+}
+
+/* Focus ring on editor */
+::deep .themed-rte .ql-container:focus-within .ql-editor {
+    outline: none;
+}
+
+::deep .themed-rte .themed-rte-editor:focus-within {
+    border-color: var(--accent-stroke-control-rest, var(--accent-fill-rest));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-fill-rest) 35%, transparent);
+}

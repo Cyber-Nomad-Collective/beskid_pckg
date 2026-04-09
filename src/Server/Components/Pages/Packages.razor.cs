@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.EntityFrameworkCore;
-using Server.Data;
+using System.Net.Http.Json;
+using Server.Services;
+using Server.Features.Packages;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Server.Components.Pages;
 
 public partial class Packages
 {
-    [Inject] private ApplicationDbContext DbContext { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
 
     private readonly List<PackageBrowseRow> Rows = [];
     private readonly List<string> AvailableTags = [];
@@ -23,204 +25,78 @@ public partial class Packages
 
     private async Task LoadAsync()
     {
-        var query = DbContext.Packages.AsNoTracking().Where(x => x.IsPublic);
-        if (!string.IsNullOrWhiteSpace(Search))
+        var query = new Dictionary<string, string?>
         {
-            var needle = Search.Trim();
-            query = query.Where(x =>
-                x.Name.Contains(needle) || x.Category.Contains(needle) || x.Description.Contains(needle));
-        }
+            ["q"] = Search,
+            ["tag"] = SelectedTag,
+            ["topic"] = SelectedTopic,
+            ["status"] = SelectedStatus,
+            ["sort"] = SelectedSort,
+            ["order"] = SortDescending ? "desc" : "asc",
+            ["minReviews"] = MinReviews.ToString(),
+            ["limit"] = "100"
+        };
 
-        var basePackages = await query.ToListAsync();
-        var packageIds = basePackages.Select(x => x.Id).ToList();
-
-        var pendingCounts = await DbContext.PackageReviews
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId) && x.Status == "Pending")
-            .GroupBy(x => x.PackageId)
-            .Select(group => new { group.Key, Count = group.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
-
-        var ratingAverages = await DbContext.PackageCommunityReviews
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId))
-            .GroupBy(x => x.PackageId)
-            .Select(group => new { group.Key, Average = group.Average(x => x.Rating) })
-            .ToDictionaryAsync(x => x.Key, x => x.Average);
-
-        var reviewCounts = await DbContext.PackageCommunityReviews
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId))
-            .GroupBy(x => x.PackageId)
-            .Select(group => new { group.Key, Count = group.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
-
-        var tagLookup = await DbContext.PackageTags
-            .AsNoTracking()
-            .Where(x => packageIds.Contains(x.PackageId))
-            .GroupBy(x => x.PackageId)
-            .Select(group => new { group.Key, Tags = group.Select(x => x.Tag).ToList() })
-            .ToDictionaryAsync(x => x.Key, x => x.Tags);
-
-        var topics = await DbContext.Topics
-            .AsNoTracking()
-            .OrderBy(x => x.Name)
-            .Select(x => x.Name)
-            .ToListAsync();
+        var url = QueryHelpers.AddQueryString("/api/search", query);
+        var packageRows = await Http.GetFromJsonAsync<List<PackageSearchResponse>>(url) ?? [];
 
         AvailableTopics.Clear();
-        AvailableTopics.AddRange(topics.Distinct(StringComparer.OrdinalIgnoreCase));
+        AvailableTopics.AddRange(packageRows
+            .Select(x => x.Package.Category)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x));
 
-        var avgDownloads = basePackages.Count == 0
-            ? 0d
-            : basePackages.Average(x => (double)x.TotalDownloads);
-
-        var packageRows = basePackages
+        var rows = packageRows
             .Select(x =>
             {
-                var rawTags = tagLookup.GetValueOrDefault(x.Id) ?? new List<string>();
-                var normalizedTags = rawTags
-                    .Append(x.Category)
+                var normalizedTags = x.Package.Tags
+                    .Append(x.Package.Category)
                     .Where(t => !string.IsNullOrWhiteSpace(t))
                     .Select(t => t.Trim().ToLowerInvariant())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                var status = BuildStatus(x, avgDownloads, ratingAverages.GetValueOrDefault(x.Id), reviewCounts.GetValueOrDefault(x.Id));
+                var status = BuildStatus(x.Health);
                 return new PackageBrowseRow(
-                x.Id,
-                x.Name,
-                x.Description,
-                x.Category,
-                x.RepositoryUrl,
-                x.WebsiteUrl,
-                x.IsPublic,
-                x.TotalDownloads,
-                x.UpdatedAtUtc,
-                pendingCounts.GetValueOrDefault(x.Id),
-                Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2),
-                reviewCounts.GetValueOrDefault(x.Id),
+                x.Package.Id,
+                x.Package.Name,
+                x.Package.Description,
+                x.Package.Category,
+                x.Package.RepositoryUrl,
+                x.Package.WebsiteUrl,
+                x.Package.IsPublic,
+                x.Package.TotalDownloads,
+                x.Package.UpdatedAtUtc,
+                x.Package.PendingReviewsCount,
+                x.Package.AverageRating,
+                x.ReviewCount,
                 normalizedTags,
                 status)
                 {
-                    Topic = x.Category
+                    Topic = x.Package.Category
                 };
             })
             .ToList();
 
         AvailableTags.Clear();
-        AvailableTags.AddRange(packageRows
+        AvailableTags.AddRange(rows
             .SelectMany(x => x.Tags)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x));
 
-        IEnumerable<PackageBrowseRow> filtered = packageRows;
-        if (!string.Equals(SelectedTag, "all", StringComparison.OrdinalIgnoreCase))
-        {
-            filtered = filtered.Where(x => x.Tags.Contains(SelectedTag, StringComparer.OrdinalIgnoreCase));
-        }
-
-        if (!string.Equals(SelectedTopic, "all", StringComparison.OrdinalIgnoreCase))
-        {
-            filtered = filtered.Where(x => string.Equals(x.Topic, SelectedTopic, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (!string.Equals(SelectedStatus, "all", StringComparison.OrdinalIgnoreCase))
-        {
-            filtered = filtered.Where(x => string.Equals(x.Status.State, SelectedStatus, StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (MinReviews > 0)
-        {
-            filtered = filtered.Where(x => x.ReviewCount >= MinReviews);
-        }
-
-        filtered = SelectedSort switch
-        {
-            "updated" => SortDescending ? filtered.OrderByDescending(x => x.UpdatedAtUtc) : filtered.OrderBy(x => x.UpdatedAtUtc),
-            "reviews" => SortDescending ? filtered.OrderByDescending(x => x.ReviewCount) : filtered.OrderBy(x => x.ReviewCount),
-            "status" => SortDescending ? filtered.OrderByDescending(x => x.Status.Score) : filtered.OrderBy(x => x.Status.Score),
-            _ => SortDescending ? filtered.OrderByDescending(x => x.TotalDownloads) : filtered.OrderBy(x => x.TotalDownloads)
-        };
-
         Rows.Clear();
-        Rows.AddRange(filtered.Take(100));
+        Rows.AddRange(rows.Take(100));
     }
 
-    private static PackageHealthStatus BuildStatus(PackageEntity package, double averageDownloads, double averageRating, int reviewCount)
-    {
-        var now = DateTimeOffset.UtcNow;
-        var daysSinceUpdate = Math.Max(0d, (now - package.UpdatedAtUtc).TotalDays);
-        var downloadRatio = averageDownloads <= 0 ? 1d : package.TotalDownloads / averageDownloads;
-
-        var updateState = BuildUpdateRateState(daysSinceUpdate);
-        var downloadState = BuildDownloadState(downloadRatio);
-        var reviewState = BuildReviewState(averageRating, reviewCount);
-
-        var score = StatusScoreBuilder
-            .Create()
-            .Add(updateState.Weight, updateState.Normalized)
-            .Add(downloadState.Weight, downloadState.Normalized)
-            .Add(reviewState.Weight, reviewState.Normalized)
-            .Build();
-
-        var overall = score switch
-        {
-            >= 0.85 => ("thriving", "outstanding"),
-            >= 0.68 => ("rising", "strong"),
-            >= 0.48 => ("steady", "maintained"),
-            _ => ("at-risk", "watchlist")
-        };
-
-        return new PackageHealthStatus(overall.Item1, overall.Item2, score, updateState, downloadState, reviewState);
-    }
-
-    private static FactorStatus BuildUpdateRateState(double daysSinceUpdate) => daysSinceUpdate switch
-    {
-        <= 2 => new FactorStatus("update-rate", "fast-track", "blazing", 1d, 0.42),
-        <= 7 => new FactorStatus("update-rate", "fast-track", "surging", 0.93, 0.42),
-        <= 14 => new FactorStatus("update-rate", "active", "rapid", 0.82, 0.42),
-        <= 30 => new FactorStatus("update-rate", "active", "warm", 0.72, 0.42),
-        <= 60 => new FactorStatus("update-rate", "stable", "steady", 0.6, 0.42),
-        <= 120 => new FactorStatus("update-rate", "stable", "cool", 0.5, 0.42),
-        <= 240 => new FactorStatus("update-rate", "stale", "aging", 0.36, 0.42),
-        _ => new FactorStatus("update-rate", "stale", "dormant", 0.2, 0.42)
-    };
-
-    private static FactorStatus BuildDownloadState(double ratio) => ratio switch
-    {
-        < 0.25 => new FactorStatus("downloads", "underdog", "emerging", 0.34, 0.35),
-        < 0.5 => new FactorStatus("downloads", "underdog", "rising", 0.46, 0.35),
-        < 0.85 => new FactorStatus("downloads", "mainstream", "steady", 0.58, 0.35),
-        < 1.25 => new FactorStatus("downloads", "mainstream", "solid", 0.7, 0.35),
-        < 2.0 => new FactorStatus("downloads", "popular", "trending", 0.83, 0.35),
-        _ => new FactorStatus("downloads", "popular", "hot", 0.95, 0.35)
-    };
-
-    private static FactorStatus BuildReviewState(double avg, int count)
-    {
-        if (count == 0)
-        {
-            return new FactorStatus("reviews", "nascent", "unreviewed", 0.4, 0.23);
-        }
-
-        if (avg >= 4.6)
-        {
-            return new FactorStatus("reviews", "trusted", count >= 20 ? "beloved" : "praised", 0.94, 0.23);
-        }
-
-        if (avg >= 4.0)
-        {
-            return new FactorStatus("reviews", "trusted", count >= 8 ? "well-reviewed" : "promising", 0.82, 0.23);
-        }
-
-        if (avg >= 3.0)
-        {
-            return new FactorStatus("reviews", "mixed", "in-progress", 0.63, 0.23);
-        }
-
-        return new FactorStatus("reviews", "warning", "critical", 0.34, 0.23);
-    }
+    private static PackageHealthStatus BuildStatus(PackageHealthSnapshotResponse health)
+        => new(
+            health.State,
+            health.SubState,
+            health.Score,
+            new FactorStatus("update-rate", health.UpdateRateState, health.UpdateRateSubState, health.UpdateRateNormalized, health.UpdateRateWeight),
+            new FactorStatus("downloads", health.DownloadsState, health.DownloadsSubState, health.DownloadsNormalized, health.DownloadsWeight),
+            new FactorStatus("reviews", health.ReviewsState, health.ReviewsSubState, health.ReviewsNormalized, health.ReviewsWeight));
 
     private async Task ToggleSortDirectionAsync()
     {
@@ -259,41 +135,5 @@ public partial class Packages
         PackageHealthStatus Status)
     {
         public string Topic { get; init; } = string.Empty;
-    }
-
-    private sealed record PackageHealthStatus(
-        string State,
-        string SubState,
-        double Score,
-        FactorStatus UpdateRate,
-        FactorStatus Downloads,
-        FactorStatus Reviews);
-
-    private sealed record FactorStatus(
-        string Factor,
-        string State,
-        string SubState,
-        double Normalized,
-        double Weight);
-
-    private sealed class StatusScoreBuilder
-    {
-        private double _weighted;
-        private double _weightTotal;
-
-        private StatusScoreBuilder() { }
-
-        public static StatusScoreBuilder Create() => new();
-
-        public StatusScoreBuilder Add(double weight, double normalized)
-        {
-            var clampedWeight = Math.Max(0, weight);
-            var clampedNormalized = Math.Clamp(normalized, 0, 1);
-            _weighted += clampedWeight * clampedNormalized;
-            _weightTotal += clampedWeight;
-            return this;
-        }
-
-        public double Build() => _weightTotal <= 0 ? 0 : _weighted / _weightTotal;
     }
 }

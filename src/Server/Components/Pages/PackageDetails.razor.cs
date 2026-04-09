@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using System.Net;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Server.Components.Shared;
 using Server.Data;
 using Server.Features.Packages;
+using Server.Services;
 
 namespace Server.Components.Pages;
 
@@ -14,17 +16,26 @@ public partial class PackageDetails
 
     [Parameter] public string PackageName { get; set; } = string.Empty;
     private PackageEntity? Package;
-    private string ActiveTab = "versions";
     private readonly List<PackageCommunityReviewEntity> Reviews = [];
     private readonly List<PackageVersionSummaryResponse> Versions = [];
+    private readonly List<PackageDependencyResponse> Dependencies = [];
     [Inject] private HttpClient Http { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
+    [Inject] private IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
     private bool IsFollowing;
     private int PackageBoardId;
     private bool IsPackageBoardLocked;
+    private string SelectedTabId = "pkg-tab-versions";
+    private PackageHealthStatus? HealthStatus;
+    private int DependentsCount;
+    private string? LatestReadme;
+    private PackageVersionSummaryResponse? LatestVersion;
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
     private double AverageReviewRating => Reviews.Count == 0 ? 0d : Reviews.Average(x => x.Rating);
+    private int HealthStars => Math.Clamp((int)Math.Round((HealthStatus?.Score ?? 0d) * 5, MidpointRounding.AwayFromZero), 1, 5);
+    private double HealthPercent => (HealthStatus?.Score ?? 0d) * 100d;
+    private MarkupString RenderReviewHtml(string html) => new(HtmlSanitization.Sanitize(html));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -74,6 +85,11 @@ public partial class PackageDetails
     {
         Reviews.Clear();
         Versions.Clear();
+        Dependencies.Clear();
+        DependentsCount = 0;
+        LatestReadme = null;
+        LatestVersion = null;
+        HealthStatus = null;
 
         if (Package is null)
         {
@@ -88,6 +104,13 @@ public partial class PackageDetails
         Reviews.AddRange(reviewRows
             .OrderByDescending(x => x.CreatedAtUtc)
             .Take(30));
+
+        var averageDownloads = await DbContext.Packages
+            .AsNoTracking()
+            .Where(x => x.IsPublic)
+            .AverageAsync(x => (double?)x.TotalDownloads) ?? 0d;
+
+        HealthStatus = PackageHealthScoring.Calculate(Package, averageDownloads, AverageReviewRating, Reviews.Count);
 
         var versionRows = await DbContext.PackageVersions
             .AsNoTracking()
@@ -108,6 +131,33 @@ public partial class PackageDetails
             x.SizeBytes,
             x.PublishedAtUtc,
             x.YankedAtUtc)));
+
+        LatestVersion = Versions.FirstOrDefault();
+        var manifest = PackageManifestMetadataReader.Read(orderedVersionRows.FirstOrDefault()?.ManifestJson);
+        LatestReadme = manifest.Readme;
+        Dependencies.AddRange(manifest.Dependencies.Select(d => new PackageDependencyResponse(
+            d.Name,
+            d.Version,
+            d.Source,
+            d.Registry)));
+
+        var otherVersionRows = await DbContext.PackageVersions
+            .AsNoTracking()
+            .Where(x => x.PackageId != Package.Id)
+            .Select(x => new { x.PackageId, x.PublishedAtUtc, x.ManifestJson })
+            .ToListAsync();
+
+        var otherLatestManifests = otherVersionRows
+            .GroupBy(x => x.PackageId)
+            .Select(group => group
+                .OrderByDescending(x => x.PublishedAtUtc)
+                .Select(x => x.ManifestJson)
+                .FirstOrDefault())
+            .ToList();
+
+        DependentsCount = otherLatestManifests.Count(item =>
+            PackageManifestMetadataReader.Read(item).Dependencies.Any(d =>
+                string.Equals(d.Name, Package.Name, StringComparison.OrdinalIgnoreCase)));
     }
 
     private async Task OpenReviewDialogAsync()
@@ -156,7 +206,7 @@ public partial class PackageDetails
             PackageId = Package.Id,
             UserId = userId,
             Rating = Math.Clamp(rating, 1, 5),
-            Comment = comment.Trim(),
+            Comment = HtmlSanitization.Sanitize(comment),
             CreatedAtUtc = DateTimeOffset.UtcNow,
         });
         await DbContext.SaveChangesAsync();
@@ -170,19 +220,30 @@ public partial class PackageDetails
     private double GetReviewDistributionPercent(int rating)
         => Reviews.Count == 0 ? 0d : (GetReviewCountFor(rating) * 100d) / Reviews.Count;
 
-    private async Task DeleteVersionAsync(PackageVersionSummaryResponse version)
+    private async Task ToggleYankVersionAsync(PackageVersionSummaryResponse version)
     {
         if (!CanManageVersions)
         {
             return;
         }
 
-        var entity = await DbContext.PackageVersions.FindAsync(version.Id);
-        if (entity is not null)
+        var packageName = Uri.EscapeDataString(PackageName);
+        var versionValue = Uri.EscapeDataString(version.Version);
+        var route = version.IsYanked
+            ? $"/api/packages/{packageName}/versions/{versionValue}/unyank"
+            : $"/api/packages/{packageName}/versions/{versionValue}/yank";
+
+        try
         {
-            DbContext.PackageVersions.Remove(entity);
-            await DbContext.SaveChangesAsync();
-            await LoadSecondaryDataAsync();
+            var response = await Http.PostAsync(route, content: null);
+            if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.Conflict)
+            {
+                await LoadSecondaryDataAsync();
+            }
+        }
+        catch
+        {
+            // Keep the page stable if the operation fails.
         }
     }
 

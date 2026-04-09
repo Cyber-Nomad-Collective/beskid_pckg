@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="pckg.AppHost/pckg.AppHost.csproj" />
+  <Project Path="pckg.ServiceDefaults/pckg.ServiceDefaults.csproj" />
+  <Project Path="Server.Tests/Server.Tests.csproj" />
+  <Project Path="Server/Server.csproj" />
+</Solution>

@@ -1,5 +1,3 @@
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.FluentUI.AspNetCore.Components
 <FluentDialogHeader ShowDismiss="false">
     <FluentLabel Typo="Typography.PaneHeader">Upload Version</FluentLabel>
 </FluentDialogHeader>
@@ -15,15 +13,13 @@
         <FluentTextField @bind-Value="Content.ChecksumSha256" Label="Checksum SHA-256 (optional)" Placeholder="Paste checksum to enforce integrity" />
 
         <FluentCard Class="app-dialog-surface">
-            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
-                <FluentLabel>Artifact (.bpkg)</FluentLabel>
-                <InputFile OnChange="HandleArtifactSelected" accept=".bpk,.bpkg,application/zip" />
-                <span class="muted app-dialog-hint">Max size: 64 MB.</span>
-                @if (!string.IsNullOrWhiteSpace(SelectedArtifactName))
-                {
-                    <span class="app-dialog-file">Selected: @SelectedArtifactName</span>
-                }
-            </FluentStack>
+            <UploadDropzone Label="Artifact (.bpkg)"
+                            PrimaryText="Choose artifact"
+                            SecondaryText="Only .bpkg package archives"
+                            HintText="Max size: 64 MB. Drop file here or click to browse"
+                            AriaLabel="Choose package artifact"
+                            Accept=".bpk,.bpkg,application/zip"
+                            OnFilesSelected="HandleArtifactSelected" />
         </FluentCard>
     </FluentStack>
 </FluentDialogBody>

@@ -1,11 +1,21 @@
 <FluentButton Class="notification-icon-button"
-              Appearance="@(UnreadCount > 0 ? Appearance.Accent : Appearance.Outline)"
+              Appearance="@(UnreadCount > 0 ? Appearance.Accent : Appearance.Stealth)"
+              
               OnClick="OnClick"
-              IconStart="@(new Icons.Regular.Size16.Alert())"
               Title="Open notifications"
-              AriaLabel="Open notifications" />
+              AriaLabel="Open notifications">
+    @if (IsOpen)
+    {
+        <FluentIcon Value="@(new Icons.Regular.Size20.AlertOff())" />
+    }
+    else
+    {
+        <FluentIcon Value="@(new Icons.Regular.Size20.Alert())" />
+    }
+</FluentButton>
 
 @code {
     [Parameter] public int UnreadCount { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
 }

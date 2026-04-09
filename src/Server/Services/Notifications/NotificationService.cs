@@ -15,6 +15,8 @@ public sealed class NotificationService(
         string title,
         string? message = null,
         string? dataJson = null,
+        NotificationPreferenceScope preferenceScope = NotificationPreferenceScope.None,
+        string? preferenceScopeId = null,
         CancellationToken ct = default)
     {
         var notification = new NotificationEntity
@@ -35,10 +37,31 @@ public sealed class NotificationService(
         // Broadcast to connected clients
         await broadcaster.BroadcastAsync(notification, ct);
 
-        // Check email preferences and send email if enabled
+        // Scoped preference (if present) overrides global preference for this notification type.
+        var normalizedScopeId = preferenceScope == NotificationPreferenceScope.None
+            ? string.Empty
+            : (preferenceScopeId ?? string.Empty).Trim();
+
         var pref = await db.NotificationPreferences
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.Type == type, ct);
+            .FirstOrDefaultAsync(p =>
+                p.UserId == userId
+                && p.Type == type
+                && p.Scope == preferenceScope
+                && p.ScopeId == normalizedScopeId,
+                ct);
+
+        if (pref is null && preferenceScope != NotificationPreferenceScope.None)
+        {
+            pref = await db.NotificationPreferences
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p =>
+                    p.UserId == userId
+                    && p.Type == type
+                    && p.Scope == NotificationPreferenceScope.None
+                    && p.ScopeId == string.Empty,
+                    ct);
+        }
 
         if (pref?.SendEmail == true)
         {

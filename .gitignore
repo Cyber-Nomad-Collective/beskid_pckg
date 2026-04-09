@@ -10,7 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
-
+.idea/
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -419,6 +419,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-src/Server/pckg.db
-src/Server/pckg.db-shm
-src/Server/pckg.db-wal
+
+# local dev artifacts
+.podman-docker-config/
+src/Server/bin\\Debug/

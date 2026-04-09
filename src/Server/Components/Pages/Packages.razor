@@ -4,8 +4,8 @@
 
 <PageTitle>Browse Packages</PageTitle>
 <section class="package-browse-page">
-    <FluentCard Class="section-card package-browse-hero">
-        <header class="section-card-header">
+    <div class="package-browse-hero">
+        <header class="package-browse-header">
             <h1>Browse Packages</h1>
             <p class="muted">Discover public packages, filter by signals, and sort by popularity, status, and community trust.</p>
         </header>
@@ -56,9 +56,9 @@
                 <FluentNumberField Label="Min reviews" Min="0" @bind-Value="MinReviews" @onchange="ApplyFiltersAsync" />
             </div>
         </div>
-    </FluentCard>
+    </div>
 
-    <FluentCard Class="section-card package-results-card">
+    <div class="package-results-card">
         @if (Rows.Count == 0)
         {
             <p class="muted">No packages matched your query and active filters.</p>
@@ -116,5 +116,5 @@
                 }
             </div>
         }
-    </FluentCard>
+    </div>
 </section>
