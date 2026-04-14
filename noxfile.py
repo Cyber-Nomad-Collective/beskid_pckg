@@ -14,13 +14,13 @@ TESTS = ROOT / "src" / "Server.Tests"
 def unit_tests(session: nox.Session) -> None:
     if not TESTS.is_dir():
         raise SystemExit(f"Missing test project: {TESTS}")
-    session.run(
-        "dotnet",
-        "test",
-        "--filter",
-        "FullyQualifiedName~Server.Tests.Unit",
-        "--configuration",
-        "Release",
-        external=True,
-        cwd=str(TESTS),
-    )
+    with session.chdir(str(TESTS)):
+        session.run(
+            "dotnet",
+            "test",
+            "--filter",
+            "FullyQualifiedName~Server.Tests.Unit",
+            "--configuration",
+            "Release",
+            external=True,
+        )
