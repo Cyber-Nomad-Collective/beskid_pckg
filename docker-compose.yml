@@ -19,7 +19,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${PCKG_IMAGE:-pckg:latest}
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,13 +27,12 @@ services:
       HTTP_PORTS: ${HTTP_PORTS:-8082}
       HttpClient__InternalBaseAddress: ${HTTP_CLIENT_INTERNAL_BASE_ADDRESS:-http://127.0.0.1:8082}
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
-      Database__Provider: postgresql
       Storage__ArtifactsRootPath: /app/packages
       Security__BootstrapAdminLogin: ${BOOTSTRAP_ADMIN_LOGIN:-${BOOTSTRAP_ADMIN_EMAIL:-}}
       Security__BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-${BOOTSTRAP_ADMIN_LOGIN:-}}
       Security__BootstrapAdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD}
-    ports: 
-      - "${APP_PORT:-8082}:8082"
+    expose:
+      - "8082"
     volumes:
       - pckg_packages:/app/packages
       - pckg_data:/app/data
