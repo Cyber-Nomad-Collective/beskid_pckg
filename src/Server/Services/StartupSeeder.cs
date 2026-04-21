@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
+using System.Security.Cryptography;
 using System.Data.Common;
 using Npgsql;
 
@@ -497,7 +498,7 @@ public sealed class StartupSeeder(
         }
         if (string.IsNullOrWhiteSpace(adminLogin))
         {
-            adminLogin = "admin@local.pckg";
+            adminLogin = "admin@example.com";
         }
 
         var adminEmail = configuration["Security:BootstrapAdminEmail"];
@@ -511,8 +512,11 @@ public sealed class StartupSeeder(
         var adminPassword = configuration["Security:BootstrapAdminPassword"];
         if (string.IsNullOrWhiteSpace(adminPassword))
         {
-            adminPassword = "ChangeMe123!";
-            logger.LogWarning("Security:BootstrapAdminPassword not set. Using development default bootstrap password.");
+            adminPassword = GenerateBootstrapPassword();
+            logger.LogWarning(
+                "Security:BootstrapAdminPassword not set. Generated bootstrap admin password for user {AdminLogin}: {GeneratedPassword}",
+                adminLogin,
+                adminPassword);
         }
 
         var adminUser = new ApplicationUser
@@ -536,6 +540,26 @@ public sealed class StartupSeeder(
             var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
             throw new InvalidOperationException($"Failed to assign SuperAdmin role to bootstrap user: {errors}");
         }
+    }
+
+    private static string GenerateBootstrapPassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=?";
+        Span<byte> bytes = stackalloc byte[20];
+        RandomNumberGenerator.Fill(bytes);
+
+        var result = new char[20];
+        // Ensure compatibility with common Identity defaults.
+        result[0] = 'A';
+        result[1] = 'a';
+        result[2] = '7';
+        result[3] = '!';
+        for (var i = 4; i < result.Length; i++)
+        {
+            result[i] = chars[bytes[i] % chars.Length];
+        }
+
+        return new string(result);
     }
 
 
