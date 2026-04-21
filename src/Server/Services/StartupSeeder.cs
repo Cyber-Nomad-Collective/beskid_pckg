@@ -486,13 +486,26 @@ public sealed class StartupSeeder(
         var hasUsers = await dbContext.Users.AsNoTracking().AnyAsync(cancellationToken);
         if (hasUsers)
         {
+            logger.LogInformation("Skipping bootstrap admin seed because users already exist.");
             return;
+        }
+
+        var adminLogin = configuration["Security:BootstrapAdminLogin"];
+        if (string.IsNullOrWhiteSpace(adminLogin))
+        {
+            adminLogin = configuration["Security:BootstrapAdminEmail"];
+        }
+        if (string.IsNullOrWhiteSpace(adminLogin))
+        {
+            adminLogin = "admin@local.pckg";
         }
 
         var adminEmail = configuration["Security:BootstrapAdminEmail"];
         if (string.IsNullOrWhiteSpace(adminEmail))
         {
-            adminEmail = "admin@local.pckg";
+            adminEmail = adminLogin.Contains('@', StringComparison.Ordinal)
+                ? adminLogin
+                : $"{adminLogin}@local.pckg";
         }
 
         var adminPassword = configuration["Security:BootstrapAdminPassword"];
@@ -504,7 +517,7 @@ public sealed class StartupSeeder(
 
         var adminUser = new ApplicationUser
         {
-            UserName = adminEmail,
+            UserName = adminLogin,
             Email = adminEmail,
             EmailConfirmed = true,
             DisplayName = "Administrator"

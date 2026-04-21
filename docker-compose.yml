@@ -30,7 +30,8 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       Database__Provider: postgresql
       Storage__ArtifactsRootPath: /app/packages
-      Security__BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL}
+      Security__BootstrapAdminLogin: ${BOOTSTRAP_ADMIN_LOGIN:-${BOOTSTRAP_ADMIN_EMAIL:-}}
+      Security__BootstrapAdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-${BOOTSTRAP_ADMIN_LOGIN:-}}
       Security__BootstrapAdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD}
     ports: 
       - "${APP_PORT:-8082}:8082"
