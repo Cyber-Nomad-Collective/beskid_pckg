@@ -18,12 +18,14 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
     private readonly string _tempRoot;
     private readonly string _artifactRoot;
     private readonly string _dataProtectionKeysPath;
+    private readonly string _inMemoryDatabaseName;
 
     public TestApplicationFactory()
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), "pckg_server_tests", Guid.NewGuid().ToString("N"));
         _artifactRoot = Path.Combine(_tempRoot, "artifacts");
         _dataProtectionKeysPath = Path.Combine(_tempRoot, "data-protection-keys");
+        _inMemoryDatabaseName = $"pckg_integration_tests_{Guid.NewGuid():N}";
         Directory.CreateDirectory(_tempRoot);
         Directory.CreateDirectory(_artifactRoot);
         Directory.CreateDirectory(_dataProtectionKeysPath);
@@ -51,7 +53,7 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
             services.RemoveAll<ApplicationDbContext>();
             services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseInMemoryDatabase($"pckg_integration_tests_{Guid.NewGuid():N}"));
+                options.UseInMemoryDatabase(_inMemoryDatabaseName));
 
             services.RemoveAll<IPackageArtifactStore>();
             services.AddSingleton<IPackageArtifactStore>(sp =>

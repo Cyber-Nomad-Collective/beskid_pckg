@@ -1,34 +1,24 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Server.Data;
-using System.Security.Cryptography;
 using System.Data.Common;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Server.Data;
 
 namespace Server.Services;
 
-public interface IStartupSeeder
+public interface IDatabaseMigrationService
 {
-    Task SeedAsync(CancellationToken cancellationToken = default);
+    Task ApplyAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed class StartupSeeder(
+/// <summary>
+/// Applies EF Core migrations and Postgres-specific legacy schema repairs on startup.
+/// Does not seed users, API keys, or demo data.
+/// </summary>
+public sealed class DatabaseMigrationService(
     ApplicationDbContext dbContext,
-    UserManager<ApplicationUser> userManager,
-    RoleManager<IdentityRole> roleManager,
-    IPasswordHasher<ApiKeyEntity> apiKeyHasher,
-    IConfiguration configuration,
-    ILogger<StartupSeeder> logger) : IStartupSeeder
+    ILogger<DatabaseMigrationService> logger) : IDatabaseMigrationService
 {
-    public async Task SeedAsync(CancellationToken cancellationToken = default)
-    {
-        await ApplyPostgresSchemaAsync(cancellationToken);
-        await EnsureRoleAsync("SuperAdmin");
-        await EnsureInitialAdminUserAsync(cancellationToken);
-        await SeedExamplePackageAndTopicAsync(cancellationToken);
-    }
-
-    private async Task ApplyPostgresSchemaAsync(CancellationToken cancellationToken)
+    public async Task ApplyAsync(CancellationToken cancellationToken = default)
     {
         if (!dbContext.Database.IsNpgsql())
         {
@@ -48,8 +38,6 @@ public sealed class StartupSeeder(
             }
             catch (PostgresException ex) when (ex.SqlState == "42P07")
             {
-                // Existing databases may already contain tables but miss EF history.
-                // Record the baseline migration and continue with compatibility fixes.
                 await EnsureCurrentMigrationRecordedAsync(cancellationToken);
                 await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
                 await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
@@ -82,8 +70,6 @@ public sealed class StartupSeeder(
             return;
         }
 
-        // Older bootstrap flows created a few logical booleans as INTEGER.
-        // Normalize them before EF starts writing boolean parameters.
         var legacyBooleanColumns = new (string Table, string Column)[]
         {
             ("AspNetUsers", "EmailConfirmed"),
@@ -349,8 +335,6 @@ public sealed class StartupSeeder(
             return;
         }
 
-        // Earlier SQLite-first bootstraps persisted Guid columns as text.
-        // Normalize to native uuid for Npgsql readers.
         var legacyGuidColumns = new (string Table, string Column)[]
         {
             ("ApiKeys", "Id"),
@@ -474,194 +458,4 @@ public sealed class StartupSeeder(
             """,
             cancellationToken);
     }
-
-    private async Task EnsureRoleAsync(string roleName)
-    {
-        if (!await roleManager.RoleExistsAsync(roleName))
-        {
-            await roleManager.CreateAsync(new IdentityRole(roleName));
-        }
-    }
-
-    private async Task EnsureInitialAdminUserAsync(CancellationToken cancellationToken)
-    {
-        logger.LogInformation("Bootstrap admin seeding started.");
-        var hasUsers = await dbContext.Users.AsNoTracking().AnyAsync(cancellationToken);
-        if (hasUsers)
-        {
-            logger.LogInformation("Skipping bootstrap admin seed because users already exist.");
-            return;
-        }
-
-        var adminLogin = configuration["Security:BootstrapAdminLogin"];
-        if (string.IsNullOrWhiteSpace(adminLogin))
-        {
-            adminLogin = configuration["Security:BootstrapAdminEmail"];
-        }
-        if (string.IsNullOrWhiteSpace(adminLogin))
-        {
-            adminLogin = "beskid";
-        }
-
-        var adminEmail = configuration["Security:BootstrapAdminEmail"];
-        if (string.IsNullOrWhiteSpace(adminEmail))
-        {
-            adminEmail = "official@beskid-lang.org";
-        }
-
-        var adminPassword = configuration["Security:BootstrapAdminPassword"];
-        if (string.IsNullOrWhiteSpace(adminPassword))
-        {
-            adminPassword = GenerateBootstrapPassword();
-            logger.LogWarning(
-                "Security:BootstrapAdminPassword not set. Generated bootstrap admin password for user {AdminLogin}: {GeneratedPassword}",
-                adminLogin,
-                adminPassword);
-        }
-
-        var bootstrapApiKey = configuration["Security:BootstrapAdminApiKey"];
-        if (string.IsNullOrWhiteSpace(bootstrapApiKey))
-        {
-            bootstrapApiKey = GenerateBootstrapApiKey();
-            logger.LogWarning(
-                "Security:BootstrapAdminApiKey not set. Generated bootstrap API key for user {AdminLogin}: {GeneratedApiKey}",
-                adminLogin,
-                bootstrapApiKey);
-        }
-
-        var adminUser = new ApplicationUser
-        {
-            UserName = adminLogin,
-            Email = adminEmail,
-            EmailConfirmed = true,
-            DisplayName = "Beskid Official"
-        };
-
-        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-        if (!createResult.Succeeded)
-        {
-            var errors = string.Join("; ", createResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to create bootstrap admin user: {errors}");
-        }
-
-        var roleResult = await userManager.AddToRoleAsync(adminUser, "SuperAdmin");
-        if (!roleResult.Succeeded)
-        {
-            var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Failed to assign SuperAdmin role to bootstrap user: {errors}");
-        }
-
-        var apiKeyEntity = new ApiKeyEntity
-        {
-            Id = Guid.NewGuid(),
-            UserId = adminUser.Id,
-            Name = "bootstrap-official",
-            Prefix = bootstrapApiKey[..Math.Min(10, bootstrapApiKey.Length)],
-            ScopesCsv = "read,publish",
-            CreatedAtUtc = DateTimeOffset.UtcNow
-        };
-        apiKeyEntity.KeyHash = apiKeyHasher.HashPassword(apiKeyEntity, bootstrapApiKey);
-
-        dbContext.ApiKeys.Add(apiKeyEntity);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        logger.LogInformation(
-            "Bootstrap admin user created: login={AdminLogin}, email={AdminEmail}, role=SuperAdmin, displayName={DisplayName}",
-            adminLogin,
-            adminEmail,
-            adminUser.DisplayName);
-        logger.LogInformation(
-            "Bootstrap API key created for {AdminLogin} with scopes {Scopes} and prefix {Prefix}.",
-            adminLogin,
-            apiKeyEntity.ScopesCsv,
-            apiKeyEntity.Prefix);
-        logger.LogInformation("Bootstrap admin seeding finished.");
-    }
-
-    private static string GenerateBootstrapPassword()
-    {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=?";
-        Span<byte> bytes = stackalloc byte[20];
-        RandomNumberGenerator.Fill(bytes);
-
-        var result = new char[20];
-        // Ensure compatibility with common Identity defaults.
-        result[0] = 'A';
-        result[1] = 'a';
-        result[2] = '7';
-        result[3] = '!';
-        for (var i = 4; i < result.Length; i++)
-        {
-            result[i] = chars[bytes[i] % chars.Length];
-        }
-
-        return new string(result);
-    }
-
-    private static string GenerateBootstrapApiKey()
-    {
-        var random = Convert.ToHexString(RandomNumberGenerator.GetBytes(20)).ToLowerInvariant();
-        return $"bpk_{random}";
-    }
-
-
-    private async Task SeedExamplePackageAndTopicAsync(CancellationToken cancellationToken)
-    {
-        var hasPackages = await dbContext.Packages.AsNoTracking().AnyAsync(cancellationToken);
-        if (!hasPackages)
-        {
-            var packageId = Guid.NewGuid();
-            var now = DateTimeOffset.UtcNow;
-
-            dbContext.Packages.Add(new PackageEntity
-            {
-                Id = packageId,
-                OwnerUserId = "system",
-                Name = "beskid.hello-world",
-                Category = "Utilities",
-                Description = "Starter demo package seeded on first launch so public search is never empty.",
-                RepositoryUrl = "https://github.com/cyber-nomad-collective/beskid",
-                WebsiteUrl = "https://beskid-lang.org",
-                IsPublic = true,
-                TotalDownloads = 1200,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            });
-
-            dbContext.PackageTags.AddRange(
-                new PackageTagEntity { PackageId = packageId, Tag = "starter", CreatedAtUtc = now },
-                new PackageTagEntity { PackageId = packageId, Tag = "demo", CreatedAtUtc = now },
-                new PackageTagEntity { PackageId = packageId, Tag = "official", CreatedAtUtc = now });
-        }
-
-        var hasTopics = await dbContext.Topics.AsNoTracking().AnyAsync(cancellationToken);
-        if (!hasTopics)
-        {
-            var board = new BoardEntity
-            {
-                Name = "General Beskid",
-                Slug = "t-general-beskid",
-                Description = "General public discussion around Beskid packages and ecosystem.",
-                EntityType = "Topic",
-                EntityId = "general-beskid",
-                CreatedAtUtc = DateTime.UtcNow,
-                IsLocked = false
-            };
-            dbContext.Boards.Add(board);
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            dbContext.Topics.Add(new TopicEntity
-            {
-                Name = "General Beskid",
-                Slug = "general-beskid",
-                Description = "Community space for public package and ecosystem discussion.",
-                CreatedByUserId = "system",
-                BoardId = board.Id,
-                CreatedAtUtc = DateTime.UtcNow
-            });
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
 }

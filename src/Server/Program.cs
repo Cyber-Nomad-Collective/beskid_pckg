@@ -209,7 +209,7 @@ builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
-builder.Services.AddScoped<IStartupSeeder, StartupSeeder>();
+builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
 builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
@@ -252,8 +252,8 @@ app.UseHttpLogging();
 
 using (var scope = app.Services.CreateScope())
 {
-    var seeder = scope.ServiceProvider.GetRequiredService<IStartupSeeder>();
-    await seeder.SeedAsync();
+    var migrations = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
+    await migrations.ApplyAsync();
 }
 
 // Configure the HTTP request pipeline.
@@ -286,13 +286,25 @@ app.UseRateLimiter();
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
+    var pathValue = path.HasValue ? path.Value! : string.Empty;
+    // HttpClient + base address combinations can produce paths like "//api/..." which must still bypass.
+    while (pathValue.Length > 1 && pathValue[0] == '/' && pathValue[1] == '/')
+    {
+        pathValue = pathValue[1..];
+    }
+
+    if (pathValue.Length > 0 && pathValue[0] != '/')
+    {
+        pathValue = "/" + pathValue;
+    }
+
     var isBypassedPath =
-        path.StartsWithSegments("/onboarding", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/scalar", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/api", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
         Path.HasExtension(path);
 
     if (isBypassedPath)
@@ -490,9 +502,15 @@ app.MapPost("/onboarding/create", async (
     }
 
     var form = await context.Request.ReadFormAsync(context.RequestAborted);
+    var displayName = form["displayName"].FirstOrDefault()?.Trim() ?? string.Empty;
     var email = form["email"].FirstOrDefault()?.Trim() ?? string.Empty;
     var password = form["password"].FirstOrDefault() ?? string.Empty;
     var confirmPassword = form["confirmPassword"].FirstOrDefault() ?? string.Empty;
+
+    if (string.IsNullOrWhiteSpace(displayName))
+    {
+        return Results.Redirect("/onboarding?error=missing_name");
+    }
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
@@ -507,7 +525,9 @@ app.MapPost("/onboarding/create", async (
     var user = new ApplicationUser
     {
         UserName = email,
-        Email = email
+        Email = email,
+        EmailConfirmed = true,
+        DisplayName = displayName
     };
 
     var createResult = await userManager.CreateAsync(user, password);

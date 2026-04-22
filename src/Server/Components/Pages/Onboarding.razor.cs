@@ -16,9 +16,10 @@ public partial class Onboarding
     {
         Message = ErrorCode switch
         {
-            "missing_credentials" => "Email and password are required.",
+            "missing_credentials" => "Display name, email, and password are required.",
+            "missing_name" => "Display name is required.",
             "password_mismatch" => "Passwords do not match.",
-            "create_failed" => "Unable to create SuperAdmin account.",
+            "create_failed" => "Unable to create the administrator account.",
             _ => string.Empty
         };
         Success = false;

@@ -7,12 +7,12 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Navigation
 
-<PageTitle>Initial Setup</PageTitle>
+<PageTitle>First-time setup</PageTitle>
 
 <section class="onboarding-card">
     <header class="section-card-header">
-        <h1>Initial setup</h1>
-        <p class="muted">Create the first account. This user is automatically granted SuperAdmin.</p>
+        <h1>Welcome</h1>
+        <p class="muted">Create the first administrator account for this registry. You will sign in with your email and password.</p>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(Message))
@@ -21,7 +21,8 @@
     }
 
     <form method="post" action="/onboarding/create" class="auth-form" novalidate>
-        <FluentTextField Name="email" Label="Email" Placeholder="admin@example.com" Required Class="auth-form-field" />
+        <FluentTextField Name="displayName" Label="Display name" Placeholder="Your name" Required Class="auth-form-field" />
+        <FluentTextField Name="email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
         <FluentTextField Name="password"
                          Label="Password"
                          TextFieldType="TextFieldType.Password"
@@ -35,6 +36,6 @@
                          Required
                          Class="auth-form-field" />
 
-        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Create SuperAdmin</FluentButton>
+        <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit">Create administrator</FluentButton>
     </form>
 </section>

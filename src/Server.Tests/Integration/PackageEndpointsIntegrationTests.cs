@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Server.Tests.TestUtils;
 
 namespace Server.Tests.Integration;
@@ -52,7 +53,7 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
     [Fact]
     public async Task UpsertPackage_Requires_Authentication()
     {
-        var client = _factory.CreateClient();
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
         var response = await client.PostAsJsonAsync("/api/packages", new
         {

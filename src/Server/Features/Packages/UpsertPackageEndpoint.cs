@@ -25,8 +25,7 @@ public sealed class UpsertPackageEndpoint(
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new UpsertPackageResponse(false, "Unauthorized.", null, null), ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 

@@ -7,7 +7,8 @@ namespace Server.Features.Users;
 
 public sealed class CreateInitialAdminEndpoint(
     UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager)
+    SignInManager<ApplicationUser> signInManager,
+    RoleManager<IdentityRole> roleManager)
     : Endpoint<CreateInitialAdminRequest, AuthActionResponse>
 {
     public override void Configure()
@@ -26,12 +27,13 @@ public sealed class CreateInitialAdminEndpoint(
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(req.Email)
+        if (string.IsNullOrWhiteSpace(req.DisplayName)
+            || string.IsNullOrWhiteSpace(req.Email)
             || string.IsNullOrWhiteSpace(req.Password)
             || string.IsNullOrWhiteSpace(req.ConfirmPassword))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Email, password, and password confirmation are required."), ct);
+            await Send.OkAsync(new AuthActionResponse(false, "Display name, email, password, and password confirmation are required."), ct);
             return;
         }
 
@@ -49,6 +51,7 @@ public sealed class CreateInitialAdminEndpoint(
             UserName = email,
             Email = email,
             EmailConfirmed = true,
+            DisplayName = req.DisplayName.Trim(),
         };
 
         var createResult = await userManager.CreateAsync(user, req.Password);
@@ -58,6 +61,11 @@ public sealed class CreateInitialAdminEndpoint(
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             await Send.OkAsync(new AuthActionResponse(false, message), ct);
             return;
+        }
+
+        if (!await roleManager.RoleExistsAsync("SuperAdmin"))
+        {
+            await roleManager.CreateAsync(new IdentityRole("SuperAdmin"));
         }
 
         await userManager.AddToRoleAsync(user, "SuperAdmin");
@@ -74,4 +82,4 @@ public sealed class CreateInitialAdminEndpoint(
     }
 }
 
-public sealed record CreateInitialAdminRequest(string Email, string Password, string ConfirmPassword);
+public sealed record CreateInitialAdminRequest(string DisplayName, string Email, string Password, string ConfirmPassword);

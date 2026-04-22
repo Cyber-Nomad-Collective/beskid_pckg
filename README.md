@@ -14,7 +14,7 @@ This starts:
 - `postgres` on `5432` (database: `pckgdb`)
 - `pckg` app on `http://localhost:8082`
 
-Database migrations are applied on startup by `StartupSeeder`.
+Database migrations are applied automatically on application startup.
 
 ## Quick Start (Aspire Profile)
 
