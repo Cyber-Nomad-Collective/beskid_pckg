@@ -16,6 +16,7 @@ public sealed class StartupSeeder(
     ApplicationDbContext dbContext,
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
+    IPasswordHasher<ApiKeyEntity> apiKeyHasher,
     IConfiguration configuration,
     ILogger<StartupSeeder> logger) : IStartupSeeder
 {
@@ -484,6 +485,7 @@ public sealed class StartupSeeder(
 
     private async Task EnsureInitialAdminUserAsync(CancellationToken cancellationToken)
     {
+        logger.LogInformation("Bootstrap admin seeding started.");
         var hasUsers = await dbContext.Users.AsNoTracking().AnyAsync(cancellationToken);
         if (hasUsers)
         {
@@ -498,15 +500,13 @@ public sealed class StartupSeeder(
         }
         if (string.IsNullOrWhiteSpace(adminLogin))
         {
-            adminLogin = "admin@example.com";
+            adminLogin = "beskid";
         }
 
         var adminEmail = configuration["Security:BootstrapAdminEmail"];
         if (string.IsNullOrWhiteSpace(adminEmail))
         {
-            adminEmail = adminLogin.Contains('@', StringComparison.Ordinal)
-                ? adminLogin
-                : $"{adminLogin}@local.pckg";
+            adminEmail = "official@beskid-lang.org";
         }
 
         var adminPassword = configuration["Security:BootstrapAdminPassword"];
@@ -519,12 +519,22 @@ public sealed class StartupSeeder(
                 adminPassword);
         }
 
+        var bootstrapApiKey = configuration["Security:BootstrapAdminApiKey"];
+        if (string.IsNullOrWhiteSpace(bootstrapApiKey))
+        {
+            bootstrapApiKey = GenerateBootstrapApiKey();
+            logger.LogWarning(
+                "Security:BootstrapAdminApiKey not set. Generated bootstrap API key for user {AdminLogin}: {GeneratedApiKey}",
+                adminLogin,
+                bootstrapApiKey);
+        }
+
         var adminUser = new ApplicationUser
         {
             UserName = adminLogin,
             Email = adminEmail,
             EmailConfirmed = true,
-            DisplayName = "Administrator"
+            DisplayName = "Beskid Official"
         };
 
         var createResult = await userManager.CreateAsync(adminUser, adminPassword);
@@ -540,6 +550,32 @@ public sealed class StartupSeeder(
             var errors = string.Join("; ", roleResult.Errors.Select(e => e.Description));
             throw new InvalidOperationException($"Failed to assign SuperAdmin role to bootstrap user: {errors}");
         }
+
+        var apiKeyEntity = new ApiKeyEntity
+        {
+            Id = Guid.NewGuid(),
+            UserId = adminUser.Id,
+            Name = "bootstrap-official",
+            Prefix = bootstrapApiKey[..Math.Min(10, bootstrapApiKey.Length)],
+            ScopesCsv = "read,publish",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+        apiKeyEntity.KeyHash = apiKeyHasher.HashPassword(apiKeyEntity, bootstrapApiKey);
+
+        dbContext.ApiKeys.Add(apiKeyEntity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Bootstrap admin user created: login={AdminLogin}, email={AdminEmail}, role=SuperAdmin, displayName={DisplayName}",
+            adminLogin,
+            adminEmail,
+            adminUser.DisplayName);
+        logger.LogInformation(
+            "Bootstrap API key created for {AdminLogin} with scopes {Scopes} and prefix {Prefix}.",
+            adminLogin,
+            apiKeyEntity.ScopesCsv,
+            apiKeyEntity.Prefix);
+        logger.LogInformation("Bootstrap admin seeding finished.");
     }
 
     private static string GenerateBootstrapPassword()
@@ -562,6 +598,12 @@ public sealed class StartupSeeder(
         return new string(result);
     }
 
+    private static string GenerateBootstrapApiKey()
+    {
+        var random = Convert.ToHexString(RandomNumberGenerator.GetBytes(20)).ToLowerInvariant();
+        return $"bpk_{random}";
+    }
+
 
     private async Task SeedExamplePackageAndTopicAsync(CancellationToken cancellationToken)
     {
@@ -579,7 +621,7 @@ public sealed class StartupSeeder(
                 Category = "Utilities",
                 Description = "Starter demo package seeded on first launch so public search is never empty.",
                 RepositoryUrl = "https://github.com/cyber-nomad-collective/beskid",
-                WebsiteUrl = "https://beskid.dev",
+                WebsiteUrl = "https://beskid-lang.org",
                 IsPublic = true,
                 TotalDownloads = 1200,
                 CreatedAtUtc = now,
