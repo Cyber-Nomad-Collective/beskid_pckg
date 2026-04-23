@@ -11,14 +11,16 @@ public sealed class GetCaptchaPublicConfigEndpoint(IOptions<CaptchaOptions> capt
     {
         Get("/public/captcha-config");
         AllowAnonymous();
-        Summary(s => s.Summary = "Public keys required to render robot checks in the browser.");
+        Summary(s => s.Summary = "reCAPTCHA Enterprise public site key when configured (widget is shown whenever a site key is set).");
     }
 
     public override async Task HandleAsync(CancellationToken ct)
     {
         var o = captchaOptions.Value;
-        await Send.OkAsync(new CaptchaPublicConfigResponse(o.TurnstileSiteKey ?? string.Empty), ct);
+        var hasSiteKey = !string.IsNullOrWhiteSpace(o.RecaptchaV3SiteKey);
+        var siteKey = hasSiteKey ? o.RecaptchaV3SiteKey!.Trim() : null;
+        await Send.OkAsync(new CaptchaPublicConfigResponse(hasSiteKey, siteKey), ct);
     }
 }
 
-public sealed record CaptchaPublicConfigResponse(string TurnstileSiteKey);
+public sealed record CaptchaPublicConfigResponse(bool CaptchaEnabled, string? RecaptchaSiteKey);

@@ -30,7 +30,7 @@ public sealed class CreateBoardPostEndpoint : Endpoint<CreateBoardPostRequest, C
         }
 
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        if (!await Captcha.IsHumanAsync(req.CaptchaToken, remoteIp, ct))
+        if (!await Captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.BoardPost, remoteIp, ct))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             await Send.OkAsync(new CreateBoardPostResponse(false, "Robot check failed. Please try again."), ct);
@@ -84,5 +84,9 @@ public sealed class CreateBoardPostEndpoint : Endpoint<CreateBoardPostRequest, C
     }
 }
 
-public sealed record CreateBoardPostRequest(string Title, string Content, BoardPostType PostType = BoardPostType.Issue, string? CaptchaToken = null);
+public sealed record CreateBoardPostRequest(
+    string Title,
+    string Content,
+    BoardPostType PostType = BoardPostType.Issue,
+    string? CaptchaToken = null);
 public sealed record CreateBoardPostResponse(bool Success, string Message, int? PostId = null);

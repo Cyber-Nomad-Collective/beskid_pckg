@@ -23,6 +23,8 @@ using Microsoft.AspNetCore.Authorization;
 using System.Threading.RateLimiting;
 using Server.Features.Auth;
 using System.Security.Cryptography.X509Certificates;
+using GoogleCaptchaComponent;
+using GoogleCaptchaComponent.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -109,6 +111,13 @@ builder.Services.AddRateLimiter(options =>
     {
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.PermitLimit = 20;
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+    options.AddFixedWindowLimiter("docs", limiter =>
+    {
+        limiter.Window = TimeSpan.FromSeconds(30);
+        limiter.PermitLimit = 120;
         limiter.QueueLimit = 0;
         limiter.AutoReplenishment = true;
     });
@@ -209,11 +218,23 @@ builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
+builder.Services.AddScoped<IPackageDocsArchiveService, PackageDocsArchiveService>();
 builder.Services.AddSingleton<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.Configure<CaptchaOptions>(builder.Configuration.GetSection(CaptchaOptions.SectionName));
-builder.Services.AddHttpClient(nameof(CaptchaVerificationService));
+var captchaBootstrap = builder.Configuration.GetSection(CaptchaOptions.SectionName).Get<CaptchaOptions>() ?? new();
+builder.Services.AddGoogleCaptcha(c =>
+{
+    c.V3SiteKey = captchaBootstrap.RecaptchaV3SiteKey ?? string.Empty;
+    c.DefaultVersion = CaptchaConfiguration.Version.V3;
+    c.DefaultTheme = CaptchaConfiguration.Theme.Light;
+});
+builder.Services.AddHttpClient(CaptchaVerificationService.RecaptchaEnterpriseHttpClientName, client =>
+{
+    client.BaseAddress = new Uri("https://recaptchaenterprise.googleapis.com/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
 builder.Services.AddScoped<ICaptchaVerificationService, CaptchaVerificationService>();
 builder.Services.AddScoped<ILinkContentGuard, LinkContentGuard>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();

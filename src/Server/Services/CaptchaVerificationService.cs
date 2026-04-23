@@ -1,23 +1,31 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Server.Services;
 
 public interface ICaptchaVerificationService
 {
-    /// <summary>When captcha is not configured, returns true. Otherwise validates the token.</summary>
-    Task<bool> IsHumanAsync(string? captchaResponseToken, string? remoteIp, CancellationToken cancellationToken = default);
+    /// <summary>Validates the token via reCAPTCHA Enterprise CreateAssessment (always enforced; no configuration bypass).</summary>
+    Task<bool> IsHumanAsync(string? token, string expectedAction, string? remoteIp, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// reCAPTCHA Enterprise (v3-style scores). Restrict the API key in Google Cloud to reCAPTCHA Enterprise API only.
+/// </summary>
 public sealed class CaptchaOptions
 {
     public const string SectionName = "Captcha";
 
-    /// <summary>Cloudflare Turnstile site key (public).</summary>
-    public string? TurnstileSiteKey { get; set; }
+    public string? RecaptchaV3SiteKey { get; set; }
 
-    /// <summary>Cloudflare Turnstile secret key (server only).</summary>
-    public string? TurnstileSecretKey { get; set; }
+    public string? RecaptchaEnterpriseProjectId { get; set; }
+
+    /// <summary>Google Cloud API key with reCAPTCHA Enterprise API enabled (server-only).</summary>
+    public string? RecaptchaEnterpriseApiKey { get; set; }
+
+    /// <summary>Minimum risk score (0–1); submissions below this fail.</summary>
+    public double MinimumScore { get; set; } = 0.5;
 }
 
 public sealed class CaptchaVerificationService(
@@ -25,59 +33,110 @@ public sealed class CaptchaVerificationService(
     Microsoft.Extensions.Options.IOptions<CaptchaOptions> options,
     ILogger<CaptchaVerificationService> logger) : ICaptchaVerificationService
 {
-    private readonly CaptchaOptions _options = options.Value;
+    public const string RecaptchaEnterpriseHttpClientName = "RecaptchaEnterprise";
+    private static readonly JsonSerializerOptions JsonWrite = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public async Task<bool> IsHumanAsync(string? captchaResponseToken, string? remoteIp, CancellationToken cancellationToken = default)
+    public async Task<bool> IsHumanAsync(string? token, string expectedAction, string? remoteIp, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.TurnstileSecretKey))
-        {
-            return true;
-        }
+        var o = options.Value;
 
-        if (string.IsNullOrWhiteSpace(captchaResponseToken))
+        if (string.IsNullOrWhiteSpace(token))
         {
+            logger.LogWarning("reCAPTCHA rejected: missing token for action {Action}.", expectedAction);
             return false;
         }
 
+        if (string.IsNullOrWhiteSpace(o.RecaptchaV3SiteKey)
+            || string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseProjectId)
+            || string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseApiKey))
+        {
+            logger.LogError("reCAPTCHA Captcha configuration is incomplete (site key, project id, or API key); verification cannot succeed.");
+            return false;
+        }
+
+        var client = httpClientFactory.CreateClient(RecaptchaEnterpriseHttpClientName);
+        var url = $"v1/projects/{Uri.EscapeDataString(o.RecaptchaEnterpriseProjectId.Trim())}/assessments?key={Uri.EscapeDataString(o.RecaptchaEnterpriseApiKey.Trim())}";
+
+        var body = new CreateAssessmentRequestDto(new CreateAssessmentEventDto(
+            token.Trim(),
+            o.RecaptchaV3SiteKey.Trim(),
+            expectedAction,
+            string.IsNullOrWhiteSpace(remoteIp) ? null : remoteIp.Trim()));
+
+        HttpResponseMessage response;
         try
         {
-            var client = httpClientFactory.CreateClient(nameof(CaptchaVerificationService));
-            var pairs = new List<KeyValuePair<string, string>>
-            {
-                new("secret", _options.TurnstileSecretKey),
-                new("response", captchaResponseToken),
-            };
-            if (!string.IsNullOrWhiteSpace(remoteIp))
-            {
-                pairs.Add(new KeyValuePair<string, string>("remoteip", remoteIp));
-            }
-
-            using var content = new FormUrlEncodedContent(pairs);
-
-            var verify = await client.PostAsync(
-                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-                content,
-                cancellationToken);
-
-            if (!verify.IsSuccessStatusCode)
-            {
-                logger.LogWarning("Turnstile HTTP {Status}", (int)verify.StatusCode);
-                return false;
-            }
-
-            var body = await verify.Content.ReadFromJsonAsync<TurnstileVerifyResponse>(cancellationToken);
-            return body?.Success == true;
+            response = await client.PostAsJsonAsync(url, body, JsonWrite, cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Turnstile verification failed.");
+            logger.LogWarning(ex, "reCAPTCHA CreateAssessment request failed for action {Action}.", expectedAction);
             return false;
         }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync(cancellationToken);
+            logger.LogWarning(
+                "reCAPTCHA CreateAssessment HTTP {Status} for action {Action}: {Body}",
+                (int)response.StatusCode,
+                expectedAction,
+                err.Length > 200 ? err[..200] : err);
+            return false;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var root = doc.RootElement;
+
+        if (!root.TryGetProperty("tokenProperties", out var tokenProps))
+        {
+            logger.LogWarning("reCAPTCHA response missing tokenProperties for action {Action}.", expectedAction);
+            return false;
+        }
+
+        var valid = tokenProps.TryGetProperty("valid", out var v) && v.GetBoolean();
+        if (!valid)
+        {
+            var reason = tokenProps.TryGetProperty("invalidReason", out var ir) ? ir.GetString() : null;
+            logger.LogWarning("reCAPTCHA token invalid for action {Action}: {Reason}.", expectedAction, reason ?? "unknown");
+            return false;
+        }
+
+        if (tokenProps.TryGetProperty("action", out var actionEl))
+        {
+            var action = actionEl.GetString();
+            if (!string.Equals(action, expectedAction, StringComparison.Ordinal))
+            {
+                logger.LogWarning(
+                    "reCAPTCHA action mismatch: expected {Expected}, got {Actual}.",
+                    expectedAction,
+                    action ?? "(null)");
+                return false;
+            }
+        }
+
+        if (root.TryGetProperty("riskAnalysis", out var risk) && risk.TryGetProperty("score", out var scoreEl))
+        {
+            var score = scoreEl.GetDouble();
+            var min = Math.Clamp(options.Value.MinimumScore, 0d, 1d);
+            if (score < min)
+            {
+                logger.LogWarning("reCAPTCHA score {Score} below minimum {Min} for action {Action}.", score, min, expectedAction);
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    private sealed class TurnstileVerifyResponse
-    {
-        [JsonPropertyName("success")]
-        public bool Success { get; set; }
-    }
+    private sealed record CreateAssessmentEventDto(
+        string Token,
+        string SiteKey,
+        string ExpectedAction,
+        string? UserIpAddress);
+
+    /// <summary>Maps to JSON <c>{"event":{...}}</c>.</summary>
+    private sealed record CreateAssessmentRequestDto(
+        [property: JsonPropertyName("event")] CreateAssessmentEventDto Event);
 }

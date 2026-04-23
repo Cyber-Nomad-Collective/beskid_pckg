@@ -1,0 +1,71 @@
+@using GoogleCaptchaComponent.Components
+@using GoogleCaptchaComponent.Configuration
+@using GoogleCaptchaComponent.Events
+@using GoogleCaptchaComponent.Models
+
+<div class="recaptcha-v3-host" aria-hidden="true">
+    <GoogleRecaptcha @ref="_recaptcha"
+                     Version="CaptchaConfiguration.Version.V3"
+                     RenderOnLoad="false"
+                     DefaultAction="@Action"
+                     SuccessCallBack="OnSuccessAsync"
+                     TimeOutCallBack="OnTimeoutAsync"
+                     ServerValidationErrorCallBack="OnServerErrorAsync"
+                     ServerSideValidationHandler="StubValidateAsync" />
+</div>
+
+@code {
+    private GoogleRecaptcha? _recaptcha;
+    private TaskCompletionSource<string?>? _pending;
+
+    /// <summary>reCAPTCHA Enterprise v3 action; must match server CaptchaActions constant.</summary>
+    [Parameter, EditorRequired]
+    public string Action { get; set; } = string.Empty;
+
+    /// <summary>Runs Enterprise v3 for <see cref="Action"/> and returns the token, or null on timeout/error.</summary>
+    public async Task<string?> ExecuteAsync(CancellationToken cancellationToken = default)
+    {
+        if (_recaptcha is null)
+        {
+            return null;
+        }
+
+        _pending = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var _ = cancellationToken.Register(() => _pending.TrySetResult(null));
+
+        await _recaptcha.ExecuteV3WithActionAsync(Action);
+
+        var delay = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+        var completed = await Task.WhenAny(_pending.Task, delay);
+        if (completed != _pending.Task)
+        {
+            return null;
+        }
+
+        return await _pending.Task;
+    }
+
+    private static Task<ServerSideCaptchaValidationResultModel> StubValidateAsync(ServerSideCaptchaValidationRequestModel request)
+    {
+        var ok = !string.IsNullOrWhiteSpace(request.CaptchaResponse);
+        return Task.FromResult(new ServerSideCaptchaValidationResultModel(ok, ok ? string.Empty : "Missing token"));
+    }
+
+    private Task OnSuccessAsync(CaptchaSuccessEventArgs e)
+    {
+        _pending?.TrySetResult(e.CaptchaResponse);
+        return Task.CompletedTask;
+    }
+
+    private Task OnTimeoutAsync(CaptchaTimeOutEventArgs e)
+    {
+        _pending?.TrySetResult(null);
+        return Task.CompletedTask;
+    }
+
+    private Task OnServerErrorAsync(CaptchaServerSideValidationErrorEventArgs e)
+    {
+        _pending?.TrySetResult(null);
+        return Task.CompletedTask;
+    }
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Server.Data;
 using Server.Services;
 
@@ -55,8 +56,8 @@ public partial class BoardComponent
     [Inject]
     public IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
 
-    private string? CaptchaSiteKey;
-    private string? PostCaptchaToken;
+    private bool CaptchaRequired;
+    private RecaptchaEnterpriseV3? _postRecaptcha;
 
     private List<BoardPostDto> Posts = [];
     private bool IsLoading = true;
@@ -118,11 +119,12 @@ public partial class BoardComponent
         try
         {
             var cfg = await ApiHttp.GetFromJsonAsync<CaptchaPublicConfigDto>("/api/public/captcha-config");
-            CaptchaSiteKey = string.IsNullOrWhiteSpace(cfg?.TurnstileSiteKey) ? null : cfg!.TurnstileSiteKey;
+            CaptchaRequired = cfg?.CaptchaEnabled == true
+                && !string.IsNullOrWhiteSpace(cfg.RecaptchaSiteKey);
         }
         catch
         {
-            CaptchaSiteKey = null;
+            CaptchaRequired = false;
         }
     }
 
@@ -207,7 +209,6 @@ public partial class BoardComponent
         NewTagInput = string.Empty;
         NewPostTags.Clear();
         NewPostType = FilterPostType ?? DefaultPostType;
-        PostCaptchaToken = null;
     }
 
     private void AddTag()
@@ -251,9 +252,19 @@ public partial class BoardComponent
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(CaptchaSiteKey) && string.IsNullOrWhiteSpace(PostCaptchaToken))
+        string? captchaToken = null;
+        if (CaptchaRequired)
         {
-            return;
+            if (_postRecaptcha is null)
+            {
+                return;
+            }
+
+            captchaToken = await _postRecaptcha.ExecuteAsync();
+            if (string.IsNullOrWhiteSpace(captchaToken))
+            {
+                return;
+            }
         }
 
         IsSubmittingPost = true;
@@ -261,7 +272,11 @@ public partial class BoardComponent
         {
             var response = await ApiHttp.PostAsJsonAsync(
                 $"/api/boards/{BoardId}/posts",
-                new CreateBoardPostRequest(NewPostTitle.Trim(), BuildPostContent(), FilterPostType ?? NewPostType, PostCaptchaToken));
+                new CreateBoardPostRequest(
+                    NewPostTitle.Trim(),
+                    BuildPostContent(),
+                    FilterPostType ?? NewPostType,
+                    captchaToken));
 
             if (response.IsSuccessStatusCode)
             {
@@ -337,9 +352,16 @@ public partial class BoardComponent
 
     private sealed record GetBoardPostsResponse(List<BoardPostDto> Posts, int TotalCount, int Page, int PageSize);
     private sealed record BoardPostDto(int Id, int BoardId, string AuthorUserId, string Title, string Content, BoardPostType PostType, DateTime CreatedAtUtc, DateTime? EditedAtUtc, int UpvoteCount, int DownvoteCount, bool IsPinned, bool IsLocked, int CurrentUserVote);
-    private sealed record CreateBoardPostRequest(string Title, string Content, BoardPostType PostType, string? CaptchaToken);
+    private sealed record CreateBoardPostRequest(
+        string Title,
+        string Content,
+        BoardPostType PostType,
+        string? CaptchaToken);
+
     private sealed record SetBoardLockedRequest(bool Locked);
-    private sealed record CaptchaPublicConfigDto(string TurnstileSiteKey);
+    private sealed record CaptchaPublicConfigDto(
+        [property: JsonPropertyName("captchaEnabled")] bool CaptchaEnabled,
+        [property: JsonPropertyName("recaptchaSiteKey")] string? RecaptchaSiteKey);
     private sealed record VoteBoardPostRequest(int VoteValue);
     private sealed record VoteBoardPostResponse(bool Success, string Message, int UpvoteCount, int DownvoteCount);
 }

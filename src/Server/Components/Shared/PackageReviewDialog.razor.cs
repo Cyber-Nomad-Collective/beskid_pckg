@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -10,18 +11,20 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
     [CascadingParameter] public FluentDialog Dialog { get; set; } = default!;
     [Inject] public HttpClient Http { get; set; } = default!;
 
-    private string? _turnstileSiteKey;
+    private bool _captchaEnabled;
+    private RecaptchaEnterpriseV3? _reviewRecaptcha;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             var cfg = await Http.GetFromJsonAsync<CaptchaPublicConfigDto>("/api/public/captcha-config");
-            _turnstileSiteKey = string.IsNullOrWhiteSpace(cfg?.TurnstileSiteKey) ? null : cfg!.TurnstileSiteKey;
+            _captchaEnabled = cfg?.CaptchaEnabled == true
+                && !string.IsNullOrWhiteSpace(cfg.RecaptchaSiteKey);
         }
         catch
         {
-            _turnstileSiteKey = null;
+            _captchaEnabled = false;
         }
     }
 
@@ -35,9 +38,21 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(_turnstileSiteKey) && string.IsNullOrWhiteSpace(Content.CaptchaToken))
+        Content.CaptchaToken = null;
+        if (_captchaEnabled)
         {
-            return;
+            if (_reviewRecaptcha is null)
+            {
+                return;
+            }
+
+            var token = await _reviewRecaptcha.ExecuteAsync();
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return;
+            }
+
+            Content.CaptchaToken = token;
         }
 
         Content.Rating = Math.Clamp(Content.Rating, 1, 5);
@@ -58,5 +73,7 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
         public string? CaptchaToken { get; set; }
     }
 
-    private sealed record CaptchaPublicConfigDto(string TurnstileSiteKey);
+    private sealed record CaptchaPublicConfigDto(
+        [property: JsonPropertyName("captchaEnabled")] bool CaptchaEnabled,
+        [property: JsonPropertyName("recaptchaSiteKey")] string? RecaptchaSiteKey);
 }

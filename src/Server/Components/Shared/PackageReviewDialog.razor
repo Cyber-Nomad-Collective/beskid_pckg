@@ -20,12 +20,12 @@
                         @bind-Value="Content.Comment" />
         <small class="muted">Formatting is sanitized on save for safe display.</small>
 
-        @if (!string.IsNullOrWhiteSpace(_turnstileSiteKey))
+        @if (_captchaEnabled)
         {
-            <div>
-                <FluentLabel>Verification</FluentLabel>
-                <TurnstileCaptcha SiteKey="@_turnstileSiteKey" @bind-Token="Content.CaptchaToken" />
+            <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+                <RecaptchaEnterpriseV3 @ref="_reviewRecaptcha" Action="@CaptchaActions.PackageReview" />
             </div>
+            <p class="muted">This site uses reCAPTCHA Enterprise when posting. Google may analyze interaction data.</p>
         }
     </FluentStack>
 </FluentDialogBody>

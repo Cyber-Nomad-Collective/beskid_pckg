@@ -164,11 +164,13 @@
                                     AriaLabel="Choose attachment" />
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(CaptchaSiteKey))
+                @if (CaptchaRequired)
                 {
+                    <div class="composer-section" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+                        <RecaptchaEnterpriseV3 @ref="_postRecaptcha" Action="@CaptchaActions.BoardPost" />
+                    </div>
                     <div class="composer-section">
-                        <label class="fluent-label">Verification</label>
-                        <TurnstileCaptcha SiteKey="@CaptchaSiteKey" @bind-Token="PostCaptchaToken" />
+                        <p class="muted">This site uses reCAPTCHA Enterprise when posting. Google may analyze interaction data.</p>
                     </div>
                 }
 

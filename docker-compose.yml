@@ -28,9 +28,11 @@ services:
       HttpClient__InternalBaseAddress: ${HTTP_CLIENT_INTERNAL_BASE_ADDRESS:-http://127.0.0.1:8082}
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       Storage__ArtifactsRootPath: /app/packages
-      # Optional Cloudflare Turnstile (when secret is set, reviews/board posts require a token)
-      Captcha__TurnstileSiteKey: ${CAPTCHA_TURNSTILE_SITE_KEY:-}
-      Captcha__TurnstileSecretKey: ${CAPTCHA_TURNSTILE_SECRET_KEY:-}
+      # reCAPTCHA Enterprise v3 (board posts/comments, package reviews; always verified server-side when keys are set)
+      Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
+      Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
+      Captcha__RecaptchaEnterpriseApiKey: ${CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY:-}
+      Captcha__MinimumScore: ${CAPTCHA_RECAPTCHA_MINIMUM_SCORE:-0.5}
     expose:
       - "8082"
     volumes:

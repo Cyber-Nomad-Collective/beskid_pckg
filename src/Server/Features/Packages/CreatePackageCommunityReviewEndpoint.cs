@@ -47,7 +47,7 @@ public sealed class CreatePackageCommunityReviewEndpoint(
         }
 
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        if (!await captcha.IsHumanAsync(req.CaptchaToken, remoteIp, ct))
+        if (!await captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.PackageReview, remoteIp, ct))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Robot check failed. Please try again."), ct);
@@ -94,6 +94,9 @@ public sealed class CreatePackageCommunityReviewEndpoint(
     }
 }
 
-public sealed record CreatePackageCommunityReviewRequest(int Rating, string Comment, string? CaptchaToken);
+public sealed record CreatePackageCommunityReviewRequest(
+    int Rating,
+    string Comment,
+    string? CaptchaToken = null);
 
 public sealed record CreatePackageCommunityReviewResponse(bool Success, string Message);
