@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
@@ -7,7 +8,9 @@ namespace Server.Features.Packages;
 
 public sealed class UpsertPackageEndpoint(
     ApplicationDbContext dbContext,
-    IApiPrincipalResolver principalResolver)
+    IApiPrincipalResolver principalResolver,
+    IPckgRegistryActivityLog registryActivity,
+    ILogger<UpsertPackageEndpoint> logger)
     : Endpoint<UpsertPackageRequest, UpsertPackageResponse>
 {
     public override void Configure()
@@ -22,9 +25,29 @@ public sealed class UpsertPackageEndpoint(
 
     public override async Task HandleAsync(UpsertPackageRequest req, CancellationToken ct)
     {
+        using var logScope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["TraceId"] = HttpContext.TraceIdentifier,
+        });
+
+        void Record(string severity, string action, string message, string? userId, string? packageName)
+        {
+            registryActivity.Append(new RegistryActivityEntry(
+                DateTimeOffset.UtcNow,
+                severity,
+                action,
+                message,
+                HttpContext.TraceIdentifier,
+                userId,
+                packageName,
+                null));
+        }
+
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
+            logger.LogWarning("Upsert rejected: unauthenticated.");
+            Record("Warning", "upsert", "Unauthorized.", null, req.Name?.Trim());
             await Send.UnauthorizedAsync(ct);
             return;
         }
@@ -32,6 +55,8 @@ public sealed class UpsertPackageEndpoint(
         var normalizedName = req.Name?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedName))
         {
+            logger.LogWarning("Upsert rejected: missing package name.");
+            Record("Warning", "upsert", "Package name is required.", userId, null);
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
             await Send.OkAsync(new UpsertPackageResponse(false, "Package name is required.", null, null), ct);
             return;
@@ -58,6 +83,8 @@ public sealed class UpsertPackageEndpoint(
         }
         else if (entity.OwnerUserId != userId)
         {
+            logger.LogWarning("Upsert rejected: namespace conflict for {PackageName}.", normalizedName);
+            Record("Warning", "upsert_forbidden", "You do not own this package namespace.", userId, normalizedName);
             HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
             await Send.OkAsync(new UpsertPackageResponse(false, "You do not own this package namespace.", null, null), ct);
             return;
@@ -159,6 +186,19 @@ public sealed class UpsertPackageEndpoint(
             .Where(x => x.PackageId == entity.Id)
             .Select(x => (double?)x.Rating)
             .AverageAsync(ct) ?? 0d;
+
+        logger.LogInformation(
+            "Upsert package {PackageName} ({Outcome}) by user {UserId}; trace={TraceId}.",
+            entity.Name,
+            isNew ? "created" : "updated",
+            userId,
+            HttpContext.TraceIdentifier);
+        Record(
+            "Information",
+            isNew ? "upsert_created" : "upsert_updated",
+            req.SubmitForReview ? "Package saved and submitted for review." : "Package saved.",
+            userId,
+            entity.Name);
 
         var response = new UpsertPackageResponse(
             true,

@@ -209,6 +209,7 @@ builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
+builder.Services.AddSingleton<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.Configure<CaptchaOptions>(builder.Configuration.GetSection(CaptchaOptions.SectionName));

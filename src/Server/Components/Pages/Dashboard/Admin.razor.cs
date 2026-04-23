@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 
 namespace Server.Components.Pages.Dashboard;
 
-public partial class Admin
+public partial class Admin : IDisposable
 {
     private string AdminTabId = "admin-tab-users";
     private List<UserDto> Users = [];
@@ -32,11 +32,59 @@ public partial class Admin
     private string NewBlockedPattern = string.Empty;
     private string NewBlockedNote = string.Empty;
 
+    private List<RegistryActivityRowDto> RegistryActivity = [];
+    private bool IsLoadingRegistryActivity;
+    private System.Threading.Timer? _registryActivityTimer;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadUsersAsync();
         await LoadEmailSettingsAsync();
         await LoadBlockedLinksAsync();
+
+        _registryActivityTimer = new Timer(
+            _ => _ = InvokeAsync(PollRegistryActivityIfNeededAsync),
+            null,
+            TimeSpan.FromSeconds(3),
+            TimeSpan.FromSeconds(3));
+    }
+
+    public void Dispose()
+    {
+        _registryActivityTimer?.Dispose();
+    }
+
+    private async Task PollRegistryActivityIfNeededAsync()
+    {
+        if (AdminTabId != "admin-tab-registry-activity")
+        {
+            return;
+        }
+
+        await LoadRegistryActivityAsync();
+        StateHasChanged();
+    }
+
+    private Task RefreshRegistryActivityAsync() => LoadRegistryActivityAsync();
+
+    private async Task LoadRegistryActivityAsync()
+    {
+        IsLoadingRegistryActivity = true;
+        try
+        {
+            var response = await ApiHttp.GetAsync("/api/admin/registry-activity?take=200");
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var rows = await response.Content.ReadFromJsonAsync<List<RegistryActivityRowDto>>();
+            RegistryActivity = rows ?? [];
+        }
+        finally
+        {
+            IsLoadingRegistryActivity = false;
+        }
     }
 
     private async Task LoadUsersAsync()
@@ -297,4 +345,14 @@ public partial class Admin
     private sealed record BlockedLinkRowDto(Guid Id, string Pattern, string? Note, DateTimeOffset CreatedAtUtc);
     private sealed record AddBlockedLinkApiRequest(string Pattern, string? Note);
     private sealed record AddBlockedLinkApiResponse(bool Success, string Message, BlockedLinkRowDto? Item);
+
+    private sealed record RegistryActivityRowDto(
+        DateTimeOffset TimestampUtc,
+        string Severity,
+        string Action,
+        string Message,
+        string? TraceId,
+        string? UserId,
+        string? PackageName,
+        string? Version);
 }

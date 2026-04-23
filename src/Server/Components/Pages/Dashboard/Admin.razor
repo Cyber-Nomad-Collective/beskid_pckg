@@ -81,6 +81,41 @@
             </FluentCard>
         </FluentTab>
 
+        <FluentTab Id="admin-tab-registry-activity" Label="Registry activity">
+            <FluentCard Class="dashboard-card">
+                <FluentStack Orientation="Orientation.Horizontal" Gap="12px" VerticalAlignment="VerticalAlignment.Center" Style="margin-bottom: 12px;">
+                    <h3 style="margin: 0;">Package registry activity</h3>
+                    <FluentButton Appearance="Appearance.Accent" OnClick="RefreshRegistryActivityAsync" Disabled="@IsLoadingRegistryActivity">
+                        @(IsLoadingRegistryActivity ? "Loading…" : "Refresh")
+                    </FluentButton>
+                    <span class="muted">Auto-refreshes every 3s while this tab is open.</span>
+                </FluentStack>
+                <p class="muted">Recent publish, upsert, yank, and unyank events (in-memory buffer, last 500).</p>
+
+                @if (IsLoadingRegistryActivity && RegistryActivity.Count == 0)
+                {
+                    <p class="muted">Loading…</p>
+                }
+                else if (RegistryActivity.Count == 0)
+                {
+                    <p class="muted">No activity recorded yet.</p>
+                }
+                else
+                {
+                    <FluentDataGrid TGridItem="RegistryActivityRowDto" Items="@RegistryActivity.AsQueryable()" Style="width: 100%; overflow: auto;">
+                        <PropertyColumn Property="@(r => r.TimestampUtc)" Title="Time (UTC)" Format="u" />
+                        <PropertyColumn Property="@(r => r.Severity)" Title="Severity" />
+                        <PropertyColumn Property="@(r => r.Action)" Title="Action" />
+                        <PropertyColumn Property="@(r => r.Message)" Title="Message" />
+                        <PropertyColumn Property="@(r => r.PackageName)" Title="Package" />
+                        <PropertyColumn Property="@(r => r.Version)" Title="Version" />
+                        <PropertyColumn Property="@(r => r.UserId)" Title="User" />
+                        <PropertyColumn Property="@(r => r.TraceId)" Title="Trace" />
+                    </FluentDataGrid>
+                }
+            </FluentCard>
+        </FluentTab>
+
         <FluentTab Id="admin-tab-links" Label="Blocked links">
             <FluentCard Class="dashboard-card">
                 <h3>Blocked link patterns</h3>

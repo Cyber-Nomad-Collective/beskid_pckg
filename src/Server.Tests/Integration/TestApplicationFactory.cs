@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -113,6 +114,47 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
         await db.SaveChangesAsync();
 
         return (user, plain, package);
+    }
+
+    /// <summary>
+    /// Cookie-authenticated <see cref="HttpClient"/> for a user in the <c>SuperAdmin</c> role.
+    /// </summary>
+    public async Task<HttpClient> CreateAuthenticatedSuperAdminClientAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+        const string password = "TestAdmin#123";
+        var email = $"superadmin-{Guid.NewGuid():N}@test.local";
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = "Test SuperAdmin",
+        };
+
+        var create = await userManager.CreateAsync(user, password);
+        if (!create.Succeeded)
+        {
+            throw new InvalidOperationException(string.Join(' ', create.Errors.Select(e => e.Description)));
+        }
+
+        if (!await roleManager.RoleExistsAsync("SuperAdmin"))
+        {
+            await roleManager.CreateAsync(new IdentityRole("SuperAdmin"));
+        }
+
+        await userManager.AddToRoleAsync(user, "SuperAdmin");
+
+        var client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var loginResp = await client.PostAsJsonAsync(
+            "/api/users/login",
+            new { email, password, rememberMe = true });
+        loginResp.EnsureSuccessStatusCode();
+        return client;
     }
 
     public async Task<PackageVersionEntity?> GetPackageVersionAsync(string packageName, string version)
