@@ -3,25 +3,33 @@
 
 <div class="board-container">
     <header class="board-header">
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-            <FluentStack Orientation="Orientation.Vertical" Style="flex: 1;">
-                <h3 style="margin: 0;">@BoardName</h3>
-                @if (!string.IsNullOrWhiteSpace(BoardDescription))
-                {
-                    <p class="muted" style="margin: 0;">@BoardDescription</p>
-                }
-            </FluentStack>
-            <AuthorizeView>
-                <Authorized>
-                    @if (!IsLocked)
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                <FluentStack Orientation="Orientation.Vertical" Style="flex: 1;">
+                    <h3 style="margin: 0;">@BoardName</h3>
+                    @if (!string.IsNullOrWhiteSpace(BoardDescription))
                     {
-                        <FluentButton Appearance="Appearance.Accent" OnClick="OpenComposer" IconStart="@(new Icons.Regular.Size20.Add())">
-                            @NewPostButtonText
-                        </FluentButton>
+                        <p class="muted" style="margin: 0;">@BoardDescription</p>
                     }
-                </Authorized>
-            </AuthorizeView>
-        </FluentStack>
+                </FluentStack>
+                <AuthorizeView>
+                    <Authorized>
+                        @if (CanModerateBoard)
+                        {
+                            <FluentButton Appearance="Appearance.Outline"
+                                          OnClick="ToggleBoardLockAsync"
+                                          Title="@(IsLocked ? "Allow new threads and comments" : "Prevent new threads")">
+                                @(IsLocked ? "Unlock board" : "Lock board")
+                            </FluentButton>
+                        }
+                        @if (!IsLocked)
+                        {
+                            <FluentButton Appearance="Appearance.Accent" OnClick="OpenComposer" IconStart="@(new Icons.Regular.Size20.Add())">
+                                @NewPostButtonText
+                            </FluentButton>
+                        }
+                    </Authorized>
+                </AuthorizeView>
+            </FluentStack>
     </header>
 
     @if (IsComposerOpen)
@@ -155,6 +163,14 @@
                                     HintText="Drop files here or click to browse"
                                     AriaLabel="Choose attachment" />
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(CaptchaSiteKey))
+                {
+                    <div class="composer-section">
+                        <label class="fluent-label">Verification</label>
+                        <TurnstileCaptcha SiteKey="@CaptchaSiteKey" @bind-Token="PostCaptchaToken" />
+                    </div>
+                }
 
                 <FluentStack Orientation="Orientation.Horizontal" Gap="10px" Class="composer-actions" Wrap="true">
                     <FluentButton Appearance="Appearance.Accent" OnClick="CreatePostAsync" Disabled="@(string.IsNullOrWhiteSpace(NewPostTitle) || IsSubmittingPost)">

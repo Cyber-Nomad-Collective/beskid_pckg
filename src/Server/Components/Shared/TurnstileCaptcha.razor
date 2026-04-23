@@ -1,0 +1,43 @@
+@inject IJSRuntime Js
+@implements IDisposable
+
+<div id="@_elementId" class="turnstile-host"></div>
+
+@code {
+    private readonly string _elementId = "cf-" + Guid.NewGuid().ToString("n");
+    private DotNetObjectReference<TurnstileCaptcha>? _dotNetRef;
+    private bool _rendered;
+
+    [Parameter]
+    public string SiteKey { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Token { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> TokenChanged { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _rendered || string.IsNullOrWhiteSpace(SiteKey))
+        {
+            return;
+        }
+
+        _rendered = true;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await Js.InvokeVoidAsync("pckgTurnstile.render", _elementId, SiteKey, _dotNetRef);
+    }
+
+    [JSInvokable]
+    public Task SetToken(string? token)
+    {
+        Token = token;
+        return TokenChanged.InvokeAsync(token);
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+}

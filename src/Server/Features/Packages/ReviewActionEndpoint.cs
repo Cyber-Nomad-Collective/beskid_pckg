@@ -7,7 +7,8 @@ namespace Server.Features.Packages;
 
 public sealed class ReviewActionEndpoint(
     ApplicationDbContext dbContext,
-    IApiPrincipalResolver principalResolver)
+    IApiPrincipalResolver principalResolver,
+    IAuthorizationService authorization)
     : Endpoint<ReviewActionRequest, ReviewActionResponse>
 {
     private static readonly HashSet<string> AllowedActions = new(StringComparer.OrdinalIgnoreCase)
@@ -57,8 +58,7 @@ public sealed class ReviewActionEndpoint(
             return;
         }
 
-        var isSuperAdmin = User.IsInRole("SuperAdmin");
-        if (review.Package is null || (!isSuperAdmin && review.Package.OwnerUserId != userId))
+        if (review.Package is null || !await authorization.CanModeratePackageAsync(userId, review.PackageId))
         {
             HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
             await Send.OkAsync(new ReviewActionResponse(false, "You cannot modify this review.", null), ct);

@@ -19,45 +19,105 @@
         <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
     }
 
-    <FluentCard Class="dashboard-card">
-        <div style="margin-bottom: 16px;">
-            <h3>User Management</h3>
-            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Style="margin-top: 12px;">
-                <FluentTextField @bind-Value="SearchQuery" Placeholder="Search users..." Style="flex: 1;" />
-                <FluentButton Appearance="Appearance.Accent" OnClick="SearchUsersAsync">Search</FluentButton>
-            </FluentStack>
-        </div>
-
-        @if (IsLoading)
-        {
-            <p class="muted">Loading users...</p>
-        }
-        else
-        {
-            <FluentDataGrid Items="@UsersQueryable" ResizableColumns="true" Style="width: 100%; overflow: auto;">
-                <PropertyColumn Property="@(u => u.Email)" Title="Email" Sortable="true" />
-                <PropertyColumn Property="@(u => u.DisplayName)" Title="Display Name" Sortable="true" />
-                <PropertyColumn Property="@(u => u.Rating)" Title="Rating" Sortable="true" Format="F2" />
-                <TemplateColumn Title="Roles">
-                    <FluentStack Orientation="Orientation.Horizontal" Gap="4px" Wrap="true">
-                        @foreach (var role in context.Roles)
-                        {
-                            <FluentBadge Appearance="Appearance.Neutral">@role</FluentBadge>
-                        }
+    <FluentTabs @bind-ActiveTabId="AdminTabId" Class="admin-tabs">
+        <FluentTab Id="admin-tab-users" Label="Users &amp; email">
+            <FluentCard Class="dashboard-card">
+                <div style="margin-bottom: 16px;">
+                    <h3>User Management</h3>
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Style="margin-top: 12px;">
+                        <FluentTextField @bind-Value="SearchQuery" Placeholder="Search users..." Style="flex: 1;" />
+                        <FluentButton Appearance="Appearance.Accent" OnClick="SearchUsersAsync">Search</FluentButton>
                     </FluentStack>
-                </TemplateColumn>
-                <TemplateColumn Title="Actions">
-                    <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OpenEditUserDialog(context))">Edit</FluentButton>
-                </TemplateColumn>
-            </FluentDataGrid>
+                </div>
 
-            <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 16px;" VerticalAlignment="VerticalAlignment.Center">
-                <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">Previous</FluentButton>
-                <span>Page @CurrentPage of @TotalPages</span>
-                <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">Next</FluentButton>
-            </FluentStack>
-        }
-    </FluentCard>
+                @if (IsLoading)
+                {
+                    <p class="muted">Loading users...</p>
+                }
+                else
+                {
+                    <FluentDataGrid Items="@UsersQueryable" ResizableColumns="true" Style="width: 100%; overflow: auto;">
+                        <PropertyColumn Property="@(u => u.Email)" Title="Email" Sortable="true" />
+                        <PropertyColumn Property="@(u => u.DisplayName)" Title="Display Name" Sortable="true" />
+                        <PropertyColumn Property="@(u => u.Rating)" Title="Rating" Sortable="true" Format="F2" />
+                        <TemplateColumn Title="Roles">
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="4px" Wrap="true">
+                                @foreach (var role in context.Roles)
+                                {
+                                    <FluentBadge Appearance="Appearance.Neutral">@role</FluentBadge>
+                                }
+                            </FluentStack>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions">
+                            <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OpenEditUserDialog(context))">Edit</FluentButton>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Style="margin-top: 16px;" VerticalAlignment="VerticalAlignment.Center">
+                        <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">Previous</FluentButton>
+                        <span>Page @CurrentPage of @TotalPages</span>
+                        <FluentButton Appearance="Appearance.Outline" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">Next</FluentButton>
+                    </FluentStack>
+                }
+            </FluentCard>
+
+            <FluentCard Class="dashboard-card" Style="margin-top: 16px;">
+                <div style="margin-bottom: 16px;">
+                    <h3>Email Settings</h3>
+                    <p class="muted">Configure SMTP for notification emails. Managed by SuperAdmins.</p>
+                </div>
+                <EditForm Model="EmailSettings" OnValidSubmit="SaveEmailSettingsAsync">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="10px" Style="max-width: 680px;">
+                        <FluentTextField @bind-Value="EmailSettings.SmtpHost" Placeholder="SMTP host" />
+                        <FluentNumberField @bind-Value="EmailSettings.SmtpPort" Min="1" Max="65535" />
+                        <FluentCheckbox Label="Enable SSL" Checked="@EmailSettings.EnableSsl" CheckedChanged="@((bool v) => EmailSettings.EnableSsl = v)" />
+                        <FluentTextField @bind-Value="EmailSettings.Username" Placeholder="Username (optional)" />
+                        <FluentTextField @bind-Value="EmailSettings.Password" Placeholder="Password (leave blank to keep)" Type="TextFieldType.Password" />
+                        <FluentTextField @bind-Value="EmailSettings.FromEmail" Placeholder="From email" />
+                        <FluentTextField @bind-Value="EmailSettings.FromName" Placeholder="From name" />
+                        <FluentButton Appearance="Appearance.Accent" Disabled="@IsSaving">Save email settings</FluentButton>
+                    </FluentStack>
+                </EditForm>
+            </FluentCard>
+        </FluentTab>
+
+        <FluentTab Id="admin-tab-links" Label="Blocked links">
+            <FluentCard Class="dashboard-card">
+                <h3>Blocked link patterns</h3>
+                <p class="muted">Substrings matched against URLs in community reviews, board threads, and comments. Only SuperAdmins can change this list (not delegated package moderators).</p>
+
+                <FluentStack Orientation="Orientation.Vertical" Gap="12px" Style="margin-top: 16px; max-width: 720px;">
+                    <FluentTextField @bind-Value="NewBlockedPattern" Label="Pattern" Placeholder="e.g. spam.example or /bad-path" />
+                    <FluentTextField @bind-Value="NewBlockedNote" Label="Note (optional)" Placeholder="Why this is blocked" />
+                    <FluentButton Appearance="Appearance.Accent" OnClick="AddBlockedLinkAsync" Disabled="@IsSavingLinks">Add pattern</FluentButton>
+                </FluentStack>
+
+                @if (IsLoadingBlockedLinks)
+                {
+                    <p class="muted" style="margin-top: 16px;">Loading…</p>
+                }
+                else if (BlockedLinks.Count == 0)
+                {
+                    <p class="muted" style="margin-top: 16px;">No blocked patterns yet.</p>
+                }
+                else
+                {
+                    <FluentDataGrid TGridItem="BlockedLinkRowDto" Items="@BlockedLinksQueryable" Style="width: 100%; margin-top: 16px; overflow: auto;">
+                        <PropertyColumn Property="@(x => x.Pattern)" Title="Pattern" />
+                        <PropertyColumn Property="@(x => x.Note)" Title="Note" />
+                        <PropertyColumn Property="@(x => x.CreatedAtUtc)" Title="Added" Format="u" />
+                        <TemplateColumn Title="" Context="row">
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          OnClick="@(() => DeleteBlockedLinkAsync(row.Id))"
+                                          Title="Remove">
+                                Remove
+                            </FluentButton>
+                        </TemplateColumn>
+                    </FluentDataGrid>
+                }
+            </FluentCard>
+        </FluentTab>
+    </FluentTabs>
 </section>
 
 <FluentDialog @bind-IsOpen="IsEditDialogOpen" Modal="true">
@@ -89,22 +149,3 @@
         <FluentButton Appearance="Appearance.Outline" OnClick="CloseEditDialog">Cancel</FluentButton>
     </FluentDialogFooter>
 </FluentDialog>
-
-    <FluentCard Class="dashboard-card" Style="margin-top: 16px;">
-        <div style="margin-bottom: 16px;">
-            <h3>Email Settings</h3>
-            <p class="muted">Configure SMTP for notification emails. Managed by SuperAdmins.</p>
-        </div>
-        <EditForm Model="EmailSettings" OnValidSubmit="SaveEmailSettingsAsync">
-            <FluentStack Orientation="Orientation.Vertical" Gap="10px" Style="max-width: 680px;">
-                <FluentTextField @bind-Value="EmailSettings.SmtpHost" Placeholder="SMTP host" />
-                <FluentNumberField @bind-Value="EmailSettings.SmtpPort" Min="1" Max="65535" />
-                <FluentCheckbox Label="Enable SSL" Checked="@EmailSettings.EnableSsl" CheckedChanged="@((bool v) => EmailSettings.EnableSsl = v)" />
-                <FluentTextField @bind-Value="EmailSettings.Username" Placeholder="Username (optional)" />
-                <FluentTextField @bind-Value="EmailSettings.Password" Placeholder="Password (leave blank to keep)" Type="TextFieldType.Password" />
-                <FluentTextField @bind-Value="EmailSettings.FromEmail" Placeholder="From email" />
-                <FluentTextField @bind-Value="EmailSettings.FromName" Placeholder="From name" />
-                <FluentButton Appearance="Appearance.Accent" Disabled="@IsSaving">Save email settings</FluentButton>
-            </FluentStack>
-        </EditForm>
-    </FluentCard>

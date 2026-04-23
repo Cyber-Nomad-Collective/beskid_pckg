@@ -7,7 +7,8 @@ namespace Server.Features.Packages;
 
 public sealed class ListReviewQueueEndpoint(
     ApplicationDbContext dbContext,
-    IApiPrincipalResolver principalResolver)
+    IApiPrincipalResolver principalResolver,
+    IAuthorizationService authorization)
     : EndpointWithoutRequest<List<PackageReviewResponse>>
 {
     public override void Configure()
@@ -16,7 +17,7 @@ public sealed class ListReviewQueueEndpoint(
         Options(x => x.RequireAuthorization());
         Summary(s =>
         {
-            s.Summary = "List review queue for packages owned by current user.";
+            s.Summary = "List review queue for packages you can moderate.";
         });
     }
 
@@ -30,11 +31,26 @@ public sealed class ListReviewQueueEndpoint(
             return;
         }
 
-        var isSuperAdmin = User.IsInRole("SuperAdmin");
+        var seeAll = await authorization.IsSuperAdminAsync(userId)
+                     || await authorization.IsGlobalModeratorAsync(userId);
+
+        var delegatedPackageIds = await dbContext.ResourcePermissions
+            .AsNoTracking()
+            .Where(p => p.UserId == userId && p.ResourceType == "Package" && p.Permission == "Moderate")
+            .Select(p => p.ResourceId)
+            .ToListAsync(ct);
+
+        var delegated = delegatedPackageIds
+            .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToHashSet();
 
         var query = from review in dbContext.PackageReviews.AsNoTracking()
                     join package in dbContext.Packages.AsNoTracking() on review.PackageId equals package.Id
-                    where isSuperAdmin || package.OwnerUserId == userId
+                    where seeAll
+                          || package.OwnerUserId == userId
+                          || delegated.Contains(package.Id)
                     orderby review.SubmittedAtUtc descending
                     select new PackageReviewResponse(
                         review.Id,

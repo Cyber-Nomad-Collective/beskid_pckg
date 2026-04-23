@@ -5,7 +5,7 @@ using Server.Data;
 
 namespace Server.Features.Users;
 
-public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManager)
+public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
     : Endpoint<RegisterUserRequest, AuthActionResponse>
 {
     public override void Configure()
@@ -56,6 +56,13 @@ public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManage
             await Send.OkAsync(new AuthActionResponse(false, message), ct);
             return;
         }
+
+        if (!await roleManager.RoleExistsAsync("User"))
+        {
+            await roleManager.CreateAsync(new IdentityRole("User"));
+        }
+
+        await userManager.AddToRoleAsync(user, "User");
 
         await Send.OkAsync(new AuthActionResponse(true, "Registration successful. You can now sign in."), ct);
     }

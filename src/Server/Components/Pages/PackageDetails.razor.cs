@@ -25,6 +25,7 @@ public partial class PackageDetails
     private bool IsFollowing;
     private int PackageBoardId;
     private bool IsPackageBoardLocked;
+    private bool CanModerateBoardUser;
     private string SelectedTabId = "pkg-tab-versions";
     private PackageHealthStatus? HealthStatus;
     private int DependentsCount;
@@ -42,8 +43,33 @@ public partial class PackageDetails
         Package = await DbContext.Packages.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Name == PackageName && x.IsPublic);
         await EnsurePackageBoardAsync();
+        await RefreshBoardModerationAsync();
         await LoadSecondaryDataAsync();
         await LoadFollowAsync();
+    }
+
+    private async Task RefreshBoardModerationAsync()
+    {
+        CanModerateBoardUser = false;
+        if (PackageBoardId <= 0)
+        {
+            return;
+        }
+
+        var uid = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(uid))
+        {
+            return;
+        }
+
+        CanModerateBoardUser = await Authorization.CanModerateBoardAsync(uid, PackageBoardId);
+    }
+
+    private async Task HandleBoardLockChangedAsync()
+    {
+        await EnsurePackageBoardAsync();
+        await RefreshBoardModerationAsync();
+        StateHasChanged();
     }
 
     private async Task EnsurePackageBoardAsync()
@@ -189,29 +215,37 @@ public partial class PackageDetails
             return;
         }
 
-        await AddReviewAsync(review.Rating, review.Comment);
+        await AddReviewAsync(review.Rating, review.Comment, review.CaptchaToken);
     }
 
-    private async Task AddReviewAsync(int rating, string comment)
+    private async Task AddReviewAsync(int rating, string comment, string? captchaToken)
     {
-        var userId = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (Package is null || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(comment))
+        if (Package is null || string.IsNullOrWhiteSpace(comment))
         {
             return;
         }
 
-        DbContext.PackageCommunityReviews.Add(new PackageCommunityReviewEntity
+        var payload = new
         {
-            Id = Guid.NewGuid(),
-            PackageId = Package.Id,
-            UserId = userId,
-            Rating = Math.Clamp(rating, 1, 5),
-            Comment = HtmlSanitization.Sanitize(comment),
-            CreatedAtUtc = DateTimeOffset.UtcNow,
-        });
-        await DbContext.SaveChangesAsync();
+            rating = Math.Clamp(rating, 1, 5),
+            comment,
+            captchaToken,
+        };
 
-        await LoadSecondaryDataAsync();
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"/api/packages/{Uri.EscapeDataString(Package.Name)}/community-reviews",
+                payload);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadSecondaryDataAsync();
+            }
+        }
+        catch
+        {
+            // Keep the page stable if the operation fails.
+        }
     }
 
     private int GetReviewCountFor(int rating)

@@ -20,6 +20,12 @@ public partial class BoardComponent
     public bool IsLocked { get; set; }
 
     [Parameter]
+    public bool CanModerateBoard { get; set; }
+
+    [Parameter]
+    public EventCallback OnBoardLockChanged { get; set; }
+
+    [Parameter]
     public BoardPostType? FilterPostType { get; set; }
 
     [Parameter]
@@ -48,6 +54,9 @@ public partial class BoardComponent
 
     [Inject]
     public IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
+
+    private string? CaptchaSiteKey;
+    private string? PostCaptchaToken;
 
     private List<BoardPostDto> Posts = [];
     private bool IsLoading = true;
@@ -100,7 +109,21 @@ public partial class BoardComponent
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCaptchaConfigAsync();
         await LoadPostsAsync();
+    }
+
+    private async Task LoadCaptchaConfigAsync()
+    {
+        try
+        {
+            var cfg = await ApiHttp.GetFromJsonAsync<CaptchaPublicConfigDto>("/api/public/captcha-config");
+            CaptchaSiteKey = string.IsNullOrWhiteSpace(cfg?.TurnstileSiteKey) ? null : cfg!.TurnstileSiteKey;
+        }
+        catch
+        {
+            CaptchaSiteKey = null;
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -184,6 +207,7 @@ public partial class BoardComponent
         NewTagInput = string.Empty;
         NewPostTags.Clear();
         NewPostType = FilterPostType ?? DefaultPostType;
+        PostCaptchaToken = null;
     }
 
     private void AddTag()
@@ -227,12 +251,17 @@ public partial class BoardComponent
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(CaptchaSiteKey) && string.IsNullOrWhiteSpace(PostCaptchaToken))
+        {
+            return;
+        }
+
         IsSubmittingPost = true;
         try
         {
             var response = await ApiHttp.PostAsJsonAsync(
                 $"/api/boards/{BoardId}/posts",
-                new CreateBoardPostRequest(NewPostTitle.Trim(), BuildPostContent(), FilterPostType ?? NewPostType));
+                new CreateBoardPostRequest(NewPostTitle.Trim(), BuildPostContent(), FilterPostType ?? NewPostType, PostCaptchaToken));
 
             if (response.IsSuccessStatusCode)
             {
@@ -244,6 +273,30 @@ public partial class BoardComponent
         finally
         {
             IsSubmittingPost = false;
+        }
+    }
+
+    private async Task ToggleBoardLockAsync()
+    {
+        if (!CanModerateBoard)
+        {
+            return;
+        }
+
+        var next = !IsLocked;
+        try
+        {
+            var response = await ApiHttp.PostAsJsonAsync(
+                $"/api/boards/{BoardId}/moderation/lock",
+                new SetBoardLockedRequest(next));
+            if (response.IsSuccessStatusCode && OnBoardLockChanged.HasDelegate)
+            {
+                await OnBoardLockChanged.InvokeAsync();
+            }
+        }
+        catch
+        {
+            // ignore
         }
     }
 
@@ -284,7 +337,9 @@ public partial class BoardComponent
 
     private sealed record GetBoardPostsResponse(List<BoardPostDto> Posts, int TotalCount, int Page, int PageSize);
     private sealed record BoardPostDto(int Id, int BoardId, string AuthorUserId, string Title, string Content, BoardPostType PostType, DateTime CreatedAtUtc, DateTime? EditedAtUtc, int UpvoteCount, int DownvoteCount, bool IsPinned, bool IsLocked, int CurrentUserVote);
-    private sealed record CreateBoardPostRequest(string Title, string Content, BoardPostType PostType);
+    private sealed record CreateBoardPostRequest(string Title, string Content, BoardPostType PostType, string? CaptchaToken);
+    private sealed record SetBoardLockedRequest(bool Locked);
+    private sealed record CaptchaPublicConfigDto(string TurnstileSiteKey);
     private sealed record VoteBoardPostRequest(int VoteValue);
     private sealed record VoteBoardPostResponse(bool Success, string Message, int UpvoteCount, int DownvoteCount);
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
@@ -22,24 +23,73 @@ public sealed class AuthorizationService : IAuthorizationService
         return await _userManager.IsInRoleAsync(user, "SuperAdmin");
     }
 
-    public async Task<bool> IsPackageOwnerAsync(string userId, int packageId)
+    public async Task<bool> IsGlobalModeratorAsync(string userId)
     {
-        var package = await _db.Packages.FindAsync(packageId);
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return false;
+        return await _userManager.IsInRoleAsync(user, "Moderator");
+    }
+
+    public async Task<bool> IsPackageOwnerAsync(string userId, Guid packageId)
+    {
+        var package = await _db.Packages.AsNoTracking().FirstOrDefaultAsync(p => p.Id == packageId);
         return package?.OwnerUserId == userId;
+    }
+
+    public async Task<bool> CanModeratePackageAsync(string userId, Guid packageId)
+    {
+        if (await IsSuperAdminAsync(userId) || await IsGlobalModeratorAsync(userId))
+        {
+            return true;
+        }
+
+        if (await IsPackageOwnerAsync(userId, packageId))
+        {
+            return true;
+        }
+
+        return await HasPermissionAsync(userId, "Package", packageId.ToString(), "Moderate");
+    }
+
+    public async Task<bool> CanModerateBoardAsync(string userId, int boardId)
+    {
+        if (await IsSuperAdminAsync(userId) || await IsGlobalModeratorAsync(userId))
+        {
+            return true;
+        }
+
+        var board = await _db.Boards.AsNoTracking().FirstOrDefaultAsync(b => b.Id == boardId);
+        if (board is null)
+        {
+            return false;
+        }
+
+        if (string.Equals(board.EntityType, "Package", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(board.EntityId, out var packageId))
+        {
+            return await CanModeratePackageAsync(userId, packageId);
+        }
+
+        return await HasPermissionAsync(userId, "Board", boardId.ToString(CultureInfo.InvariantCulture), "Moderate");
     }
 
     public async Task<bool> CanModerateAsync(string userId, string resourceType, string resourceId)
     {
         if (await IsSuperAdminAsync(userId))
-            return true;
-
-        if (resourceType == "Package")
         {
-            if (int.TryParse(resourceId, out var packageId))
-            {
-                if (await IsPackageOwnerAsync(userId, packageId))
-                    return true;
-            }
+            return true;
+        }
+
+        if (string.Equals(resourceType, "Package", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(resourceId, out var packageId))
+        {
+            return await CanModeratePackageAsync(userId, packageId);
+        }
+
+        if (string.Equals(resourceType, "Board", StringComparison.OrdinalIgnoreCase)
+            && int.TryParse(resourceId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var boardId))
+        {
+            return await CanModerateBoardAsync(userId, boardId);
         }
 
         return await HasPermissionAsync(userId, resourceType, resourceId, "Moderate");
@@ -48,25 +98,29 @@ public sealed class AuthorizationService : IAuthorizationService
     public async Task<bool> HasPermissionAsync(string userId, string resourceType, string resourceId, string permission)
     {
         if (await IsSuperAdminAsync(userId))
+        {
             return true;
+        }
 
         return await _db.ResourcePermissions
-            .AnyAsync(p => p.UserId == userId 
-                && p.ResourceType == resourceType 
-                && p.ResourceId == resourceId 
+            .AnyAsync(p => p.UserId == userId
+                && p.ResourceType == resourceType
+                && p.ResourceId == resourceId
                 && p.Permission == permission);
     }
 
     public async Task GrantPermissionAsync(string userId, string resourceType, string resourceId, string permission, string grantedByUserId)
     {
         var existing = await _db.ResourcePermissions
-            .FirstOrDefaultAsync(p => p.UserId == userId 
-                && p.ResourceType == resourceType 
-                && p.ResourceId == resourceId 
+            .FirstOrDefaultAsync(p => p.UserId == userId
+                && p.ResourceType == resourceType
+                && p.ResourceId == resourceId
                 && p.Permission == permission);
 
         if (existing is not null)
+        {
             return;
+        }
 
         _db.ResourcePermissions.Add(new ResourcePermissionEntity
         {
@@ -84,9 +138,9 @@ public sealed class AuthorizationService : IAuthorizationService
     public async Task RevokePermissionAsync(string userId, string resourceType, string resourceId, string permission)
     {
         var permission_entity = await _db.ResourcePermissions
-            .FirstOrDefaultAsync(p => p.UserId == userId 
-                && p.ResourceType == resourceType 
-                && p.ResourceId == resourceId 
+            .FirstOrDefaultAsync(p => p.UserId == userId
+                && p.ResourceType == resourceType
+                && p.ResourceId == resourceId
                 && p.Permission == permission);
 
         if (permission_entity is not null)

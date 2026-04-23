@@ -19,6 +19,14 @@
                         Rows="7"
                         @bind-Value="Content.Comment" />
         <small class="muted">Formatting is sanitized on save for safe display.</small>
+
+        @if (!string.IsNullOrWhiteSpace(_turnstileSiteKey))
+        {
+            <div>
+                <FluentLabel>Verification</FluentLabel>
+                <TurnstileCaptcha SiteKey="@_turnstileSiteKey" @bind-Token="Content.CaptchaToken" />
+            </div>
+        }
     </FluentStack>
 </FluentDialogBody>
 

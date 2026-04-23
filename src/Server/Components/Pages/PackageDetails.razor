@@ -8,6 +8,7 @@
 
 @inject ApplicationDbContext DbContext
 @inject IHttpContextAccessor HttpContextAccessor
+@inject Server.Services.IAuthorizationService Authorization
 
 <PageTitle>@(Package?.Name ?? "Package")</PageTitle>
 
@@ -240,6 +241,8 @@ else
                                         BoardName="Community"
                                         BoardDescription="Report issues, request features, and discuss this package with the community."
                                         IsLocked="IsPackageBoardLocked"
+                                        CanModerateBoard="CanModerateBoardUser"
+                                        OnBoardLockChanged="HandleBoardLockChangedAsync"
                                         ShowPostTypeSelector="true"
                                         DefaultPostType="BoardPostType.Issue"
                                         NewPostButtonText="New thread"

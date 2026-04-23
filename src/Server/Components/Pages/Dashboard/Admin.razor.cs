@@ -5,6 +5,7 @@ namespace Server.Components.Pages.Dashboard;
 
 public partial class Admin
 {
+    private string AdminTabId = "admin-tab-users";
     private List<UserDto> Users = [];
     private IQueryable<UserDto> UsersQueryable => Users.AsQueryable();
     private bool IsLoading = true;
@@ -24,10 +25,18 @@ public partial class Admin
     [Inject]
     public HttpClient ApiHttp { get; set; } = default!;
 
+    private List<BlockedLinkRowDto> BlockedLinks = [];
+    private IQueryable<BlockedLinkRowDto> BlockedLinksQueryable => BlockedLinks.AsQueryable();
+    private bool IsLoadingBlockedLinks = true;
+    private bool IsSavingLinks;
+    private string NewBlockedPattern = string.Empty;
+    private string NewBlockedNote = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadUsersAsync();
         await LoadEmailSettingsAsync();
+        await LoadBlockedLinksAsync();
     }
 
     private async Task LoadUsersAsync()
@@ -207,4 +216,85 @@ public partial class Admin
     private sealed record UserDto(string Id, string Email, string DisplayName, bool EmailConfirmed, List<string> Roles, double Rating);
     private sealed record UpdateUserRolesRequest(List<string> Roles);
     private sealed record UpdateUserRolesResponse(bool Success, string Message);
+
+    private async Task LoadBlockedLinksAsync()
+    {
+        IsLoadingBlockedLinks = true;
+        try
+        {
+            var response = await ApiHttp.GetAsync("/api/admin/blocked-links");
+            if (!response.IsSuccessStatusCode)
+            {
+                SetFeedback("Failed to load blocked link patterns.", true);
+                return;
+            }
+
+            var rows = await response.Content.ReadFromJsonAsync<List<BlockedLinkRowDto>>();
+            BlockedLinks = rows ?? [];
+        }
+        finally
+        {
+            IsLoadingBlockedLinks = false;
+        }
+    }
+
+    private async Task AddBlockedLinkAsync()
+    {
+        var pattern = NewBlockedPattern.Trim();
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            SetFeedback("Enter a URL substring to block.", true);
+            return;
+        }
+
+        IsSavingLinks = true;
+        try
+        {
+            var response = await ApiHttp.PostAsJsonAsync(
+                "/api/admin/blocked-links",
+                new AddBlockedLinkApiRequest(pattern, string.IsNullOrWhiteSpace(NewBlockedNote) ? null : NewBlockedNote.Trim()));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadFromJsonAsync<AddBlockedLinkApiResponse>();
+                SetFeedback(err?.Message ?? "Failed to add pattern.", true);
+                return;
+            }
+
+            var body = await response.Content.ReadFromJsonAsync<AddBlockedLinkApiResponse>();
+            SetFeedback(body?.Message ?? "Pattern added.", false);
+            NewBlockedPattern = string.Empty;
+            NewBlockedNote = string.Empty;
+            await LoadBlockedLinksAsync();
+        }
+        finally
+        {
+            IsSavingLinks = false;
+        }
+    }
+
+    private async Task DeleteBlockedLinkAsync(Guid id)
+    {
+        IsSavingLinks = true;
+        try
+        {
+            var response = await ApiHttp.DeleteAsync($"/api/admin/blocked-links/{id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                SetFeedback("Failed to remove pattern.", true);
+                return;
+            }
+
+            SetFeedback("Pattern removed.", false);
+            await LoadBlockedLinksAsync();
+        }
+        finally
+        {
+            IsSavingLinks = false;
+        }
+    }
+
+    private sealed record BlockedLinkRowDto(Guid Id, string Pattern, string? Note, DateTimeOffset CreatedAtUtc);
+    private sealed record AddBlockedLinkApiRequest(string Pattern, string? Note);
+    private sealed record AddBlockedLinkApiResponse(bool Success, string Message, BlockedLinkRowDto? Item);
 }

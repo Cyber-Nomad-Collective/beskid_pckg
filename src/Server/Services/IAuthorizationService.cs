@@ -7,5 +7,8 @@ public interface IAuthorizationService
     Task GrantPermissionAsync(string userId, string resourceType, string resourceId, string permission, string grantedByUserId);
     Task RevokePermissionAsync(string userId, string resourceType, string resourceId, string permission);
     Task<bool> IsSuperAdminAsync(string userId);
-    Task<bool> IsPackageOwnerAsync(string userId, int packageId);
+    Task<bool> IsGlobalModeratorAsync(string userId);
+    Task<bool> IsPackageOwnerAsync(string userId, Guid packageId);
+    Task<bool> CanModeratePackageAsync(string userId, Guid packageId);
+    Task<bool> CanModerateBoardAsync(string userId, int boardId);
 }

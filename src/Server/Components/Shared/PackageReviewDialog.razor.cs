@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -7,6 +8,22 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
 {
     [Parameter] public ReviewInput Content { get; set; } = new();
     [CascadingParameter] public FluentDialog Dialog { get; set; } = default!;
+    [Inject] public HttpClient Http { get; set; } = default!;
+
+    private string? _turnstileSiteKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var cfg = await Http.GetFromJsonAsync<CaptchaPublicConfigDto>("/api/public/captcha-config");
+            _turnstileSiteKey = string.IsNullOrWhiteSpace(cfg?.TurnstileSiteKey) ? null : cfg!.TurnstileSiteKey;
+        }
+        catch
+        {
+            _turnstileSiteKey = null;
+        }
+    }
 
     private Task CancelAsync() => Dialog.CancelAsync();
 
@@ -14,6 +31,11 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
     {
         Content.Comment = Content.Comment.Trim();
         if (string.IsNullOrWhiteSpace(Content.Comment))
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_turnstileSiteKey) && string.IsNullOrWhiteSpace(Content.CaptchaToken))
         {
             return;
         }
@@ -33,5 +55,8 @@ public partial class PackageReviewDialog : IDialogContentComponent<PackageReview
         public string PackageName { get; init; } = string.Empty;
         public int Rating { get; set; } = 5;
         public string Comment { get; set; } = string.Empty;
+        public string? CaptchaToken { get; set; }
     }
+
+    private sealed record CaptchaPublicConfigDto(string TurnstileSiteKey);
 }

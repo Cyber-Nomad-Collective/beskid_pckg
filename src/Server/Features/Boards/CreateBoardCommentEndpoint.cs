@@ -1,9 +1,9 @@
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
+using Server.Data;
 using Server.Services;
 using Server.Services.Notifications;
 using System.Security.Claims;
-using Server.Data;
 
 namespace Server.Features.Boards;
 
@@ -12,11 +12,13 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
     public ApplicationDbContext Db { get; set; } = default!;
     public IUserRatingService RatingService { get; set; } = default!;
     public INotificationService Notifications { get; set; } = default!;
+    public ICaptchaVerificationService Captcha { get; set; } = default!;
+    public ILinkContentGuard LinkGuard { get; set; } = default!;
 
     public override void Configure()
     {
         Post("/boards/posts/{postId}/comments");
-        Roles("User", "SuperAdmin");
+        Roles("User", "SuperAdmin", "Moderator");
     }
 
     public override async Task HandleAsync(CreateBoardCommentRequest req, CancellationToken ct)
@@ -27,6 +29,14 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
         if (string.IsNullOrWhiteSpace(userId))
         {
             await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!await Captcha.IsHumanAsync(req.CaptchaToken, remoteIp, ct))
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Send.OkAsync(new CreateBoardCommentResponse(false, "Robot check failed. Please try again."), ct);
             return;
         }
 
@@ -41,6 +51,14 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
         {
             HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
             await Send.OkAsync(new CreateBoardCommentResponse(false, "This post is locked."), ct);
+            return;
+        }
+
+        var linkBlock = await LinkGuard.GetBlockReasonAsync(req.Content, ct);
+        if (linkBlock is not null)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Send.OkAsync(new CreateBoardCommentResponse(false, linkBlock), ct);
             return;
         }
 
@@ -90,5 +108,5 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
     }
 }
 
-public sealed record CreateBoardCommentRequest(string Content, int? ParentCommentId);
+public sealed record CreateBoardCommentRequest(string Content, int? ParentCommentId, string? CaptchaToken = null);
 public sealed record CreateBoardCommentResponse(bool Success, string Message, int? CommentId = null);

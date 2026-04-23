@@ -211,6 +211,10 @@ builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
+builder.Services.Configure<CaptchaOptions>(builder.Configuration.GetSection(CaptchaOptions.SectionName));
+builder.Services.AddHttpClient(nameof(CaptchaVerificationService));
+builder.Services.AddScoped<ICaptchaVerificationService, CaptchaVerificationService>();
+builder.Services.AddScoped<ILinkContentGuard, LinkContentGuard>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
 builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
 builder.Services.AddSingleton<IHtmlSanitizationService, HtmlSanitizationService>();
@@ -448,7 +452,8 @@ app.MapPost("/auth/login", async (
 }).DisableAntiforgery();
 app.MapPost("/auth/register", async (
     HttpContext context,
-    UserManager<ApplicationUser> userManager) =>
+    UserManager<ApplicationUser> userManager,
+    RoleManager<IdentityRole> roleManager) =>
 {
     if (!context.Request.HasFormContentType)
     {
@@ -481,6 +486,13 @@ app.MapPost("/auth/register", async (
     {
         return Results.Redirect("/auth?mode=register&error=register_create_failed");
     }
+
+    if (!await roleManager.RoleExistsAsync("User"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("User"));
+    }
+
+    await userManager.AddToRoleAsync(user, "User");
 
     return Results.Redirect("/auth?mode=login");
 }).DisableAntiforgery();
