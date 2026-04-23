@@ -5,10 +5,12 @@
 @using Server.Data
 @using Server.Features.Packages
 @using Server.Components.Shared
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 @inject ApplicationDbContext DbContext
 @inject IHttpContextAccessor HttpContextAccessor
 @inject Server.Services.IAuthorizationService Authorization
+@inject NavigationManager Navigation
 
 <PageTitle>@(Package?.Name ?? "Package")</PageTitle>
 
@@ -138,6 +140,31 @@ else
                         This package currently has <strong>@DependentsCount</strong> dependent package(s)
                         based on latest published manifests.
                     </p>
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-docs" Label="Documentation">
+                <div class="content-section package-tab-content">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     Wrap="true"
+                                     Gap="12"
+                                     Class="content-section-title-row">
+                            <h2 style="margin: 0;">Documentation</h2>
+                            <FluentButton Appearance="Appearance.Accent"
+                                          IconStart="@(new Icons.Regular.Size20.Window())"
+                                          OnClick="OpenDocsFullPage">
+                                Open full page
+                            </FluentButton>
+                        </FluentStack>
+                        <FluentLabel Typo="Typography.Body" Class="muted">
+                            Markdown under <code>docs/</code> in the published package, plus optional root <code>README.md</code>.
+                        </FluentLabel>
+                        <PackageDocsBrowser PackageIdentifier="@Package.Name"
+                                            Version="@(LatestVersion?.Version ?? "latest")"
+                                            Variant="PackageDocsBrowserVariant.Embedded" />
+                    </FluentStack>
                 </div>
             </FluentTab>
 

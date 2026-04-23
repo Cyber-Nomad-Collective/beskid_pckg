@@ -4,6 +4,7 @@ WORKDIR /src
 # Toggle verbose diagnosis during image build
 ARG VERBOSE_BUILD=false
 
+COPY Directory.Build.props src/
 COPY src/ src/
 
 # Optional diagnostics to confirm SDK and project content inside the image
@@ -18,9 +19,9 @@ RUN dotnet restore src/Server/Server.csproj
 
 # When VERBOSE_BUILD=true, also print the Compile item list from MSBuild
 RUN if [ "$VERBOSE_BUILD" = "true" ]; then \
-      dotnet publish src/Server/Server.csproj -c Release -o /app/publish /p:UseAppHost=false /p:LogCompileItems=true --no-restore -v normal; \
+      dotnet publish src/Server/Server.csproj -c Release -o /app/publish /p:UseAppHost=false /p:LogCompileItems=true /p:TreatWarningsAsErrors=false --no-restore -v normal; \
     else \
-      dotnet publish src/Server/Server.csproj -c Release -o /app/publish /p:UseAppHost=false --no-restore -v minimal; \
+      dotnet publish src/Server/Server.csproj -c Release -o /app/publish /p:UseAppHost=false /p:TreatWarningsAsErrors=false --no-restore -v minimal; \
     fi
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final

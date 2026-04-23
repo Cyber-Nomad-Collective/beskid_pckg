@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Coolify / CI may inject TreatWarningsAsErrors; keep package registry builds permissive unless opted in. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

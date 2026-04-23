@@ -1,84 +1,140 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
 namespace Server.Tests.TestUtils;
 
-internal static class BpkTestArtifactBuilder
+/// <summary>
+/// Builds minimal valid .bpk ZIP payloads matching server-side package artifact validation rules.
+/// </summary>
+public static class BpkTestArtifactBuilder
 {
-    public static byte[] CreateValidArtifact(string packageName, string version)
-    {
-        var packageJson = JsonSerializer.Serialize(new
-        {
-            schema = "beskid.package.v1",
-            id = packageName,
-            version,
-        });
+    public static string ArtifactSha256(byte[] artifactBytes)
+        => Convert.ToHexString(SHA256.HashData(artifactBytes)).ToLowerInvariant();
 
-        var projectProj = $"project {{\n  name = \"{packageName}\"\n  version = \"{version}\"\n}}\n\n";
-        var srcMain = "fn Main() {}\n";
-
-        var entries = new Dictionary<string, byte[]>
-        {
-            ["package.json"] = Encoding.UTF8.GetBytes(packageJson),
-            ["Project.proj"] = Encoding.UTF8.GetBytes(projectProj),
-            ["src/Main.bd"] = Encoding.UTF8.GetBytes(srcMain),
-        };
-
-        var checksumLines = entries
-            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
-            .Select(kv => $"{Sha256(kv.Value)}  {kv.Key}");
-
-        entries["checksums.sha256"] = Encoding.UTF8.GetBytes(string.Join('\n', checksumLines) + "\n");
-
-        return CreateZip(entries);
-    }
-
+    /// <summary>
+    /// Same layout as a valid artifact, but the first checksum line does not match file content.
+    /// </summary>
     public static byte[] CreateArtifactWithBadChecksum(string packageName, string version)
     {
-        var packageJson = JsonSerializer.Serialize(new
+        var files = new OrderedDictionary();
+
+        var projectProj = $"name = \"{packageName}\"\n";
+        files["Project.proj"] = Encoding.UTF8.GetBytes(projectProj);
+        files["src/entry.bsk"] = Encoding.UTF8.GetBytes("// test entry");
+
+        var packageJson = $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
+        files["package.json"] = Encoding.UTF8.GetBytes(packageJson);
+
+        var checksumLines = new List<string>();
+        var first = true;
+        foreach (var kv in files)
         {
-            schema = "beskid.package.v1",
-            id = packageName,
-            version,
-        });
-
-        var projectProj = $"project {{\n  name = \"{packageName}\"\n  version = \"{version}\"\n}}\n\n";
-        var srcMain = "fn Main() {}\n";
-
-        var entries = new Dictionary<string, byte[]>
-        {
-            ["package.json"] = Encoding.UTF8.GetBytes(packageJson),
-            ["Project.proj"] = Encoding.UTF8.GetBytes(projectProj),
-            ["src/Main.bd"] = Encoding.UTF8.GetBytes(srcMain),
-            ["checksums.sha256"] = Encoding.UTF8.GetBytes("deadbeef  package.json\n"),
-        };
-
-        return CreateZip(entries);
-    }
-
-    public static string ArtifactSha256(byte[] artifactBytes) => Sha256(artifactBytes);
-
-    private static byte[] CreateZip(IReadOnlyDictionary<string, byte[]> entries)
-    {
-        using var output = new MemoryStream();
-        using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (var kv in entries.OrderBy(k => k.Key, StringComparer.Ordinal))
+            var digest = Sha256Hex(kv.Value);
+            if (first)
             {
-                var entry = zip.CreateEntry(kv.Key, CompressionLevel.NoCompression);
-                using var stream = entry.Open();
-                stream.Write(kv.Value);
+                digest = digest[0] == '0' ? "1" + digest[1..] : "0" + digest[1..];
+                first = false;
+            }
+
+            checksumLines.Add($"{digest}  {kv.Key}");
+        }
+
+        var checksumsBody = string.Join("\n", checksumLines) + "\n";
+        files["checksums.sha256"] = Encoding.UTF8.GetBytes(checksumsBody);
+
+        var memory = new MemoryStream();
+        using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var kv in files)
+            {
+                var entry = zip.CreateEntry(kv.Key, CompressionLevel.Fastest);
+                using var s = entry.Open();
+                s.Write(kv.Value);
             }
         }
 
-        return output.ToArray();
+        return memory.ToArray();
     }
 
-    private static string Sha256(byte[] bytes)
+    public static byte[] CreateValidArtifact(
+        string packageName,
+        string version,
+        IReadOnlyDictionary<string, string>? additionalTextFiles = null)
     {
-        using var sha = SHA256.Create();
-        return Convert.ToHexString(sha.ComputeHash(bytes)).ToLowerInvariant();
+        var files = new OrderedDictionary();
+
+        var projectProj = $"name = \"{packageName}\"\n";
+        files["Project.proj"] = Encoding.UTF8.GetBytes(projectProj);
+        files["src/entry.bsk"] = Encoding.UTF8.GetBytes("// test entry");
+
+        if (additionalTextFiles is not null)
+        {
+            foreach (var kv in additionalTextFiles)
+            {
+                var key = kv.Key.Replace('\\', '/').TrimStart('/');
+                files[key] = Encoding.UTF8.GetBytes(kv.Value);
+            }
+        }
+
+        var packageJson = $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
+        files["package.json"] = Encoding.UTF8.GetBytes(packageJson);
+
+        var checksumLines = new List<string>();
+        foreach (var kv in files)
+        {
+            checksumLines.Add($"{Sha256Hex(kv.Value)}  {kv.Key}");
+        }
+
+        var checksumsBody = string.Join("\n", checksumLines) + "\n";
+        files["checksums.sha256"] = Encoding.UTF8.GetBytes(checksumsBody);
+
+        var memory = new MemoryStream();
+        using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var kv in files)
+            {
+                var entry = zip.CreateEntry(kv.Key, CompressionLevel.Fastest);
+                using var s = entry.Open();
+                s.Write(kv.Value);
+            }
+        }
+
+        return memory.ToArray();
+    }
+
+    private static string Sha256Hex(byte[] bytes)
+    {
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Preserves insertion order for deterministic checksums lines.
+    /// </summary>
+    private sealed class OrderedDictionary : IEnumerable<KeyValuePair<string, byte[]>>
+    {
+        private readonly List<KeyValuePair<string, byte[]>> _items = [];
+
+        public byte[] this[string key]
+        {
+            set
+            {
+                for (var i = 0; i < _items.Count; i++)
+                {
+                    if (string.Equals(_items[i].Key, key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _items[i] = new KeyValuePair<string, byte[]>(key, value);
+                        return;
+                    }
+                }
+
+                _items.Add(new KeyValuePair<string, byte[]>(key, value));
+            }
+        }
+
+        public IEnumerator<KeyValuePair<string, byte[]>> GetEnumerator() => _items.GetEnumerator();
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

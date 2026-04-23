@@ -9,7 +9,7 @@ public sealed class IsFollowingPublisherEndpoint : EndpointWithoutRequest<IsFoll
 {
     public ApplicationDbContext Db { get; set; } = default!;
 
-    public sealed record Response(bool IsFollowing);
+    public new sealed record Response(bool IsFollowing);
 
     public override void Configure()
     {

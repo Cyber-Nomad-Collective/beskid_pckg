@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Server.Features.Packages;
 
 public sealed record PackageSummaryResponse(
@@ -132,3 +134,10 @@ public sealed record PackageDetailsResponse(
     int DependentsCount,
     string? Readme,
     PackageHealthSnapshotResponse Health);
+
+public sealed record PackageDocFileEntry(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("title")] string Title);
+
+public sealed record PackageDocsIndexResponse(
+    [property: JsonPropertyName("files")] IReadOnlyList<PackageDocFileEntry> Files);

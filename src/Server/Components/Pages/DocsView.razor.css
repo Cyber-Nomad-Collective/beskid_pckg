@@ -1,0 +1,36 @@
+.docs-view-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: 2rem;
+}
+
+.docs-view-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.docs-view-title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.docs-view-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.docs-view-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.docs-view-badges {
+    margin-top: 0.35rem;
+}

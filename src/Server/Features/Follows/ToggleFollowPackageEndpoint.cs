@@ -10,7 +10,7 @@ public sealed class ToggleFollowPackageEndpoint : Endpoint<ToggleFollowPackageEn
     public ApplicationDbContext Db { get; set; } = default!;
 
     public sealed record Request(string PackageId);
-    public sealed record Response(bool IsFollowing);
+    public new sealed record Response(bool IsFollowing);
 
     public override void Configure()
     {

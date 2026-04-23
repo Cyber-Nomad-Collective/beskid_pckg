@@ -312,6 +312,17 @@ public partial class PackageDetails
     private sealed class TogglePackageFollowRequest { public string PackageId { get; set; } = string.Empty; }
     private sealed class TogglePackageFollowResponse { public bool IsFollowing { get; set; } }
 
+    private void OpenDocsFullPage()
+    {
+        if (Package is null)
+        {
+            return;
+        }
+
+        var ver = LatestVersion?.Version ?? "latest";
+        Navigation.NavigateTo($"/docs/{Uri.EscapeDataString($"{Package.Name}@{ver}")}");
+    }
+
     private static string FormatSize(long bytes)
     {
         string[] suf = { "B", "KB", "MB", "GB", "TB" };

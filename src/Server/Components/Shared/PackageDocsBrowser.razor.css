@@ -1,0 +1,162 @@
+.docs-browser-root {
+    width: 100%;
+}
+
+.docs-browser-root--embedded {
+    min-height: 12rem;
+}
+
+.docs-browser-root--full {
+    min-height: calc(100vh - 11rem);
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.docs-state-card {
+    padding: 0.25rem;
+}
+
+.docs-browser-shell-card {
+    overflow: hidden;
+}
+
+.docs-browser-card-inner {
+    min-height: 0;
+}
+
+.docs-browser-toolbar-row {
+    width: 100%;
+}
+
+.docs-browser-split-stack {
+    align-items: stretch;
+    width: 100%;
+}
+
+.docs-nav-card {
+    flex: 0 0 min(15rem, 100%);
+    max-width: 18rem;
+    min-width: 0;
+}
+
+.docs-nav-list {
+    max-height: 20rem;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.docs-browser-root--full .docs-nav-list {
+    max-height: min(65vh, 28rem);
+}
+
+.docs-article-card {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.docs-article-head {
+    border-bottom: 1px solid var(--neutral-stroke-rest);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.docs-article-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.docs-file-link {
+    justify-content: flex-start !important;
+    text-align: left;
+    width: 100%;
+}
+
+.docs-browser-root--embedded .docs-browser-split-stack {
+    max-height: 26rem;
+}
+
+.docs-browser-root--embedded .docs-article-card {
+    max-height: 26rem;
+    overflow: hidden;
+}
+
+.docs-browser-root--embedded .docs-markdown-body {
+    max-height: 17rem;
+    overflow-y: auto;
+}
+
+.docs-browser-root--full .docs-article-card {
+    min-height: 52vh;
+}
+
+.docs-browser-root--full .docs-markdown-body {
+    max-height: none;
+}
+
+.docs-markdown-body {
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.docs-markdown-body :deep(h1),
+.docs-markdown-body :deep(h2),
+.docs-markdown-body :deep(h3) {
+    margin-top: 1.15em;
+    margin-bottom: 0.35em;
+    font-weight: 600;
+}
+
+.docs-markdown-body :deep(h1) {
+    font-size: 1.45rem;
+}
+
+.docs-markdown-body :deep(p) {
+    margin: 0.55em 0;
+}
+
+.docs-markdown-body :deep(pre) {
+    padding: 0.85rem 1rem;
+    border-radius: var(--control-corner-radius);
+    overflow-x: auto;
+    background: var(--neutral-layer-3);
+    font-size: 0.86rem;
+    border: 1px solid var(--neutral-stroke-rest);
+}
+
+.docs-markdown-body :deep(code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+}
+
+.docs-markdown-body :deep(ul),
+.docs-markdown-body :deep(ol) {
+    padding-left: 1.35rem;
+    margin: 0.55em 0;
+}
+
+.docs-markdown-body :deep(a) {
+    color: var(--accent-fill-rest);
+}
+
+.docs-markdown-body :deep(blockquote) {
+    margin: 0.75em 0;
+    padding: 0.35rem 0 0.35rem 0.85rem;
+    border-left: 3px solid var(--accent-fill-rest);
+    background: var(--neutral-layer-2);
+    border-radius: 0 6px 6px 0;
+}
+
+@media (max-width: 640px) {
+    .docs-nav-card {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+
+    .docs-browser-root--embedded .docs-browser-split-stack {
+        max-height: none;
+    }
+
+    .docs-browser-root--embedded .docs-article-card {
+        max-height: none;
+    }
+}

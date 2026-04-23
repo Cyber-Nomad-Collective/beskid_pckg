@@ -1,0 +1,133 @@
+using System.Net;
+using System.Net.Http.Json;
+using Server.Features.Packages;
+using Server.Tests.TestUtils;
+
+namespace Server.Tests.Integration;
+
+public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
+{
+    private readonly TestApplicationFactory _factory;
+
+    public PackageDocsIntegrationTests(TestApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task DocsIndex_AfterPublish_Returns_Markdown_Files()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.Index", isPublic: true);
+        var extras = new Dictionary<string, string>
+        {
+            ["docs/guide.md"] = "# Guide\n\nHello.",
+            ["README.md"] = "# Readme\n\nOverview.",
+        };
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0", extras);
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "docs.bpk" },
+        };
+
+        var publish = await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
+
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+        var index = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/docs");
+        Assert.Equal(HttpStatusCode.OK, index.StatusCode);
+        var payload = await index.Content.ReadFromJsonAsync<PackageDocsIndexResponse>();
+        Assert.NotNull(payload);
+        var paths = payload!.Files.Select(f => f.Path).ToList();
+        Assert.Contains("README.md", paths, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("docs/guide.md", paths, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DocsFile_Returns_Markdown_Content()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.File", isPublic: true);
+        var body = "# Title\n\n**bold**";
+        var extras = new Dictionary<string, string> { ["docs/page.md"] = body };
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "2.0.0", extras);
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("2.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "docs2.bpk" },
+        };
+
+        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+
+        var file = await client.GetAsync(
+            $"/api/packages/{package.Name}/versions/latest/docs/file?path={Uri.EscapeDataString("docs/page.md")}");
+        Assert.Equal(HttpStatusCode.OK, file.StatusCode);
+        var text = await file.Content.ReadAsStringAsync();
+        Assert.Contains("**bold**", text);
+    }
+
+    [Fact]
+    public async Task DocsFile_UnsafePath_Returns_BadRequest()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.Unsafe", isPublic: true);
+        var extras = new Dictionary<string, string> { ["docs/safe.md"] = "# ok" };
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0", extras);
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "unsafe.bpk" },
+        };
+
+        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+
+        var bad = await client.GetAsync(
+            $"/api/packages/{package.Name}/versions/1.0.0/docs/file?path={Uri.EscapeDataString("docs/../src/entry.bsk")}");
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
+    public async Task DocsIndex_PrivatePackage_Returns_NotFound_For_Anonymous()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.Private", isPublic: false);
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(
+            package.Name,
+            "1.0.0",
+            new Dictionary<string, string> { ["docs/x.md"] = "# x" });
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "priv.bpk" },
+        };
+
+        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+
+        var index = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/docs");
+        Assert.Equal(HttpStatusCode.NotFound, index.StatusCode);
+    }
+}
