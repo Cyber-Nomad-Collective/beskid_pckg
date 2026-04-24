@@ -121,7 +121,8 @@ public sealed class GetPackageDetailsEndpoint(
                 package.TotalDownloads,
                 package.UpdatedAtUtc,
                 pendingReviewCount,
-                Math.Round(averageRating, 2)),
+                Math.Round(averageRating, 2),
+                package.IconUrl),
             packageVersions
                 .Select(x => new PackageVersionSummaryResponse(
                     x.Id,

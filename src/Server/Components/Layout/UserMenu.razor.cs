@@ -6,14 +6,20 @@ namespace Server.Components.Layout;
 public partial class UserMenu
 {
     [Parameter] public string DisplayName { get; set; } = "Account";
-    
+
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Inject]
+    private IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+
+    private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
 
     private static readonly Icon ApiKeysIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Key();
     private static readonly Icon LogoutIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.SignOut();
     private static readonly Icon PackagesIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box();
     private static readonly Icon ProfileIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Person();
+    private static readonly Icon AdminIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Shield();
 
     private string GetInitials()
     {

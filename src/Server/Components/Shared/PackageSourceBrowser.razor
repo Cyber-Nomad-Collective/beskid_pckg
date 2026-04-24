@@ -1,0 +1,74 @@
+@using Server.Features.Packages
+
+<FluentStack Orientation="Orientation.Vertical" Gap="12">
+    @if (_isLoadingTree)
+    {
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="10">
+            <FluentProgressRing />
+            <FluentLabel Typo="Typography.Body">Loading source tree…</FluentLabel>
+        </FluentStack>
+    }
+    else if (!string.IsNullOrWhiteSpace(_treeError))
+    {
+        <FluentMessageBar Intent="MessageIntent.Warning">@_treeError</FluentMessageBar>
+    }
+    else
+    {
+        <div class="source-browser-layout">
+            <FluentCard Class="source-tree-panel">
+                <FluentStack Orientation="Orientation.Vertical" Gap="8">
+                    <FluentTextField @bind-Value="_search"
+                                     Placeholder="Filter files…"
+                                     AriaLabel="Filter source files"
+                                     IconStart="@(new Icons.Regular.Size16.Search())" />
+                    <div class="source-tree-list">
+                        @foreach (var row in FilteredRows())
+                        {
+                            var isDirectory = row.Node.IsDirectory;
+                            var isActive = !isDirectory && string.Equals(_selectedPath, row.Node.Path, StringComparison.Ordinal);
+                            <button class="source-tree-row @(isActive ? "source-tree-row--active" : null)"
+                                    style="padding-left:@(row.Depth * 16 + 10)px"
+                                    disabled="@isDirectory"
+                                    title="@row.Node.Path"
+                                    @onclick="@(() => SelectFileAsync(row.Node))">
+                                <span class="source-tree-icon">@IconFor(row.Node)</span>
+                                <span class="source-tree-name">@row.Node.Name</span>
+                                @if (!row.Node.IsDirectory && row.Node.SizeBytes is long size)
+                                {
+                                    <span class="source-tree-size">@FormatSize(size)</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </FluentStack>
+            </FluentCard>
+
+            <FluentCard Class="source-preview-panel">
+                @if (_selectedNode is null)
+                {
+                    <FluentMessageBar Intent="MessageIntent.Info">Select a file from the source tree.</FluentMessageBar>
+                }
+                else
+                {
+                    <FluentStack Orientation="Orientation.Vertical" Gap="10">
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     Wrap="true"
+                                     Gap="8">
+                            <FluentBadge Appearance="Appearance.Accent">@_selectedNode.FileType</FluentBadge>
+                            <FluentBadge Appearance="Appearance.Lightweight">@_selectedNode.Path</FluentBadge>
+                        </FluentStack>
+
+                        <PackageSourcePreview IsLoading="@_isLoadingPreview"
+                                              Error="@_previewError"
+                                              PreviewKind="@_previewKind"
+                                              TextContent="@_textContent"
+                                              MonacoLanguage="@_monacoLanguage"
+                                              ImageUrl="@_imageUrl"
+                                              SelectedPath="@_selectedNode.Path" />
+                    </FluentStack>
+                }
+            </FluentCard>
+        </div>
+    }
+</FluentStack>

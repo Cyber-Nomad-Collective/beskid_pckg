@@ -25,7 +25,20 @@ else
 {
     <div class="package-page-shell">
         <header class="package-header">
-            <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
+            @if (!_packageIconFailed && !string.IsNullOrWhiteSpace(Package.IconUrl))
+            {
+                <img src="@Package.IconUrl"
+                     width="64"
+                     height="64"
+                     alt=""
+                     class="package-icon-image"
+                     referrerpolicy="no-referrer"
+                     @onerror="OnPackageIconError" />
+            }
+            @if (_packageIconFailed || string.IsNullOrWhiteSpace(Package.IconUrl))
+            {
+                <div class="package-icon-placeholder">@Package.Name[..1].ToUpperInvariant()</div>
+            }
             <div class="package-hero-main">
                 <h1>@Package.Name</h1>
                 <p class="package-description">@Package.Description</p>
@@ -158,12 +171,44 @@ else
                                 Open full page
                             </FluentButton>
                         </FluentStack>
-                        <FluentLabel Typo="Typography.Body" Class="muted">
-                            Markdown under <code>docs/</code> in the published package, plus optional root <code>README.md</code>.
-                        </FluentLabel>
+                        @if (Versions.Count > 0)
+                        {
+                            <FluentSelect TOption="string" @bind-Value="ExplorerVersion" Style="max-width: 240px;" AriaLabel="Select version for source and docs">
+                                @foreach (var version in Versions)
+                                {
+                                    <FluentOption TOption="string" Value="@version.Version">@version.Version</FluentOption>
+                                }
+                            </FluentSelect>
+                        }
                         <PackageDocsBrowser PackageIdentifier="@Package.Name"
-                                            Version="@(LatestVersion?.Version ?? "latest")"
+                                            Version="@ExplorerVersion"
                                             Variant="PackageDocsBrowserVariant.Embedded" />
+                    </FluentStack>
+                </div>
+            </FluentTab>
+
+            <FluentTab Id="pkg-tab-source" Label="Source">
+                <div class="content-section package-tab-content">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     Wrap="true"
+                                     Gap="12"
+                                     Class="content-section-title-row">
+                            <h2 style="margin: 0;">Source</h2>
+                            @if (Versions.Count > 0)
+                            {
+                                <FluentSelect TOption="string" @bind-Value="ExplorerVersion" Style="max-width: 240px;" AriaLabel="Select version for source explorer">
+                                    @foreach (var version in Versions)
+                                    {
+                                        <FluentOption TOption="string" Value="@version.Version">@version.Version</FluentOption>
+                                    }
+                                </FluentSelect>
+                            }
+                        </FluentStack>
+
+                        <PackageSourceBrowser PackageIdentifier="@Package.Name"
+                                             Version="@ExplorerVersion" />
                     </FluentStack>
                 </div>
             </FluentTab>

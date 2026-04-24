@@ -1,0 +1,256 @@
+@using System.Net
+@using System.Text.Json
+@using Server.Features.Packages
+@using Server.Services
+
+<div class="docs-browser-root docs-browser-root--full structured-doc-shell">
+    @if (_loading)
+    {
+        <FluentCard Class="docs-state-card">
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12" Wrap="true">
+                <FluentProgressRing />
+                <FluentLabel Typo="Typography.Body">Loading API documentation…</FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (_loadError is not null)
+    {
+        <FluentCard Class="docs-state-card">
+            <FluentMessageBar Intent="MessageIntent.Warning">@_loadError</FluentMessageBar>
+        </FluentCard>
+    }
+    else if (_doc is not null)
+    {
+        <FluentCard Class="docs-browser-shell-card">
+            <FluentStack Orientation="Orientation.Vertical" Gap="14" Class="docs-browser-card-inner">
+                @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
+                {
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="muted">
+                        @if (_doc.SchemaVersion > 0)
+                        {
+                            <FluentBadge Appearance="Appearance.Neutral">schema @(_doc.SchemaVersion)</FluentBadge>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_doc.Source))
+                        {
+                            <FluentLabel Typo="Typography.Body" Class="muted">@_doc.Source</FluentLabel>
+                        }
+                    </FluentStack>
+                }
+
+                <FluentStack Orientation="Orientation.Horizontal" Gap="16" Wrap="true" Class="docs-browser-split-stack">
+                    <FluentCard Class="docs-nav-card">
+                        <DocModuleTree Items="@_doc.Items"
+                                       SelectedItemId="@_selected?.Id"
+                                       SelectedQualifiedName="@(_selected?.QualifiedName ?? _selected?.Name)"
+                                       OnItemSelected="SelectItemAsync" />
+                    </FluentCard>
+
+                    <FluentCard Class="docs-article-card">
+                        <FluentStack Orientation="Orientation.Vertical" Gap="14">
+                            @if (_selected is not null)
+                            {
+                                <DocMemberHeader Item="@_selected" />
+                                @if (_selected.Controls is { Length: > 0 } ctrls)
+                                {
+                                    @foreach (var c in ctrls)
+                                    {
+                                        <DocDynamicControl Control="c" OnNavigateQualifiedName="NavigateToQualifiedNameAsync" />
+                                    }
+                                }
+                                <DocMarkdownRegion Markdown="@_selected.DocMarkdown" />
+                            }
+                            else
+                            {
+                                <FluentLabel Typo="Typography.Body" Class="muted">Select a member from the tree.</FluentLabel>
+                            }
+                        </FluentStack>
+                    </FluentCard>
+                </FluentStack>
+
+                @if (MarkdownIndex?.Files is { Count: > 0 })
+                {
+                    <FluentStack Orientation="Orientation.Vertical" Gap="10">
+                        <FluentButton Appearance="Appearance.Outline"
+                                      OnClick="@(() => _showMarkdownPages = !_showMarkdownPages)">
+                            @(_showMarkdownPages ? "Hide" : "Show") markdown pages (@MarkdownIndex.Files.Count)
+                        </FluentButton>
+                        @if (_showMarkdownPages)
+                        {
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="16" Wrap="true">
+                                <FluentCard Class="docs-nav-card">
+                                    <FluentStack Orientation="Orientation.Vertical" Gap="4" Class="docs-nav-list">
+                                        @foreach (var f in MarkdownIndex.Files)
+                                        {
+                                            var active = string.Equals(f.Path, _mdPath, StringComparison.Ordinal);
+                                            <FluentButton Appearance="@(active ? Appearance.Accent : Appearance.Stealth)"
+                                                          Class="docs-file-link"
+                                                          Title="@f.Path"
+                                                          OnClick="@(() => SelectMarkdownAsync(f.Path))">
+                                                @f.Title
+                                            </FluentButton>
+                                        }
+                                    </FluentStack>
+                                </FluentCard>
+                                <FluentCard Class="docs-article-card" Style="min-height: 8rem;">
+                                    @if (_loadingMd)
+                                    {
+                                        <FluentProgressRing />
+                                    }
+                                    else if (_mdRendered is not null)
+                                    {
+                                        <div class="docs-markdown-body">@_mdRendered</div>
+                                    }
+                                </FluentCard>
+                            </FluentStack>
+                        }
+                    </FluentStack>
+                }
+            </FluentStack>
+        </FluentCard>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string PackageIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public PackageDocsIndexResponse? MarkdownIndex { get; set; }
+
+    [Inject]
+    private HttpClient Http { get; set; } = default!;
+
+    [Inject]
+    private IMarkdownService MarkdownService { get; set; } = default!;
+
+    [Inject]
+    private IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+    };
+
+    private bool _loading = true;
+    private string? _loadError;
+    private StructuredApiDocDto? _doc;
+    private StructuredApiItemDto? _selected;
+    private bool _showMarkdownPages;
+    private string? _mdPath;
+    private bool _loadingMd;
+    private MarkupString? _mdRendered;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PackageIdentifier) || string.IsNullOrWhiteSpace(Version))
+        {
+            _loading = false;
+            _loadError = "Package or version is missing.";
+            return;
+        }
+
+        await LoadStructuredAsync();
+    }
+
+    private async Task LoadStructuredAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        _doc = null;
+        _selected = null;
+        try
+        {
+            var url = PackageDocumentationUrls.DocsStructured(PackageIdentifier.Trim(), Version.Trim());
+            var response = await Http.GetAsync(url);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                _loadError = "Structured API documentation was not found for this version.";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _loadError = "Could not load structured documentation.";
+                return;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, JsonOptions);
+            if (doc is null || doc.Items.Count == 0)
+            {
+                _loadError = "Structured documentation is empty.";
+                return;
+            }
+
+            _doc = doc;
+            _selected = doc.Items
+                .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+        catch
+        {
+            _loadError = "Could not load structured documentation (network or parse error).";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task SelectItemAsync(StructuredApiItemDto item)
+    {
+        _selected = item;
+        return Task.CompletedTask;
+    }
+
+    private Task NavigateToQualifiedNameAsync(string name)
+    {
+        if (_doc is null || string.IsNullOrWhiteSpace(name))
+        {
+            return Task.CompletedTask;
+        }
+
+        var match = _doc.Items.FirstOrDefault(x =>
+            string.Equals(x.QualifiedName ?? x.Name, name, StringComparison.Ordinal));
+        if (match is not null)
+        {
+            _selected = match;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task SelectMarkdownAsync(string path)
+    {
+        _mdPath = path;
+        _loadingMd = true;
+        _mdRendered = null;
+        try
+        {
+            var url = PackageDocumentationUrls.DocsFile(PackageIdentifier.Trim(), Version.Trim(), path);
+            var response = await Http.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                _mdRendered = new MarkupString("<p class=\"muted\">Could not load this page.</p>");
+                return;
+            }
+
+            var text = await response.Content.ReadAsStringAsync();
+            var html = MarkdownService.ToSafeHtml(text);
+            _mdRendered = new MarkupString(HtmlSanitization.Sanitize(html));
+        }
+        catch
+        {
+            _mdRendered = new MarkupString("<p class=\"muted\">Could not load this page.</p>");
+        }
+        finally
+        {
+            _loadingMd = false;
+        }
+    }
+}

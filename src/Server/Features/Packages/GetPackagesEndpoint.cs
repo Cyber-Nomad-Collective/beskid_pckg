@@ -70,7 +70,8 @@ public sealed class GetPackagesEndpoint(
                 x.TotalDownloads,
                 x.UpdatedAtUtc,
                 pendingCounts.GetValueOrDefault(x.Id),
-                Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2)))
+                Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2),
+                x.IconUrl))
             .ToList();
 
         await Send.OkAsync(response, ct);

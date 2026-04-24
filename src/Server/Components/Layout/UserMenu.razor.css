@@ -1,0 +1,10 @@
+.profile-menu-stack ::deep fluent-menu-item.profile-menu-item::part(control) {
+    min-height: 2.5rem;
+    padding-block: 0.35rem;
+    padding-inline: 0.35rem 0.5rem;
+    border-radius: var(--control-corner-radius);
+}
+
+.profile-menu-stack ::deep fluent-menu-item.profile-menu-item {
+    width: 100%;
+}

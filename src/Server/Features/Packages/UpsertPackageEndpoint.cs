@@ -75,6 +75,7 @@ public sealed class UpsertPackageEndpoint(
                 Category = req.Category?.Trim() ?? string.Empty,
                 RepositoryUrl = NormalizeUrl(req.RepositoryUrl),
                 WebsiteUrl = NormalizeUrl(req.WebsiteUrl),
+                IconUrl = NormalizeIconUrl(req.IconUrl),
                 IsPublic = req.IsPublic,
                 CreatedAtUtc = DateTimeOffset.UtcNow,
                 UpdatedAtUtc = DateTimeOffset.UtcNow,
@@ -95,6 +96,7 @@ public sealed class UpsertPackageEndpoint(
             entity.Category = req.Category?.Trim() ?? string.Empty;
             entity.RepositoryUrl = NormalizeUrl(req.RepositoryUrl);
             entity.WebsiteUrl = NormalizeUrl(req.WebsiteUrl);
+            entity.IconUrl = NormalizeIconUrl(req.IconUrl);
             entity.IsPublic = req.IsPublic;
             entity.UpdatedAtUtc = DateTimeOffset.UtcNow;
         }
@@ -215,7 +217,8 @@ public sealed class UpsertPackageEndpoint(
                 entity.TotalDownloads,
                 entity.UpdatedAtUtc,
                 pendingReviewCount,
-                Math.Round(averageRating, 2)),
+                Math.Round(averageRating, 2),
+                entity.IconUrl),
             reviewId);
 
         await Send.OkAsync(response, ct);
@@ -230,5 +233,31 @@ public sealed class UpsertPackageEndpoint(
 
         var trimmed = value.Trim();
         return Uri.TryCreate(trimmed, UriKind.Absolute, out _) ? trimmed : null;
+    }
+
+    private static string? NormalizeIconUrl(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.Length > 256)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return null;
+        }
+
+        return trimmed;
     }
 }

@@ -11,7 +11,7 @@ public sealed class GetCaptchaPublicConfigEndpoint(IOptions<CaptchaOptions> capt
     {
         Get("/public/captcha-config");
         AllowAnonymous();
-        Summary(s => s.Summary = "reCAPTCHA Enterprise public site key when configured (widget is shown whenever a site key is set).");
+        Summary(s => s.Summary = "reCAPTCHA Enterprise public site key; captchaEnabled is true only when server-side verification is fully configured.");
     }
 
     public override async Task HandleAsync(CancellationToken ct)
@@ -19,7 +19,10 @@ public sealed class GetCaptchaPublicConfigEndpoint(IOptions<CaptchaOptions> capt
         var o = captchaOptions.Value;
         var hasSiteKey = !string.IsNullOrWhiteSpace(o.RecaptchaV3SiteKey);
         var siteKey = hasSiteKey ? o.RecaptchaV3SiteKey!.Trim() : null;
-        await Send.OkAsync(new CaptchaPublicConfigResponse(hasSiteKey, siteKey), ct);
+        var captchaEnabled = hasSiteKey
+            && !string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseProjectId)
+            && !string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseApiKey);
+        await Send.OkAsync(new CaptchaPublicConfigResponse(captchaEnabled, siteKey), ct);
     }
 }
 

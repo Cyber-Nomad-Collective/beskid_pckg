@@ -1,6 +1,9 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
+using Server.Features.Packages;
+using Server.Services;
 
 namespace Server.Components.Pages;
 
@@ -8,11 +11,17 @@ public partial class DocsView
 {
     [Parameter] public string PackageWithVersion { get; set; } = string.Empty;
 
+    [Inject]
+    private HttpClient Http { get; set; } = default!;
+
     private bool _parseError;
     private string _packageSegment = string.Empty;
     private string _versionSegment = string.Empty;
     private string _packageLabel = string.Empty;
     private string? _packagesHref;
+    private bool _docsIndexLoading;
+    private bool _useStructuredFullPage;
+    private PackageDocsIndexResponse? _docsIndex;
     private string PageHeading => _parseError ? "Documentation" : $"Docs · {_packageLabel}";
 
     protected override async Task OnParametersSetAsync()
@@ -20,6 +29,8 @@ public partial class DocsView
         _parseError = false;
         _packagesHref = null;
         _packageLabel = string.Empty;
+        _docsIndex = null;
+        _useStructuredFullPage = false;
 
         var raw = Uri.UnescapeDataString(PackageWithVersion ?? string.Empty).Trim().TrimEnd('/');
         var at = raw.IndexOf('@');
@@ -51,6 +62,29 @@ public partial class DocsView
         else
         {
             _packagesHref = $"/packages/{Uri.EscapeDataString(_packageSegment)}";
+        }
+
+        await LoadDocsIndexForViewAsync();
+    }
+
+    private async Task LoadDocsIndexForViewAsync()
+    {
+        _docsIndexLoading = true;
+        try
+        {
+            var response = await Http.GetAsync(
+                PackageDocumentationUrls.DocsIndex(_packageSegment.Trim(), _versionSegment.Trim()));
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            _docsIndex = await response.Content.ReadFromJsonAsync<PackageDocsIndexResponse>();
+            _useStructuredFullPage = _docsIndex?.HasStructuredApiDoc == true;
+        }
+        finally
+        {
+            _docsIndexLoading = false;
         }
     }
 }

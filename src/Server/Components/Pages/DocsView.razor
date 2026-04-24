@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using Server.Data
 @using Server.Components.Shared
+@using Server.Components.Docs
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 @inject NavigationManager Navigation
@@ -66,9 +67,30 @@
                 </FluentStack>
             </FluentCard>
 
-            <PackageDocsBrowser PackageIdentifier="@_packageSegment"
-                                Version="@_versionSegment"
-                                Variant="PackageDocsBrowserVariant.FullPage" />
+            @if (_docsIndexLoading)
+            {
+                <FluentCard Class="docs-state-card">
+                    <FluentStack Orientation="Orientation.Horizontal"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 Gap="12"
+                                 Wrap="true">
+                        <FluentProgressRing />
+                        <FluentLabel Typo="Typography.Body">Loading documentation…</FluentLabel>
+                    </FluentStack>
+                </FluentCard>
+            }
+            else if (_useStructuredFullPage)
+            {
+                <StructuredPackageDocShell PackageIdentifier="@_packageSegment"
+                                         Version="@_versionSegment"
+                                         MarkdownIndex="@_docsIndex" />
+            }
+            else
+            {
+                <PackageDocsBrowser PackageIdentifier="@_packageSegment"
+                                    Version="@_versionSegment"
+                                    Variant="PackageDocsBrowserVariant.FullPage" />
+            }
         </FluentStack>
     }
 </div>

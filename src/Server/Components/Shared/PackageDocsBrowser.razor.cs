@@ -25,6 +25,9 @@ public partial class PackageDocsBrowser
 
     private readonly List<PackageDocFileEntry> _allFiles = [];
     private string? _loadError;
+    private MessageIntent _loadErrorIntent = MessageIntent.Warning;
+    private bool _showAuthorHint;
+    private bool _structuredOnlyHint;
     private bool _loadingIndex = true;
     private bool _loadingDoc;
     private string _search = string.Empty;
@@ -43,15 +46,18 @@ public partial class PackageDocsBrowser
                 || f.Title.Contains(_search, StringComparison.OrdinalIgnoreCase));
 
     private static string ApiIndexUrl(string packageId, string version) =>
-        $"/api/packages/{Uri.EscapeDataString(packageId)}/versions/{Uri.EscapeDataString(version)}/docs";
+        PackageDocumentationUrls.DocsIndex(packageId, version);
 
     private static string ApiFileUrl(string packageId, string version, string path) =>
-        $"/api/packages/{Uri.EscapeDataString(packageId)}/versions/{Uri.EscapeDataString(version)}/docs/file?path={Uri.EscapeDataString(path)}";
+        PackageDocumentationUrls.DocsFile(packageId, version, path);
 
     protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrWhiteSpace(PackageIdentifier) || string.IsNullOrWhiteSpace(Version))
         {
+            _loadErrorIntent = MessageIntent.Warning;
+            _showAuthorHint = false;
+            _structuredOnlyHint = false;
             _loadError = "Package or version is missing.";
             _loadingIndex = false;
             return;
@@ -74,6 +80,9 @@ public partial class PackageDocsBrowser
     {
         _loadingIndex = true;
         _loadError = null;
+        _showAuthorHint = false;
+        _structuredOnlyHint = false;
+        _loadErrorIntent = MessageIntent.Warning;
         _allFiles.Clear();
         _selectedPath = null;
         _selectedTitle = null;
@@ -85,12 +94,17 @@ public partial class PackageDocsBrowser
             var response = await Http.GetAsync(ApiIndexUrl(PackageIdentifier.Trim(), Version.Trim()));
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
+                _loadErrorIntent = MessageIntent.Info;
+                _showAuthorHint = true;
                 _loadError = "Documentation was not found for this package version.";
                 return;
             }
 
             if (!response.IsSuccessStatusCode)
             {
+                _loadErrorIntent = MessageIntent.Warning;
+                _showAuthorHint = false;
+                _structuredOnlyHint = false;
                 _loadError = "Could not load documentation index.";
                 return;
             }
@@ -104,14 +118,29 @@ public partial class PackageDocsBrowser
                 _selectedTitle = first.Title;
                 await LoadSelectedDocAsync();
             }
+            else if (payload?.HasStructuredApiDoc == true)
+            {
+                _loadErrorIntent = MessageIntent.Info;
+                _showAuthorHint = false;
+                _structuredOnlyHint = true;
+                _loadError =
+                    "This version has structured API documentation only (no Markdown pages in the index). Open full-page documentation to browse the API.";
+            }
             else
             {
-                _loadError = "This package version does not include any docs/ markdown files or README.md.";
+                _loadErrorIntent = MessageIntent.Info;
+                _showAuthorHint = true;
+                _structuredOnlyHint = false;
+                _loadError =
+                    "This version has no browsable Markdown yet. Pack with Beskid CLI (includes .beskid/docs/) or ship docs/ or README.md.";
             }
         }
         catch
         {
-            _loadError = "Could not load documentation.";
+            _loadErrorIntent = MessageIntent.Error;
+            _showAuthorHint = false;
+            _structuredOnlyHint = false;
+            _loadError = "Could not load documentation (network or unexpected error).";
         }
         finally
         {

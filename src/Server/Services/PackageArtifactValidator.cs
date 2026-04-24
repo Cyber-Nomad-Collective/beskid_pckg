@@ -242,6 +242,12 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
 
     private static bool IsForbiddenEntryPath(string path)
     {
+        // Allow Beskid CLI generated package docs under .beskid/docs/ (markdown + api.json).
+        if (path.StartsWith(".beskid/docs/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         return path.StartsWith(".beskid/", StringComparison.OrdinalIgnoreCase)
                || string.Equals(path, ".beskid", StringComparison.OrdinalIgnoreCase);
     }

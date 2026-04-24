@@ -1,0 +1,14 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentStack Orientation="Orientation.Vertical" Gap="6" Class="admin-page-header">
+    <FluentLabel Typo="Typography.H3">@Title</FluentLabel>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <FluentLabel Typo="Typography.Body" Class="muted">@Description</FluentLabel>
+    }
+</FluentStack>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+}

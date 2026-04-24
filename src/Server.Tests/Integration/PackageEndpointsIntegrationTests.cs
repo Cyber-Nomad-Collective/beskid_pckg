@@ -59,11 +59,14 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
         {
             Name = "Auth.Required.Demo",
             Description = "test",
+            Category = "General",
             RepositoryUrl = (string?)null,
             WebsiteUrl = (string?)null,
+            Tags = Array.Empty<string>(),
             IsPublic = true,
             SubmitForReview = false,
             ReviewReason = (string?)null,
+            iconUrl = (string?)null,
         });
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
@@ -80,11 +83,14 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
         {
             Name = package.Name,
             Description = "updated description",
+            Category = "General",
             RepositoryUrl = "https://example.com/repo",
             WebsiteUrl = "https://example.com",
+            Tags = Array.Empty<string>(),
             IsPublic = true,
             SubmitForReview = false,
             ReviewReason = (string?)null,
+            iconUrl = (string?)null,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

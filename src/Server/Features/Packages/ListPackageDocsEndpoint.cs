@@ -11,7 +11,7 @@ public sealed class ListPackageDocsEndpoint(IPackageDocsArchiveService docsArchi
         Get("/packages/{IdOrName}/versions/{Version}/docs");
         Options(x => x.RequireRateLimiting("docs"));
         AllowAnonymous();
-        Summary(s => s.Summary = "List documentation markdown files for a package version.");
+        Summary(s => s.Summary = "List markdown documentation files for a package version, plus flags when structured api.json is present.");
     }
 
     public override async Task HandleAsync(CancellationToken ct)
@@ -22,10 +22,21 @@ public sealed class ListPackageDocsEndpoint(IPackageDocsArchiveService docsArchi
         var result = await docsArchive.ListDocsAsync(HttpContext, idOrName, version, ct);
         if (result.StatusCode != StatusCodes.Status200OK)
         {
-            HttpContext.Response.StatusCode = result.StatusCode;
+            if (result.StatusCode == StatusCodes.Status404NotFound)
+            {
+                await Send.NotFoundAsync(ct);
+                return;
+            }
+
+            await Send.StringAsync(string.Empty, result.StatusCode, cancellation: ct);
             return;
         }
 
-        await Send.OkAsync(new PackageDocsIndexResponse(result.Files ?? []), ct);
+        await Send.OkAsync(
+            new PackageDocsIndexResponse(
+                result.Files ?? [],
+                result.HasStructuredApiDoc,
+                result.StructuredDocRelativePath),
+            ct);
     }
 }

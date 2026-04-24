@@ -60,6 +60,7 @@ public partial class Packages
         MetadataForm.TagsInput = string.Join(", ", package.Tags);
         MetadataForm.RepositoryUrl = package.RepositoryUrl ?? string.Empty;
         MetadataForm.WebsiteUrl = package.WebsiteUrl ?? string.Empty;
+        MetadataForm.IconUrl = package.IconUrl ?? string.Empty;
         MetadataForm.IsPublic = package.IsPublic;
     }
 
@@ -184,7 +185,8 @@ public partial class Packages
                 ParseTags(MetadataForm.TagsInput),
                 MetadataForm.IsPublic,
                 false,
-                null);
+                null,
+                NormalizeOptionalText(MetadataForm.IconUrl));
 
             var response = await Http.PostAsJsonAsync("/api/packages", request);
             var payload = await response.Content.ReadFromJsonAsync<UpsertPackageResponse>();
@@ -229,6 +231,7 @@ public partial class Packages
         public string TagsInput { get; set; } = string.Empty;
         public string RepositoryUrl { get; set; } = string.Empty;
         public string WebsiteUrl { get; set; } = string.Empty;
+        public string IconUrl { get; set; } = string.Empty;
         public bool IsPublic { get; set; }
     }
 }

@@ -95,7 +95,8 @@ public sealed class SearchPackagesEndpoint(
                     x.TotalDownloads,
                     x.UpdatedAtUtc,
                     pendingCounts.GetValueOrDefault(x.Id),
-                    Math.Round(avgRating, 2)),
+                    Math.Round(avgRating, 2),
+                    x.IconUrl),
                 reviewCount,
                 new PackageHealthSnapshotResponse(
                     health.State,

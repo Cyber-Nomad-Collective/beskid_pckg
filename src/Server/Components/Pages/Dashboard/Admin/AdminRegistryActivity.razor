@@ -1,0 +1,44 @@
+@page "/dashboard/admin/registry-activity"
+@layout DashboardLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+<PageTitle>Registry activity · Administration</PageTitle>
+
+<section class="admin-page">
+    <AdminPageHeader Title="Package registry activity"
+                     Description="Recent publish, upsert, yank, and unyank events (in-memory buffer, last 500). Auto-refreshes every 3 seconds while this page is open." />
+
+    <FluentStack Orientation="Orientation.Vertical" Gap="16" Style="margin-top: 16px;">
+        <SettingsSection>
+            <FluentStack Orientation="Orientation.Horizontal" Gap="12" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                <FluentButton Appearance="Appearance.Accent"
+                              OnClick="RefreshRegistryActivityAsync"
+                              Disabled="@IsLoadingRegistryActivity"
+                              IconStart="@(new Icons.Regular.Size20.ArrowClockwise())">
+                    @(IsLoadingRegistryActivity ? "Loading…" : "Refresh")
+                </FluentButton>
+            </FluentStack>
+
+            @if (IsLoadingRegistryActivity && RegistryActivity.Count == 0)
+            {
+                <FluentLabel Typo="Typography.Body" Class="muted">Loading…</FluentLabel>
+            }
+            else if (RegistryActivity.Count == 0)
+            {
+                <FluentLabel Typo="Typography.Body" Class="muted">No activity recorded yet.</FluentLabel>
+            }
+            else
+            {
+                <FluentDataGrid TGridItem="RegistryActivityRowDto" Items="@RegistryActivity.AsQueryable()" Style="width: 100%; overflow: auto;">
+                    <PropertyColumn Property="@(r => r.TimestampUtc)" Title="Time (UTC)" Format="u" />
+                    <PropertyColumn Property="@(r => r.Severity)" Title="Severity" />
+                    <PropertyColumn Property="@(r => r.Action)" Title="Action" />
+                    <PropertyColumn Property="@(r => r.Message)" Title="Message" />
+                    <PropertyColumn Property="@(r => r.PackageName)" Title="Package" />
+                    <PropertyColumn Property="@(r => r.Version)" Title="Version" />
+                    <PropertyColumn Property="@(r => r.UserId)" Title="User" />
+                    <PropertyColumn Property="@(r => r.TraceId)" Title="Trace" />
+                </FluentDataGrid>
+            }
+        </SettingsSection>
+    </FluentStack>
+</section>

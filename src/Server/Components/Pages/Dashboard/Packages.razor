@@ -77,6 +77,11 @@
                                 <FluentTextField @bind-Value="MetadataForm.WebsiteUrl" Label="Website URL" Placeholder="https://..." />
                             </FluentStack>
 
+                            <FluentTextField @bind-Value="MetadataForm.IconUrl"
+                                             Label="Icon URL"
+                                             Placeholder="https://… (square PNG or SVG)"
+                                             Style="max-width: 42rem;" />
+
                             <FluentSwitch @bind-Value="MetadataForm.IsPublic">Public package</FluentSwitch>
 
                             <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">

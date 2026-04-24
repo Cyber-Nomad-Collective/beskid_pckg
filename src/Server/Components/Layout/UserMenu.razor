@@ -1,3 +1,4 @@
+@using Microsoft.AspNetCore.Http
 @using Microsoft.FluentUI.AspNetCore.Components
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -9,24 +10,34 @@
         
     </FooterTemplate>
     <ChildContent>
-        <FluentStack VerticalGap="5" Orientation="Orientation.Vertical" Style="width: 100%; padding: 0.25rem 0.2rem; margin-top: 0.45rem;">
-              <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/profile"))" Style="width: 100%">
-                <FluentIcon Value="@ApiKeysIcon" Slot="start"/>
+        <FluentStack VerticalGap="2"
+                     Orientation="Orientation.Vertical"
+                     Class="profile-menu-stack"
+                     Style="width: 100%; min-width: 11rem; padding: 0.35rem 0.4rem 0.5rem;">
+            <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/profile"))" Class="profile-menu-item">
+                <FluentIcon Value="@ProfileIcon" Slot="start" />
                 Profile
             </FluentMenuItem>
-            <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/api-keys"))" Style="width: 100%">
-                <FluentIcon Value="@ApiKeysIcon" Slot="start"/>
+            <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/api-keys"))" Class="profile-menu-item">
+                <FluentIcon Value="@ApiKeysIcon" Slot="start" />
                 API Keys
             </FluentMenuItem>
-            <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/packages/my"))" Style="width: 100%">
-                <FluentIcon Value="@PackagesIcon" Slot="start"/>
+            <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/packages/my"))" Class="profile-menu-item">
+                <FluentIcon Value="@PackagesIcon" Slot="start" />
                 My Packages
             </FluentMenuItem>
-            <FluentDivider/>
-            <FluentMenuItem OnClick="Logout" Style="width: 100%">
-                <FluentIcon Value="@LogoutIcon" Slot="start"/>
+            @if (IsSuperAdmin)
+            {
+                <FluentMenuItem OnClick="@(() => NavigateTo("/dashboard/admin"))" Class="profile-menu-item">
+                    <FluentIcon Value="@AdminIcon" Slot="start" />
+                    Administration
+                </FluentMenuItem>
+            }
+            <FluentDivider Style="margin: 0.35rem 0;" />
+            <FluentMenuItem OnClick="Logout" Class="profile-menu-item">
+                <FluentIcon Value="@LogoutIcon" Slot="start" />
                 Logout
-            </FluentMenuItem>    
+            </FluentMenuItem>
         </FluentStack>
     </ChildContent>
 </FluentProfileMenu>

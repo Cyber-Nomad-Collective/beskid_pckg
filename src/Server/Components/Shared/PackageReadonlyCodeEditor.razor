@@ -1,0 +1,37 @@
+@using BlazorMonaco.Editor
+
+<div class="source-editor-shell">
+    <StandaloneCodeEditor @key="_editorKey"
+                          Id="@EditorId"
+                          ConstructionOptions="BuildOptions"
+                          />
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string Language { get; set; } = "plaintext";
+    [Parameter] public string EditorId { get; set; } = "pkg-src-editor";
+
+    private string _editorKey = string.Empty;
+
+    private StandaloneEditorConstructionOptions BuildOptions(StandaloneCodeEditor _)
+        => new()
+        {
+            AutomaticLayout = true,
+            ReadOnly = true,
+            WordWrap = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 13,
+            Language = NormalizeLanguage(Language),
+            Value = Value ?? string.Empty
+        };
+
+    protected override void OnParametersSet()
+    {
+        _editorKey = $"{NormalizeLanguage(Language)}::{Value?.GetHashCode() ?? 0}::{EditorId}";
+    }
+
+    private static string NormalizeLanguage(string? language)
+        => string.IsNullOrWhiteSpace(language) ? "plaintext" : language.Trim().ToLowerInvariant();
+}

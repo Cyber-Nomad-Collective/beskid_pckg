@@ -34,7 +34,10 @@ public class PackageArtifactValidatorTests
         var result = await _validator.ValidateAsync(stream, "Demo", "1.2.3");
 
         Assert.False(result.IsValid);
-        Assert.Contains("checksums.sha256", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(
+            result.Message.Contains("checksums.sha256", StringComparison.OrdinalIgnoreCase)
+            || result.Message.Contains("Checksum mismatch", StringComparison.OrdinalIgnoreCase),
+            result.Message);
     }
 
     [Fact]

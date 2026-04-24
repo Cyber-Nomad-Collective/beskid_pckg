@@ -14,7 +14,8 @@ public sealed record PackageSummaryResponse(
     long TotalDownloads,
     DateTimeOffset UpdatedAtUtc,
     int PendingReviewsCount,
-    double AverageRating);
+    double AverageRating,
+    [property: JsonPropertyName("iconUrl")] string? IconUrl);
 
 public sealed record PackageVersionSummaryResponse(
     Guid Id,
@@ -46,7 +47,8 @@ public sealed record UpsertPackageRequest(
     IReadOnlyList<string>? Tags,
     bool IsPublic,
     bool SubmitForReview,
-    string? ReviewReason);
+    string? ReviewReason,
+    [property: JsonPropertyName("iconUrl")] string? IconUrl);
 
 public sealed record UpsertPackageResponse(
     bool Success,
@@ -140,4 +142,21 @@ public sealed record PackageDocFileEntry(
     [property: JsonPropertyName("title")] string Title);
 
 public sealed record PackageDocsIndexResponse(
-    [property: JsonPropertyName("files")] IReadOnlyList<PackageDocFileEntry> Files);
+    [property: JsonPropertyName("files")] IReadOnlyList<PackageDocFileEntry> Files,
+    [property: JsonPropertyName("hasStructuredApiDoc")] bool HasStructuredApiDoc = false,
+    [property: JsonPropertyName("structuredDocRelativePath")] string? StructuredDocRelativePath = null);
+
+public sealed record PackageSourceTreeNodeResponse(
+    [property: JsonPropertyName("path")] string Path,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("isDirectory")] bool IsDirectory,
+    [property: JsonPropertyName("parentPath")] string? ParentPath,
+    [property: JsonPropertyName("sizeBytes")] long? SizeBytes,
+    [property: JsonPropertyName("fileType")] string FileType,
+    [property: JsonPropertyName("iconKey")] string IconKey,
+    [property: JsonPropertyName("previewKind")] string PreviewKind,
+    [property: JsonPropertyName("monacoLanguage")] string? MonacoLanguage,
+    [property: JsonPropertyName("contentType")] string? ContentType);
+
+public sealed record PackageSourceTreeResponse(
+    [property: JsonPropertyName("nodes")] IReadOnlyList<PackageSourceTreeNodeResponse> Nodes);

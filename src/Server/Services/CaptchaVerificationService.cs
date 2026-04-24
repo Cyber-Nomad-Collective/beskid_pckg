@@ -6,7 +6,10 @@ namespace Server.Services;
 
 public interface ICaptchaVerificationService
 {
-    /// <summary>Validates the token via reCAPTCHA Enterprise CreateAssessment (always enforced; no configuration bypass).</summary>
+    /// <summary>
+    /// Validates the token via reCAPTCHA Enterprise CreateAssessment when site key, project id, and API key are configured;
+    /// otherwise returns true so callers can omit tokens when captcha is not in use.
+    /// </summary>
     Task<bool> IsHumanAsync(string? token, string expectedAction, string? remoteIp, CancellationToken cancellationToken = default);
 }
 
@@ -40,26 +43,35 @@ public sealed class CaptchaVerificationService(
     {
         var o = options.Value;
 
+        var verificationConfigured =
+            !string.IsNullOrWhiteSpace(o.RecaptchaV3SiteKey)
+            && !string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseProjectId)
+            && !string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseApiKey);
+
+        // Public UI only sends a token when captcha is advertised; when Enterprise is not wired,
+        // callers send null — treat as "captcha off" so boards/reviews stay usable in dev and
+        // partial misconfiguration does not hard-block all submissions.
+        if (!verificationConfigured)
+        {
+            return true;
+        }
+
         if (string.IsNullOrWhiteSpace(token))
         {
             logger.LogWarning("reCAPTCHA rejected: missing token for action {Action}.", expectedAction);
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(o.RecaptchaV3SiteKey)
-            || string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseProjectId)
-            || string.IsNullOrWhiteSpace(o.RecaptchaEnterpriseApiKey))
-        {
-            logger.LogError("reCAPTCHA Captcha configuration is incomplete (site key, project id, or API key); verification cannot succeed.");
-            return false;
-        }
+        var siteKey = o.RecaptchaV3SiteKey!.Trim();
+        var projectId = o.RecaptchaEnterpriseProjectId!.Trim();
+        var apiKey = o.RecaptchaEnterpriseApiKey!.Trim();
 
         var client = httpClientFactory.CreateClient(RecaptchaEnterpriseHttpClientName);
-        var url = $"v1/projects/{Uri.EscapeDataString(o.RecaptchaEnterpriseProjectId.Trim())}/assessments?key={Uri.EscapeDataString(o.RecaptchaEnterpriseApiKey.Trim())}";
+        var url = $"v1/projects/{Uri.EscapeDataString(projectId)}/assessments?key={Uri.EscapeDataString(apiKey)}";
 
         var body = new CreateAssessmentRequestDto(new CreateAssessmentEventDto(
             token.Trim(),
-            o.RecaptchaV3SiteKey.Trim(),
+            siteKey,
             expectedAction,
             string.IsNullOrWhiteSpace(remoteIp) ? null : remoteIp.Trim()));
 

@@ -1,0 +1,27 @@
+@using Microsoft.AspNetCore.Components
+@inject IMarkdownService MarkdownService
+@inject IHtmlSanitizationService HtmlSanitization
+
+<div class="docs-markdown-body">
+    @_html
+</div>
+
+@code {
+    private MarkupString _html = default;
+
+    [Parameter]
+    public string? Markdown { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var raw = Markdown ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            _html = new MarkupString("<p class=\"muted\">No description.</p>");
+            return;
+        }
+
+        var safe = MarkdownService.ToSafeHtml(raw);
+        _html = new MarkupString(HtmlSanitization.Sanitize(safe));
+    }
+}

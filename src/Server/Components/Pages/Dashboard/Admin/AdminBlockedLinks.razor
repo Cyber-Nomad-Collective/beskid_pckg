@@ -1,0 +1,51 @@
+@page "/dashboard/admin/blocked-links"
+@layout DashboardLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+
+<PageTitle>Blocked links · Administration</PageTitle>
+
+<section class="admin-page">
+    <AdminPageHeader Title="Blocked link patterns"
+                     Description="Substrings matched against URLs in community reviews, board threads, and comments (SuperAdmin only)." />
+
+    @if (!string.IsNullOrWhiteSpace(FeedbackMessage) && FeedbackIntent is { } fi)
+    {
+        <FluentMessageBar Intent="@fi" Class="admin-feedback-bar">@FeedbackMessage</FluentMessageBar>
+    }
+
+    <FluentStack Orientation="Orientation.Vertical" Gap="16" Style="margin-top: 16px;">
+        <SettingsSection Title="Add pattern">
+            <FluentStack Orientation="Orientation.Vertical" Gap="12" Style="max-width: 720px;">
+                <FluentTextField @bind-Value="NewBlockedPattern" Label="Pattern" Placeholder="e.g. spam.example or /bad-path" />
+                <FluentTextField @bind-Value="NewBlockedNote" Label="Note (optional)" Placeholder="Why this is blocked" />
+                <FluentButton Appearance="Appearance.Accent" OnClick="AddBlockedLinkAsync" Disabled="@IsSavingLinks">Add pattern</FluentButton>
+            </FluentStack>
+        </SettingsSection>
+
+        <SettingsSection Title="Current patterns">
+            @if (IsLoadingBlockedLinks)
+            {
+                <FluentLabel Typo="Typography.Body" Class="muted">Loading…</FluentLabel>
+            }
+            else if (BlockedLinks.Count == 0)
+            {
+                <FluentLabel Typo="Typography.Body" Class="muted">No blocked patterns yet.</FluentLabel>
+            }
+            else
+            {
+                <FluentDataGrid TGridItem="BlockedLinkRowDto" Items="@BlockedLinksQueryable" Style="width: 100%; overflow: auto;">
+                    <PropertyColumn Property="@(x => x.Pattern)" Title="Pattern" />
+                    <PropertyColumn Property="@(x => x.Note)" Title="Note" />
+                    <PropertyColumn Property="@(x => x.CreatedAtUtc)" Title="Added" Format="u" />
+                    <TemplateColumn Title="" Context="row">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      OnClick="@(() => DeleteBlockedLinkAsync(row.Id))"
+                                      Title="Remove">
+                            Remove
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            }
+        </SettingsSection>
+    </FluentStack>
+</section>

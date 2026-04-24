@@ -26,34 +26,6 @@
                          alt="Profile image crop preview" />
                 </div>
             </FluentCard>
-
-            <FluentCard Class="app-dialog-surface">
-                <FluentStack Orientation="Orientation.Vertical" Gap="10px">
-                    <FluentLabel>Zoom (@Zoom.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal"
-                                  Min="1m"
-                                  Max="3m"
-                                  Step="0.05m"
-                                  Value="@Zoom"
-                                  ValueChanged="OnZoomChanged" />
-
-                    <FluentLabel>Horizontal (@OffsetX.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal"
-                                  Min="-1m"
-                                  Max="1m"
-                                  Step="0.05m"
-                                  Value="@OffsetX"
-                                  ValueChanged="OnOffsetXChanged" />
-
-                    <FluentLabel>Vertical (@OffsetY.ToString("0.00"))</FluentLabel>
-                    <FluentSlider TValue="decimal"
-                                  Min="-1m"
-                                  Max="1m"
-                                  Step="0.05m"
-                                  Value="@OffsetY"
-                                  ValueChanged="OnOffsetYChanged" />
-                </FluentStack>
-            </FluentCard>
         }
     </FluentStack>
 </FluentDialogBody>

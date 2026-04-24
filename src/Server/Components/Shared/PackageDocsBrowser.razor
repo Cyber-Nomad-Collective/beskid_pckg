@@ -19,10 +19,19 @@
         {
             <FluentCard Class="docs-state-card">
                 <FluentStack Orientation="Orientation.Vertical" Gap="10">
-                    <FluentMessageBar Intent="MessageIntent.Warning">@_loadError</FluentMessageBar>
-                    <FluentLabel Typo="Typography.Body" Class="muted">
-                        Authors can add Markdown under <code>docs/</code> in the package source before publishing, or include a root <code>README.md</code>.
-                    </FluentLabel>
+                    <FluentMessageBar Intent="@_loadErrorIntent">@_loadError</FluentMessageBar>
+                    @if (_structuredOnlyHint)
+                    {
+                        <FluentLabel Typo="Typography.Body" Class="muted">
+                            Use the “Open full page” action on the package page to view structured API documentation.
+                        </FluentLabel>
+                    }
+                    @if (_showAuthorHint)
+                    {
+                        <FluentLabel Typo="Typography.Body" Class="muted">
+                            Registry lists Markdown from <code>docs/</code>, optional root <code>README.md</code>, and Beskid-generated <code>.beskid/docs/</code> in the artifact.
+                        </FluentLabel>
+                    }
                 </FluentStack>
             </FluentCard>
         }

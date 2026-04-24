@@ -1,0 +1,68 @@
+.source-browser-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    gap: 14px;
+}
+
+.source-tree-panel,
+.source-preview-panel {
+    min-height: 520px;
+}
+
+.source-tree-list {
+    overflow: auto;
+    max-height: calc(100vh - 23rem);
+    border: 1px solid var(--neutral-stroke-divider-rest);
+    border-radius: 8px;
+    background: var(--neutral-layer-1);
+}
+
+.source-tree-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    border: none;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.source-tree-row:disabled {
+    opacity: 0.8;
+    cursor: default;
+}
+
+.source-tree-row--active {
+    background: var(--accent-fill-rest);
+    color: var(--neutral-foreground-rest);
+}
+
+.source-tree-icon {
+    text-align: center;
+}
+
+.source-tree-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-tree-size {
+    color: var(--neutral-foreground-hint);
+    font-size: 0.75rem;
+}
+
+@media (max-width: 1024px) {
+    .source-browser-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .source-tree-list {
+        max-height: 360px;
+    }
+}

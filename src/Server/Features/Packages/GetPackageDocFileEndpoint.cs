@@ -22,7 +22,13 @@ public sealed class GetPackageDocFileEndpoint(IPackageDocsArchiveService docsArc
         var result = await docsArchive.ReadDocAsync(HttpContext, idOrName, version, path ?? string.Empty, ct);
         if (result.StatusCode != StatusCodes.Status200OK)
         {
-            HttpContext.Response.StatusCode = result.StatusCode;
+            if (result.StatusCode == StatusCodes.Status404NotFound)
+            {
+                await Send.NotFoundAsync(ct);
+                return;
+            }
+
+            await Send.StringAsync(string.Empty, result.StatusCode, cancellation: ct);
             return;
         }
 

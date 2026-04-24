@@ -1,0 +1,13 @@
+.source-editor-shell {
+    min-height: 420px;
+    height: calc(100vh - 24rem);
+    max-height: 760px;
+    border: 1px solid var(--neutral-stroke-divider-rest);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--neutral-layer-1);
+}
+
+.source-editor-shell :deep(.monaco-editor-container) {
+    height: 100%;
+}

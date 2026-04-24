@@ -1,0 +1,21 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentCard Class="dashboard-card admin-settings-section">
+    <FluentStack Orientation="Orientation.Vertical" Gap="14">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <FluentLabel Typo="Typography.H5">@Title</FluentLabel>
+        }
+        @if (!string.IsNullOrWhiteSpace(Subtitle))
+        {
+            <FluentLabel Typo="Typography.Body" Class="muted">@Subtitle</FluentLabel>
+        }
+        @ChildContent
+    </FluentStack>
+</FluentCard>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,63 @@
+@using System.Text.Json
+@if (_refs.Count > 0)
+{
+    <FluentStack Orientation="Orientation.Vertical" Gap="6">
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">See also</FluentLabel>
+        <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="4">
+            @foreach (var name in _refs)
+            {
+                <DocRefLink QualifiedName="@name"
+                            DisplayText="@name"
+                            OnNavigateQualifiedName="OnNavigateQualifiedName" />
+            }
+        </FluentStack>
+    </FluentStack>
+}
+
+@code {
+    private readonly List<string> _refs = [];
+
+    [Parameter]
+    public JsonElement Control { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateQualifiedName { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _refs.Clear();
+        if (Control.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        if (Control.TryGetProperty("references", out var refs) && refs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var el in refs.EnumerateArray())
+            {
+                if (el.ValueKind == JsonValueKind.String)
+                {
+                    var s = el.GetString();
+                    if (!string.IsNullOrWhiteSpace(s))
+                    {
+                        _refs.Add(s);
+                    }
+                }
+            }
+        }
+        else if (Control.TryGetProperty("targets", out var targets) && targets.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var el in targets.EnumerateArray())
+            {
+                if (el.ValueKind == JsonValueKind.String)
+                {
+                    var s = el.GetString();
+                    if (!string.IsNullOrWhiteSpace(s))
+                    {
+                        _refs.Add(s);
+                    }
+                }
+            }
+        }
+    }
+}

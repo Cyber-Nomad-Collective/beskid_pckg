@@ -16,6 +16,15 @@
     border-bottom: 1px solid var(--neutral-stroke-divider-rest);
 }
 
+.package-icon-image {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    object-fit: cover;
+    border: 1px solid var(--neutral-stroke-divider-rest);
+    background: var(--neutral-layer-2);
+}
+
 .package-icon-placeholder {
     width: 64px;
     height: 64px;

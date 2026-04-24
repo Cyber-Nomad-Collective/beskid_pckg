@@ -1,0 +1,15 @@
+.source-image-preview {
+    border: 1px solid var(--neutral-stroke-divider-rest);
+    border-radius: 10px;
+    padding: 10px;
+    background: var(--neutral-layer-1);
+    max-height: calc(100vh - 24rem);
+    overflow: auto;
+}
+
+.source-image-preview img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}

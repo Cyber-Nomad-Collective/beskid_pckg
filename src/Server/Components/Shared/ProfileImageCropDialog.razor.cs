@@ -16,11 +16,7 @@ public partial class ProfileImageCropDialog : IDialogContentComponent<ProfileIma
     private string? SourceDataUrl { get; set; }
     private bool IsBusy { get; set; }
     private string? ErrorMessage { get; set; }
-    private decimal Zoom { get; set; } = 1m;
-    private decimal OffsetX { get; set; }
-    private decimal OffsetY { get; set; }
     private ElementReference CropImageElement { get; set; }
-    private DotNetObjectReference<ProfileImageCropDialog>? SelfReference { get; set; }
     private bool IsCropperInitialized { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -50,24 +46,6 @@ public partial class ProfileImageCropDialog : IDialogContentComponent<ProfileIma
         }
     }
 
-    private Task OnZoomChanged(decimal value)
-    {
-        Zoom = value;
-        return UpdateCropperFromSlidersAsync();
-    }
-
-    private Task OnOffsetXChanged(decimal value)
-    {
-        OffsetX = value;
-        return UpdateCropperFromSlidersAsync();
-    }
-
-    private Task OnOffsetYChanged(decimal value)
-    {
-        OffsetY = value;
-        return UpdateCropperFromSlidersAsync();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (string.IsNullOrWhiteSpace(SourceDataUrl) || IsCropperInitialized)
@@ -77,14 +55,7 @@ public partial class ProfileImageCropDialog : IDialogContentComponent<ProfileIma
 
         try
         {
-            SelfReference = DotNetObjectReference.Create(this);
-            await JsRuntime.InvokeVoidAsync(
-                "profileImageCropper.initialize",
-                CropImageElement,
-                SelfReference,
-                (double)Zoom,
-                (double)OffsetX,
-                (double)OffsetY);
+            await JsRuntime.InvokeVoidAsync("profileImageCropper.initialize", CropImageElement);
 
             IsCropperInitialized = true;
         }
@@ -135,38 +106,6 @@ public partial class ProfileImageCropDialog : IDialogContentComponent<ProfileIma
         }
     }
 
-    private async Task UpdateCropperFromSlidersAsync()
-    {
-        if (!IsCropperInitialized)
-        {
-            return;
-        }
-
-        try
-        {
-            await JsRuntime.InvokeVoidAsync(
-                "profileImageCropper.setViewport",
-                CropImageElement,
-                (double)Zoom,
-                (double)OffsetX,
-                (double)OffsetY);
-        }
-        catch (JSException)
-        {
-            ErrorMessage = "Cropping preview failed to update.";
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    [JSInvokable]
-    public Task OnCropperChanged(double zoom, double offsetX, double offsetY)
-    {
-        Zoom = Math.Clamp((decimal)zoom, 1m, 3m);
-        OffsetX = Math.Clamp((decimal)offsetX, -1m, 1m);
-        OffsetY = Math.Clamp((decimal)offsetY, -1m, 1m);
-        return InvokeAsync(StateHasChanged);
-    }
-
     private static bool TryExtractDataUrlPayload(string? dataUrl, out string payload)
     {
         payload = string.Empty;
@@ -214,7 +153,5 @@ public partial class ProfileImageCropDialog : IDialogContentComponent<ProfileIma
             }
         }
 
-        SelfReference?.Dispose();
-        SelfReference = null;
     }
 }

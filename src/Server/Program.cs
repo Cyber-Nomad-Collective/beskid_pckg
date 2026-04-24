@@ -218,7 +218,10 @@ builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
 builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
+builder.Services.AddScoped<IPackageArtifactExplorerService, PackageArtifactExplorerService>();
 builder.Services.AddScoped<IPackageDocsArchiveService, PackageDocsArchiveService>();
+builder.Services.AddScoped<IPackageSourceFileTypeMapper, PackageSourceFileTypeMapper>();
+builder.Services.AddScoped<IPackageSourceArchiveService, PackageSourceArchiveService>();
 builder.Services.AddSingleton<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
@@ -280,6 +283,12 @@ using (var scope = app.Services.CreateScope())
 {
     var migrations = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
     await migrations.ApplyAsync();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    if (!await roleManager.RoleExistsAsync("Moderator"))
+    {
+        await roleManager.CreateAsync(new IdentityRole("Moderator"));
+    }
 }
 
 // Configure the HTTP request pipeline.

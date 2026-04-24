@@ -1,0 +1,34 @@
+@page "/dashboard/admin/email"
+@layout DashboardLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+
+<PageTitle>Email · Administration</PageTitle>
+
+<section class="admin-page">
+    <AdminPageHeader Title="Email delivery"
+                     Description="SMTP settings used for notification and system email (SuperAdmin only)." />
+
+    @if (!string.IsNullOrWhiteSpace(FeedbackMessage) && FeedbackIntent is { } fi)
+    {
+        <FluentMessageBar Intent="@fi" Class="admin-feedback-bar">@FeedbackMessage</FluentMessageBar>
+    }
+
+    <FluentStack Orientation="Orientation.Vertical" Gap="16" Style="margin-top: 16px;">
+        <SettingsSection Title="SMTP">
+            <EditForm Model="EmailSettings" OnValidSubmit="SaveEmailSettingsAsync">
+                <FluentStack Orientation="Orientation.Vertical" Gap="10" Style="max-width: 680px;">
+                    <FluentTextField @bind-Value="EmailSettings.SmtpHost" Placeholder="SMTP host" />
+                    <FluentNumberField @bind-Value="EmailSettings.SmtpPort" Min="1" Max="65535" />
+                    <FluentCheckbox Label="Enable SSL"
+                                    Checked="@EmailSettings.EnableSsl"
+                                    CheckedChanged="@((bool v) => EmailSettings.EnableSsl = v)" />
+                    <FluentTextField @bind-Value="EmailSettings.Username" Placeholder="Username (optional)" />
+                    <FluentTextField @bind-Value="EmailSettings.Password" Placeholder="Password (leave blank to keep)" Type="TextFieldType.Password" />
+                    <FluentTextField @bind-Value="EmailSettings.FromEmail" Placeholder="From email" />
+                    <FluentTextField @bind-Value="EmailSettings.FromName" Placeholder="From name" />
+                    <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="@IsSaving">Save email settings</FluentButton>
+                </FluentStack>
+            </EditForm>
+        </SettingsSection>
+    </FluentStack>
+</section>

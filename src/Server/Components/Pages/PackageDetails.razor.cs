@@ -31,22 +31,32 @@ public partial class PackageDetails
     private int DependentsCount;
     private string? LatestReadme;
     private PackageVersionSummaryResponse? LatestVersion;
+    private string ExplorerVersion = "latest";
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
     private double AverageReviewRating => Reviews.Count == 0 ? 0d : Reviews.Average(x => x.Rating);
     private int HealthStars => Math.Clamp((int)Math.Round((HealthStatus?.Score ?? 0d) * 5, MidpointRounding.AwayFromZero), 1, 5);
     private double HealthPercent => (HealthStatus?.Score ?? 0d) * 100d;
     private MarkupString RenderReviewHtml(string html) => new(HtmlSanitization.Sanitize(html));
+    private bool _packageIconFailed;
+    private Guid? _packageIconContextId;
 
     protected override async Task OnParametersSetAsync()
     {
         Package = await DbContext.Packages.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Name == PackageName && x.IsPublic);
+        if (Package?.Id != _packageIconContextId)
+        {
+            _packageIconContextId = Package?.Id;
+            _packageIconFailed = false;
+        }
         await EnsurePackageBoardAsync();
         await RefreshBoardModerationAsync();
         await LoadSecondaryDataAsync();
         await LoadFollowAsync();
     }
+
+    private void OnPackageIconError() => _packageIconFailed = true;
 
     private async Task RefreshBoardModerationAsync()
     {
@@ -159,6 +169,7 @@ public partial class PackageDetails
             x.YankedAtUtc)));
 
         LatestVersion = Versions.FirstOrDefault();
+        ExplorerVersion = LatestVersion?.Version ?? "latest";
         var manifest = PackageManifestMetadataReader.Read(orderedVersionRows.FirstOrDefault()?.ManifestJson);
         LatestReadme = manifest.Readme;
         Dependencies.AddRange(manifest.Dependencies.Select(d => new PackageDependencyResponse(
@@ -319,7 +330,7 @@ public partial class PackageDetails
             return;
         }
 
-        var ver = LatestVersion?.Version ?? "latest";
+        var ver = string.IsNullOrWhiteSpace(ExplorerVersion) ? "latest" : ExplorerVersion;
         Navigation.NavigateTo($"/docs/{Uri.EscapeDataString($"{Package.Name}@{ver}")}");
     }
 

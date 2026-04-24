@@ -1,0 +1,35 @@
+@page "/dashboard/admin"
+@layout DashboardLayout
+@attribute [Authorize(Roles = "SuperAdmin")]
+@inject NavigationManager Navigation
+
+<PageTitle>Administration</PageTitle>
+
+<section class="admin-page">
+    <AdminPageHeader Title="Administration"
+                     Description="SuperAdmin tools for users, email, registry diagnostics, and link safety." />
+
+    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="16" Style="margin-top: 20px;">
+        <FluentCard Class="dashboard-card" Style="min-width: 220px; max-width: 320px; flex: 1;">
+            <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                <FluentLabel Typo="Typography.H5">Users &amp; email</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Class="muted">Search accounts, assign roles, and configure outbound SMTP.</FluentLabel>
+                <FluentStack Orientation="Orientation.Vertical" Gap="8">
+                    <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Navigation.NavigateTo("/dashboard/admin/users"))">Open users</FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/dashboard/admin/email"))">Email settings</FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+
+        <FluentCard Class="dashboard-card" Style="min-width: 220px; max-width: 320px; flex: 1;">
+            <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                <FluentLabel Typo="Typography.H5">Registry &amp; safety</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Class="muted">Live publish activity and URL patterns blocked in user content.</FluentLabel>
+                <FluentStack Orientation="Orientation.Vertical" Gap="8">
+                    <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Navigation.NavigateTo("/dashboard/admin/registry-activity"))">Registry activity</FluentButton>
+                    <FluentButton Appearance="Appearance.Outline" OnClick="@(() => Navigation.NavigateTo("/dashboard/admin/blocked-links"))">Blocked links</FluentButton>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+    </FluentStack>
+</section>

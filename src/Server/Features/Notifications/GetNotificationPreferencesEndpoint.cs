@@ -37,8 +37,9 @@ public sealed class GetNotificationPreferencesEndpoint : EndpointWithoutRequest<
                 Db.Packages.AsNoTracking(),
                 follow => follow.PackageId,
                 package => package.Id.ToString(),
-                (follow, package) => new ScopedNotificationTargetDto(package.Id.ToString(), package.Name))
-            .OrderBy(x => x.Label)
+                (follow, package) => new { follow, package })
+            .OrderBy(x => x.package.Name)
+            .Select(x => new ScopedNotificationTargetDto(x.package.Id.ToString(), x.package.Name))
             .ToListAsync(ct);
 
         var authoredPostIds = Db.BoardPosts

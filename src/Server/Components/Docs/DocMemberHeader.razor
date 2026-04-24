@@ -1,0 +1,36 @@
+<FluentStack Orientation="Orientation.Vertical" Gap="8" Class="docs-member-header">
+    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true" Gap="8">
+        <FluentLabel Typo="Typography.PaneHeader" Class="docs-member-title">@Title</FluentLabel>
+        @if (!string.IsNullOrWhiteSpace(Item?.Kind))
+        {
+            <FluentBadge Appearance="Appearance.Lightweight">@Item!.Kind</FluentBadge>
+        }
+        @if (!string.IsNullOrWhiteSpace(Item?.Visibility))
+        {
+            <FluentBadge Appearance="Appearance.Neutral">@Item!.Visibility</FluentBadge>
+        }
+    </FluentStack>
+    @if (Item?.Location is { } loc && (!string.IsNullOrWhiteSpace(loc.File) || loc.StartLine > 0))
+    {
+        <FluentLabel Typo="Typography.Body" Class="muted">
+            @if (!string.IsNullOrWhiteSpace(loc.File))
+            {
+                <span>@loc.File</span>
+            }
+            @if (loc.StartLine > 0)
+            {
+                <span> — L@(loc.StartLine):@(loc.StartColumn)</span>
+            }
+        </FluentLabel>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public StructuredApiItemDto? Item { get; set; }
+
+    private string Title =>
+        Item?.QualifiedName
+        ?? Item?.Name
+        ?? "Member";
+}

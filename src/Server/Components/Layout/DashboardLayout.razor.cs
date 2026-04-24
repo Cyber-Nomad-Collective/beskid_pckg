@@ -24,6 +24,24 @@ public partial class DashboardLayout
     private static readonly Icon AdminPackagesIcon =
         new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Building();
 
+    private static readonly Icon AdministrationIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Shield();
+
+    private static readonly Icon AdminOverviewIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Grid();
+
+    private static readonly Icon AdminUsersIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.People();
+
+    private static readonly Icon AdminEmailIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Mail();
+
+    private static readonly Icon AdminActivityIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.History();
+
+    private static readonly Icon AdminShieldIcon =
+        new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.LinkDismiss();
+
     private static readonly Icon UploadIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ArrowUpload();
     private static readonly Icon HomeIcon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Home();
 }
