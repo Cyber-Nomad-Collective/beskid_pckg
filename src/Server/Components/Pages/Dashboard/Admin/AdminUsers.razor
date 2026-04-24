@@ -1,6 +1,8 @@
 @page "/dashboard/admin/users"
 @layout DashboardLayout
 @attribute [Authorize(Roles = "SuperAdmin")]
+@using Server.Components.Shared
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 <PageTitle>Users · Administration</PageTitle>
 
@@ -38,8 +40,8 @@
                         }
                     </FluentStack>
                 </TemplateColumn>
-                <TemplateColumn Title="Actions">
-                    <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OpenEditUserDialog(context))">Edit</FluentButton>
+                <TemplateColumn Title="Actions" Context="user">
+                    <GridActionOverflowRow Actions="@GetUserRowActions(user)" />
                 </TemplateColumn>
             </FluentDataGrid>
 

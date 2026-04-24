@@ -6,10 +6,12 @@ namespace Server.Services;
 
 public interface IPackageArtifactValidator
 {
+    /// <param name="relaxPackageJsonVersion">When true, <c>package.json</c> <c>version</c> may differ from <paramref name="expectedVersion"/> (registry-assigned publish).</param>
     Task<PackageArtifactValidationResult> ValidateAsync(
         Stream artifact,
         string expectedPackageName,
         string expectedVersion,
+        bool relaxPackageJsonVersion = false,
         CancellationToken cancellationToken = default);
 }
 
@@ -32,6 +34,7 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
         Stream artifact,
         string expectedPackageName,
         string expectedVersion,
+        bool relaxPackageJsonVersion = false,
         CancellationToken cancellationToken = default)
     {
         using var memory = new MemoryStream();
@@ -89,7 +92,7 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
             var projectManifestText = await ReadEntryTextAsync(fileEntries["Project.proj"], cancellationToken);
             var checksumsText = await ReadEntryTextAsync(fileEntries["checksums.sha256"], cancellationToken);
 
-            var packageJsonValidation = ValidatePackageJson(packageJsonText, expectedPackageName, expectedVersion);
+            var packageJsonValidation = ValidatePackageJson(packageJsonText, expectedPackageName, expectedVersion, relaxPackageJsonVersion);
             if (!packageJsonValidation.IsValid)
             {
                 return packageJsonValidation;
@@ -142,7 +145,8 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
     private static PackageArtifactValidationResult ValidatePackageJson(
         string packageJsonText,
         string expectedPackageName,
-        string expectedVersion)
+        string expectedVersion,
+        bool relaxPackageJsonVersion)
     {
         JsonDocument document;
         try
@@ -171,7 +175,8 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
                 return new(false, "package.json id does not match package name in route.");
             }
 
-            if (!string.Equals(version, expectedVersion, StringComparison.Ordinal))
+            if (!relaxPackageJsonVersion
+                && !string.Equals(version, expectedVersion, StringComparison.Ordinal))
             {
                 return new(false, "package.json version does not match publish version.");
             }

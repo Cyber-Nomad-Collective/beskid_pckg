@@ -1,0 +1,56 @@
+@using System.Globalization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+
+@if (Actions is { Count: > 0 })
+{
+    <FluentOverflow Class="@($"grid-action-overflow {Class}".Trim())"
+                    Style="width: 100%; min-width: 0;"
+                    VisibleOnLoad="false"
+                    OnOverflowRaised="@OnOverflowRaisedAsync">
+        <ChildContent>
+            @for (var i = 0; i < Actions.Count; i++)
+            {
+                var action = Actions[i];
+                <FluentOverflowItem @key="@i">
+                    <span class="grid-action-overflow-sr">@i.ToString(CultureInfo.InvariantCulture)</span>
+                    <GridActionButton Icon="@action.Icon"
+                                      Tooltip="@action.Tooltip"
+                                      Appearance="@action.Appearance"
+                                      Disabled="@action.Disabled"
+                                      OnClick="@action.OnClick" />
+                </FluentOverflowItem>
+            }
+        </ChildContent>
+        <MoreButtonTemplate>
+            <GridActionButton Appearance="Appearance.Outline"
+                              Icon="@(new Icons.Regular.Size20.MoreHorizontal())"
+                              Tooltip="More actions"
+                              OnClick="@ToggleOverflowMenu" />
+        </MoreButtonTemplate>
+        <OverflowTemplate Context="oflow">
+            <FluentMenu Anchor="@oflow.IdMoreButton"
+                        @bind-Open="_menuOpen"
+                        Anchored="true"
+                        UseMenuService="true"
+                        VerticalPosition="VerticalPosition.Bottom">
+                @foreach (var overflowItem in oflow.ItemsOverflow)
+                {
+                    var def = ResolveDefinition(overflowItem);
+                    if (def is null)
+                    {
+                        continue;
+                    }
+
+                    <FluentMenuItem Disabled="@def.Disabled"
+                                    OnClick="@(() => InvokeFromMenuAsync(def))">
+                        <span slot="start">
+                            <FluentIcon Value="@def.Icon" Color="Color.Neutral" />
+                        </span>
+                        @def.Tooltip
+                    </FluentMenuItem>
+                }
+            </FluentMenu>
+        </OverflowTemplate>
+    </FluentOverflow>
+}

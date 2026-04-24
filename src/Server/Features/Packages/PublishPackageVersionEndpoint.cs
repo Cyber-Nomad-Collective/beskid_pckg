@@ -30,7 +30,13 @@ public sealed class PublishPackageVersionEndpoint(
             x.RequireAuthorization();
             x.RequireRateLimiting("publish");
         });
-        Summary(s => s.Summary = "Publish a package artifact version for an owned package.");
+        Summary(s =>
+        {
+            s.Summary = "Publish a package artifact version for an owned package.";
+            s.Description =
+                "Multipart: artifact (required), version (optional — omit for registry-assigned next semver), " +
+                "versionBump (optional patch|minor|major when version omitted, default patch), checksumSha256 (optional).";
+        });
     }
 
     public override async Task HandleAsync(CancellationToken ct)
@@ -107,18 +113,37 @@ public sealed class PublishPackageVersionEndpoint(
         }
 
         var form = await HttpContext.Request.ReadFormAsync(ct);
-        var version = form["version"].FirstOrDefault()?.Trim();
+        var versionRaw = form["version"].FirstOrDefault()?.Trim();
+        var versionBumpRaw = form["versionBump"].FirstOrDefault()?.Trim();
         var expectedChecksum = form["checksumSha256"].FirstOrDefault()?.Trim().ToLowerInvariant();
         var inlineManifestJson = form["manifestJson"].FirstOrDefault();
         var artifact = form.Files.GetFile("artifact");
 
-        if (string.IsNullOrWhiteSpace(version) || artifact is null)
+        if (artifact is null)
         {
-            logger.LogWarning("Publish rejected: missing version or artifact for {PackageName}.", packageName);
-            Record("Warning", "publish", "Both version and artifact are required.", userId, packageName, version);
+            logger.LogWarning("Publish rejected: missing artifact for {PackageName}.", packageName);
+            Record("Warning", "publish", "Artifact file is required.", userId, packageName, null);
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Both version and artifact are required.", null), ct);
+            await Send.OkAsync(new PublishPackageVersionResponse(false, "Artifact file is required.", null), ct);
             return;
+        }
+
+        var relaxPackageJsonVersion = false;
+        string version;
+        if (string.IsNullOrWhiteSpace(versionRaw))
+        {
+            var bump = PackageVersioning.ParseBump(versionBumpRaw);
+            var nonYankedVersions = await dbContext.PackageVersions
+                .AsNoTracking()
+                .Where(x => x.PackageId == package.Id && !x.IsYanked)
+                .Select(x => x.Version)
+                .ToListAsync(ct);
+            version = PackageVersioning.ComputeNextVersion(nonYankedVersions, bump);
+            relaxPackageJsonVersion = true;
+        }
+        else
+        {
+            version = versionRaw;
         }
 
         if (!SemVerRegex.IsMatch(version))
@@ -185,7 +210,7 @@ public sealed class PublishPackageVersionEndpoint(
         }
 
         await using var artifactStream = artifact.OpenReadStream();
-        var validation = await artifactValidator.ValidateAsync(artifactStream, package.Name, version, ct);
+        var validation = await artifactValidator.ValidateAsync(artifactStream, package.Name, version, relaxPackageJsonVersion, ct);
         if (!validation.IsValid)
         {
             logger.LogWarning(

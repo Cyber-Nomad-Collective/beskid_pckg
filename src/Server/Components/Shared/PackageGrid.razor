@@ -1,5 +1,4 @@
 @using Microsoft.FluentUI.AspNetCore.Components
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 @using Server.Features.Packages
 
 <FluentDataGrid TGridItem="PackageSummaryResponse" Items="@Packages.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" MultiLine="true" Class="package-grid">
@@ -32,28 +31,7 @@
         @if (ShowActions)
         {
             <TemplateColumn Title="Actions" Context="package">
-                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
-                    @if (OnEditMetadata.HasDelegate)
-                    {
-                        <FluentButton Appearance="Appearance.Outline" OnClick="@(() => OnEditMetadata.InvokeAsync(package))">
-                            Edit metadata
-                        </FluentButton>
-                    }
-                    @if (OnUploadVersion.HasDelegate)
-                    {
-                        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => OnUploadVersion.InvokeAsync(package))">
-                            Upload version
-                        </FluentButton>
-                    }
-                    @if (ShowPackageDocsExplorerAction)
-                    {
-                        <FluentButton Appearance="Appearance.Outline"
-                                      IconStart="@(new Icons.Regular.Size20.DocumentSearch())"
-                                      OnClick="@(() => OpenPackageDocsExplorerAsync(package))">
-                            Browse docs
-                        </FluentButton>
-                    }
-                </FluentStack>
+                <GridActionOverflowRow Actions="@GetPackageRowActions(package)" />
             </TemplateColumn>
         }
     </ChildContent>

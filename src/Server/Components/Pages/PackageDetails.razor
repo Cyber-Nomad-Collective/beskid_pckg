@@ -49,6 +49,18 @@ else
                     {
                         <FluentBadge Appearance="Appearance.Lightweight">Score @HealthPercent.ToString("0")%</FluentBadge>
                     }
+                    @if (!string.IsNullOrWhiteSpace(_heroLatestVersion))
+                    {
+                        <FluentBadge Appearance="Appearance.Lightweight" Title="Latest non-yanked version">Latest @_heroLatestVersion</FluentBadge>
+                    }
+                    @if (_firstPublishedAtUtc is not null)
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral" Title="First version published to the registry">First publish @_firstPublishedAtUtc.Value.ToString("u")</FluentBadge>
+                    }
+                    @if (_lastPublishedAtUtc is not null)
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral" Title="Most recent non-yanked publish, or latest publish if all yanked">Last publish @_lastPublishedAtUtc.Value.ToString("u")</FluentBadge>
+                    }
                 </div>
             </div>
             @if (IsAuthenticated)
@@ -110,14 +122,7 @@ else
                                     @version.PublishedAtUtc.ToString("u")
                                 </TemplateColumn>
                                 <TemplateColumn Title="Actions" Context="version">
-                                    @if (CanManageVersions)
-                                    {
-                                        <FluentButton Appearance="Appearance.Stealth"
-                                                      Title="@(version.IsYanked ? "Unyank version" : "Yank version")"
-                                                      OnClick="@(() => ToggleYankVersionAsync(version))">
-                                            @(version.IsYanked ? "Unyank" : "Yank")
-                                        </FluentButton>
-                                    }
+                                    <GridActionOverflowRow Actions="@GetVersionRowActions(version)" />
                                 </TemplateColumn>
                             </ChildContent>
                         </FluentDataGrid>

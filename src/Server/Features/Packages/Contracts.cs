@@ -135,7 +135,10 @@ public sealed record PackageDetailsResponse(
     IReadOnlyList<PackageDependencyResponse> Dependencies,
     int DependentsCount,
     string? Readme,
-    PackageHealthSnapshotResponse Health);
+    PackageHealthSnapshotResponse Health,
+    [property: JsonPropertyName("firstPublishedAtUtc")] DateTimeOffset? FirstPublishedAtUtc = null,
+    [property: JsonPropertyName("lastPublishedAtUtc")] DateTimeOffset? LastPublishedAtUtc = null,
+    [property: JsonPropertyName("latestVersion")] string? LatestVersion = null);
 
 public sealed record PackageDocFileEntry(
     [property: JsonPropertyName("path")] string Path,

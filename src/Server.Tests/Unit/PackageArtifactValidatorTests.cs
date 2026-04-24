@@ -53,6 +53,32 @@ public class PackageArtifactValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_Accepts_BeskidDocs_ApiJson_Under_Docs_Tree()
+    {
+        var extra = new Dictionary<string, string>
+        {
+            [".beskid/docs/api.json"] = """{"schemaVersion":1,"items":[]}""",
+        };
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.2.3", extra);
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "Demo", "1.2.3");
+
+        Assert.True(result.IsValid, result.Message);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WhenRelaxPackageJsonVersion_Skips_Version_Equality()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.0.0");
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "Demo", "9.9.9", relaxPackageJsonVersion: true);
+
+        Assert.True(result.IsValid, result.Message);
+    }
+
+    [Fact]
     public async Task ValidateAsync_Rejects_Artifacts_With_Beskid_Config_Entries()
     {
         var packageJson = JsonSerializer.Serialize(new

@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
+using Server.Components.Shared;
 
 namespace Server.Components.Pages.Dashboard.Admin;
 
@@ -88,6 +90,16 @@ public partial class AdminUsers
         EditUserRoles = new List<string>(user.Roles);
         IsEditDialogOpen = true;
     }
+
+    private IReadOnlyList<GridActionDefinition> GetUserRowActions(UserDto user) =>
+    [
+        new GridActionDefinition
+        {
+            Icon = new Icons.Regular.Size20.PersonEdit(),
+            Tooltip = "Edit user",
+            OnClick = EventCallback.Factory.Create(this, () => OpenEditUserDialog(user))
+        }
+    ];
 
     private void CloseEditDialog()
     {

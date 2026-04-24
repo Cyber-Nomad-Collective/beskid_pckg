@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 using Server.Features.ApiKeys;
 
@@ -142,6 +143,25 @@ public partial class ApiKeys
         }
 
         await CreateApiKeyAsync(input);
+    }
+
+    private IReadOnlyList<GridActionDefinition> GetApiKeyRowActions(ApiKeysListResponse key)
+    {
+        if (key.RevokedAtUtc is not null)
+        {
+            return Array.Empty<GridActionDefinition>();
+        }
+
+        return
+        [
+            new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.DismissCircle(),
+                Tooltip = "Revoke API key",
+                Disabled = IsWorking,
+                OnClick = EventCallback.Factory.Create(this, () => RevokeApiKeyAsync(key.Id))
+            }
+        ];
     }
 
     private void SetFeedback(string message, bool isError)

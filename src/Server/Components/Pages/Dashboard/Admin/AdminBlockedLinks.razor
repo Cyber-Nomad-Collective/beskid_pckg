@@ -1,6 +1,8 @@
 @page "/dashboard/admin/blocked-links"
 @layout DashboardLayout
 @attribute [Authorize(Roles = "SuperAdmin")]
+@using Server.Components.Shared
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 <PageTitle>Blocked links · Administration</PageTitle>
 
@@ -37,12 +39,8 @@
                     <PropertyColumn Property="@(x => x.Pattern)" Title="Pattern" />
                     <PropertyColumn Property="@(x => x.Note)" Title="Note" />
                     <PropertyColumn Property="@(x => x.CreatedAtUtc)" Title="Added" Format="u" />
-                    <TemplateColumn Title="" Context="row">
-                        <FluentButton Appearance="Appearance.Stealth"
-                                      OnClick="@(() => DeleteBlockedLinkAsync(row.Id))"
-                                      Title="Remove">
-                            Remove
-                        </FluentButton>
+                    <TemplateColumn Title="Actions" Context="row">
+                        <GridActionOverflowRow Actions="@GetBlockedLinkRowActions(row)" />
                     </TemplateColumn>
                 </FluentDataGrid>
             }

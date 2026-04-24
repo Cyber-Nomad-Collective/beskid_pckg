@@ -2,7 +2,9 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
+@using Server.Components.Shared
 @using Server.Features.ApiKeys
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 @inject IJSRuntime JsRuntime
 @inject HttpClient Http
 
@@ -66,10 +68,7 @@
                         }
                     </TemplateColumn>
                     <TemplateColumn Title="Actions" Context="key">
-                        @if (key.RevokedAtUtc is null)
-                        {
-                            <FluentButton Appearance="Appearance.Outline" Disabled="@IsWorking" OnClick="() => RevokeApiKeyAsync(key.Id)">Revoke</FluentButton>
-                        }
+                        <GridActionOverflowRow Actions="@GetApiKeyRowActions(key)" />
                     </TemplateColumn>
                 </ChildContent>
             </FluentDataGrid>

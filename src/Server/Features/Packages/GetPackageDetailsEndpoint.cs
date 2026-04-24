@@ -108,6 +108,21 @@ public sealed class GetPackageDetailsEndpoint(
             PackageManifestMetadataReader.Read(manifest).Dependencies.Any(d =>
                 string.Equals(d.Name, package.Name, StringComparison.OrdinalIgnoreCase)));
 
+        DateTimeOffset? firstPublishedAtUtc = packageVersions.Count > 0
+            ? packageVersions.Min(x => x.PublishedAtUtc)
+            : null;
+        var activeVersions = packageVersions.Where(x => !x.IsYanked).ToList();
+        DateTimeOffset? lastPublishedAtUtc = activeVersions.Count > 0
+            ? activeVersions.Max(x => x.PublishedAtUtc)
+            : null;
+        if (lastPublishedAtUtc is null && packageVersions.Count > 0)
+        {
+            lastPublishedAtUtc = packageVersions.Max(x => x.PublishedAtUtc);
+        }
+
+        var latestVersion = PackageVersioning.GetLatestNonYankedVersionString(
+            packageVersions.Select(x => (x.Version, x.IsYanked)));
+
         var response = new PackageDetailsResponse(
             new PackageSummaryResponse(
                 package.Id,
@@ -138,7 +153,10 @@ public sealed class GetPackageDetailsEndpoint(
             dependencies,
             dependentsCount,
             parsedManifest.Readme,
-            ToHealth(health));
+            ToHealth(health),
+            firstPublishedAtUtc,
+            lastPublishedAtUtc,
+            latestVersion);
 
         await Send.OkAsync(response, ct);
     }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Features.Packages;
 
 namespace Server.Components.Shared;
@@ -32,5 +33,43 @@ public partial class PackageGrid
 
         var dialog = await DialogService.ShowDialogAsync<PackageDocsExplorerDialog>(content, parameters);
         _ = await dialog.Result;
+    }
+
+    private IReadOnlyList<GridActionDefinition> GetPackageRowActions(PackageSummaryResponse package)
+    {
+        var list = new List<GridActionDefinition>();
+
+        if (OnUploadVersion.HasDelegate)
+        {
+            list.Add(new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.ArrowUpload(),
+                Tooltip = "Upload version",
+                Appearance = Appearance.Accent,
+                OnClick = EventCallback.Factory.Create(this, () => OnUploadVersion.InvokeAsync(package))
+            });
+        }
+
+        if (OnEditMetadata.HasDelegate)
+        {
+            list.Add(new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.DocumentEdit(),
+                Tooltip = "Edit metadata",
+                OnClick = EventCallback.Factory.Create(this, () => OnEditMetadata.InvokeAsync(package))
+            });
+        }
+
+        if (ShowPackageDocsExplorerAction)
+        {
+            list.Add(new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.DocumentSearch(),
+                Tooltip = "Browse docs",
+                OnClick = EventCallback.Factory.Create(this, () => OpenPackageDocsExplorerAsync(package))
+            });
+        }
+
+        return list;
     }
 }

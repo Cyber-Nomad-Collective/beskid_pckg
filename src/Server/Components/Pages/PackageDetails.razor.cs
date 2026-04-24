@@ -3,6 +3,7 @@ using System.Net;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 using Server.Data;
 using Server.Features.Packages;
@@ -32,6 +33,9 @@ public partial class PackageDetails
     private string? LatestReadme;
     private PackageVersionSummaryResponse? LatestVersion;
     private string ExplorerVersion = "latest";
+    private DateTimeOffset? _firstPublishedAtUtc;
+    private DateTimeOffset? _lastPublishedAtUtc;
+    private string? _heroLatestVersion;
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
     private double AverageReviewRating => Reviews.Count == 0 ? 0d : Reviews.Average(x => x.Rating);
@@ -43,8 +47,13 @@ public partial class PackageDetails
 
     protected override async Task OnParametersSetAsync()
     {
+        var uid = HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isSuperAdmin = HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
         Package = await DbContext.Packages.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Name == PackageName && x.IsPublic);
+            .SingleOrDefaultAsync(x =>
+                x.Name == PackageName
+                && (x.IsPublic
+                    || (!string.IsNullOrWhiteSpace(uid) && (isSuperAdmin || x.OwnerUserId == uid))));
         if (Package?.Id != _packageIconContextId)
         {
             _packageIconContextId = Package?.Id;
@@ -126,6 +135,9 @@ public partial class PackageDetails
         LatestReadme = null;
         LatestVersion = null;
         HealthStatus = null;
+        _firstPublishedAtUtc = null;
+        _lastPublishedAtUtc = null;
+        _heroLatestVersion = null;
 
         if (Package is null)
         {
@@ -167,6 +179,17 @@ public partial class PackageDetails
             x.SizeBytes,
             x.PublishedAtUtc,
             x.YankedAtUtc)));
+
+        if (versionRows.Count > 0)
+        {
+            _firstPublishedAtUtc = versionRows.Min(x => x.PublishedAtUtc);
+            var activeRows = versionRows.Where(x => !x.IsYanked).ToList();
+            _lastPublishedAtUtc = activeRows.Count > 0
+                ? activeRows.Max(x => x.PublishedAtUtc)
+                : versionRows.Max(x => x.PublishedAtUtc);
+            _heroLatestVersion = PackageVersioning.GetLatestNonYankedVersionString(
+                versionRows.Select(x => (x.Version, x.IsYanked)));
+        }
 
         LatestVersion = Versions.FirstOrDefault();
         ExplorerVersion = LatestVersion?.Version ?? "latest";
@@ -264,6 +287,38 @@ public partial class PackageDetails
 
     private double GetReviewDistributionPercent(int rating)
         => Reviews.Count == 0 ? 0d : (GetReviewCountFor(rating) * 100d) / Reviews.Count;
+
+    private IReadOnlyList<GridActionDefinition> GetVersionRowActions(PackageVersionSummaryResponse version)
+    {
+        if (!CanManageVersions)
+        {
+            return Array.Empty<GridActionDefinition>();
+        }
+
+        if (version.IsYanked)
+        {
+            return
+            [
+                new GridActionDefinition
+                {
+                    Icon = new Icons.Regular.Size20.ArrowCounterclockwise(),
+                    Tooltip = "Unyank version",
+                    Appearance = Appearance.Accent,
+                    OnClick = EventCallback.Factory.Create(this, () => ToggleYankVersionAsync(version))
+                }
+            ];
+        }
+
+        return
+        [
+            new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.Prohibited(),
+                Tooltip = "Yank version",
+                OnClick = EventCallback.Factory.Create(this, () => ToggleYankVersionAsync(version))
+            }
+        ];
+    }
 
     private async Task ToggleYankVersionAsync(PackageVersionSummaryResponse version)
     {
