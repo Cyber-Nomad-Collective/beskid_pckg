@@ -6,7 +6,6 @@
 {
     <FluentOverflow Class="@($"grid-action-overflow {Class}".Trim())"
                     Style="width: 100%; min-width: 0;"
-                    VisibleOnLoad="false"
                     OnOverflowRaised="@OnOverflowRaisedAsync">
         <ChildContent>
             @for (var i = 0; i < Actions.Count; i++)

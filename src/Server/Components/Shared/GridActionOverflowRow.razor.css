@@ -1,3 +1,9 @@
+/* Match toolbar row height to square action buttons inside table cells. */
+.grid-action-overflow ::deep .fluent-overflow[orientation="horizontal"] {
+    align-items: center;
+    min-height: 40px;
+}
+
 /* Wider "more" slot than Fluent default so 40px grid buttons fit. */
 .grid-action-overflow ::deep .fluent-overflow-more {
     min-width: 40px;
