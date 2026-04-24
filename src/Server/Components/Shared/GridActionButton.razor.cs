@@ -15,6 +15,9 @@ public partial class GridActionButton
 
     [Parameter, EditorRequired] public string Tooltip { get; set; } = "";
 
+    /// <summary>DOM id for the host <c>fluent-button</c> (e.g. FluentOverflow <c>IdMoreButton</c> anchor).</summary>
+    [Parameter] public string? Id { get; set; }
+
     [Parameter] public Appearance Appearance { get; set; } = Appearance.Outline;
 
     [Parameter] public bool Disabled { get; set; }

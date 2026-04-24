@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -10,6 +11,8 @@ namespace Server.Components.Shared;
 /// </summary>
 public partial class GridActionOverflowRow
 {
+    private static readonly Regex s_leadingActionIndex = new(@"^(\d+)", RegexOptions.CultureInvariant);
+
     private bool _menuOpen;
 
     [Parameter] public IReadOnlyList<GridActionDefinition>? Actions { get; set; }
@@ -22,8 +25,6 @@ public partial class GridActionOverflowRow
         return Task.CompletedTask;
     }
 
-    private void ToggleOverflowMenu() => _menuOpen = !_menuOpen;
-
     private GridActionDefinition? ResolveDefinition(FluentOverflowItem item)
     {
         if (Actions is null || Actions.Count == 0)
@@ -32,7 +33,9 @@ public partial class GridActionOverflowRow
         }
 
         var raw = item.Text?.Trim() ?? string.Empty;
-        if (!int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
+        var match = s_leadingActionIndex.Match(raw);
+        if (!match.Success
+            || !int.TryParse(match.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var index)
             || index < 0
             || index >= Actions.Count)
         {

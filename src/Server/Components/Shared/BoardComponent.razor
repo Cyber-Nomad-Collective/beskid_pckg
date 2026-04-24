@@ -52,69 +52,7 @@
 
                 @if (ShowPostTypeSelector && FilterPostType is null)
                 {
-                    <div class="composer-section">
-                        <label class="fluent-label" id="composer-post-type-label">Thread type</label>
-                        <p class="composer-field-hint">Choose the category that best matches your post.</p>
-                        <div class="post-type-tiles" role="group" aria-labelledby="composer-post-type-label">
-                            <button type="button"
-                                    class="post-type-tile @(NewPostType == BoardPostType.Issue ? "selected" : "")"
-                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.Issue);"
-                                    @onclick="@(() => NewPostType = BoardPostType.Issue)">
-                                <span class="post-type-tile-icon" aria-hidden="true">
-                                    @if (NewPostType == BoardPostType.Issue)
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.ErrorCircle())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.Issue)" />
-                                    }
-                                    else
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.ErrorCircle())" Color="Color.Neutral" />
-                                    }
-                                </span>
-                                <span class="post-type-tile-text">
-                                    <span class="post-type-tile-label">Issue</span>
-                                    <span class="post-type-tile-desc">Bug or something broken</span>
-                                </span>
-                            </button>
-                            <button type="button"
-                                    class="post-type-tile @(NewPostType == BoardPostType.FeatureRequest ? "selected" : "")"
-                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.FeatureRequest);"
-                                    @onclick="@(() => NewPostType = BoardPostType.FeatureRequest)">
-                                <span class="post-type-tile-icon" aria-hidden="true">
-                                    @if (NewPostType == BoardPostType.FeatureRequest)
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.Rocket())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.FeatureRequest)" />
-                                    }
-                                    else
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.Rocket())" Color="Color.Neutral" />
-                                    }
-                                </span>
-                                <span class="post-type-tile-text">
-                                    <span class="post-type-tile-label">Feature</span>
-                                    <span class="post-type-tile-desc">New capability</span>
-                                </span>
-                            </button>
-                            <button type="button"
-                                    class="post-type-tile @(NewPostType == BoardPostType.Suggestion ? "selected" : "")"
-                                    style="--post-type-accent: @GetPostTypeColor(BoardPostType.Suggestion);"
-                                    @onclick="@(() => NewPostType = BoardPostType.Suggestion)">
-                                <span class="post-type-tile-icon" aria-hidden="true">
-                                    @if (NewPostType == BoardPostType.Suggestion)
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.LightbulbFilament())" Color="Color.Custom" CustomColor="@GetPostTypeColor(BoardPostType.Suggestion)" />
-                                    }
-                                    else
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size24.LightbulbFilament())" Color="Color.Neutral" />
-                                    }
-                                </span>
-                                <span class="post-type-tile-text">
-                                    <span class="post-type-tile-label">Suggestion</span>
-                                    <span class="post-type-tile-desc">Idea or tweak</span>
-                                </span>
-                            </button>
-                        </div>
-                    </div>
+                    <BoardComposerPostTypeTiles @bind-SelectedPostType="NewPostType" />
                 }
 
                 <div class="composer-section">

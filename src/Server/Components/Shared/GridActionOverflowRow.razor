@@ -1,4 +1,5 @@
 @using System.Globalization
+@using System.Linq
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
@@ -21,17 +22,21 @@
                 </FluentOverflowItem>
             }
         </ChildContent>
-        <MoreButtonTemplate>
-            <GridActionButton Appearance="Appearance.Outline"
-                              Icon="@(new Icons.Regular.Size20.MoreHorizontal())"
-                              Tooltip="More actions"
-                              OnClick="@ToggleOverflowMenu" />
+        <MoreButtonTemplate Context="oflow">
+            @if (oflow.ItemsOverflow.Any())
+            {
+                <GridActionButton Id="@oflow.IdMoreButton"
+                                  Appearance="Appearance.Outline"
+                                  Icon="@(new Icons.Regular.Size20.MoreHorizontal())"
+                                  Tooltip="More actions" />
+            }
         </MoreButtonTemplate>
         <OverflowTemplate Context="oflow">
             <FluentMenu Anchor="@oflow.IdMoreButton"
                         @bind-Open="_menuOpen"
                         Anchored="true"
-                        UseMenuService="true"
+                        UseMenuService="false"
+                        Trigger="MouseButton.Left"
                         VerticalPosition="VerticalPosition.Bottom">
                 @foreach (var overflowItem in oflow.ItemsOverflow)
                 {
