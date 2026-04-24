@@ -11,6 +11,12 @@ public partial class DocsView
 {
     [Parameter] public string PackageWithVersion { get; set; } = string.Empty;
 
+    /// <summary>Route segment from <c>/docs/{{pkg@ver}}/api/{{QualifiedName}}</c>; use <see cref="Uri.EscapeDataString"/> when building links.</summary>
+    [Parameter] public string? QualifiedName { get; set; }
+
+    /// <summary>Route segment from <c>/docs/{{pkg@ver}}/search/{{Symbol}}</c>.</summary>
+    [Parameter] public string? Symbol { get; set; }
+
     [Inject]
     private HttpClient Http { get; set; } = default!;
 
@@ -22,6 +28,9 @@ public partial class DocsView
     private bool _docsIndexLoading;
     private bool _useStructuredFullPage;
     private PackageDocsIndexResponse? _docsIndex;
+    private string? _deepLinkQualifiedName;
+    private string? _initialSymbolSearch;
+    private bool _apiOrSearchWithoutStructured;
     private string PageHeading => _parseError ? "Documentation" : $"Docs · {_packageLabel}";
 
     protected override async Task OnParametersSetAsync()
@@ -31,6 +40,9 @@ public partial class DocsView
         _packageLabel = string.Empty;
         _docsIndex = null;
         _useStructuredFullPage = false;
+        _deepLinkQualifiedName = null;
+        _initialSymbolSearch = null;
+        _apiOrSearchWithoutStructured = false;
 
         var raw = Uri.UnescapeDataString(PackageWithVersion ?? string.Empty).Trim().TrimEnd('/');
         var at = raw.IndexOf('@');
@@ -65,6 +77,17 @@ public partial class DocsView
         }
 
         await LoadDocsIndexForViewAsync();
+
+        var qn = string.IsNullOrWhiteSpace(QualifiedName) ? null : Uri.UnescapeDataString(QualifiedName).Trim();
+        var sym = string.IsNullOrWhiteSpace(Symbol) ? null : Uri.UnescapeDataString(Symbol).Trim();
+        _deepLinkQualifiedName = qn;
+        _initialSymbolSearch = sym;
+
+        var wantsStructuredRoute = _deepLinkQualifiedName is not null || _initialSymbolSearch is not null;
+        if (wantsStructuredRoute && !_useStructuredFullPage && !_docsIndexLoading)
+        {
+            _apiOrSearchWithoutStructured = true;
+        }
     }
 
     private async Task LoadDocsIndexForViewAsync()

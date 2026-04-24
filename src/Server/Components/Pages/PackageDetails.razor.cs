@@ -331,7 +331,7 @@ public partial class PackageDetails
         }
 
         var ver = string.IsNullOrWhiteSpace(ExplorerVersion) ? "latest" : ExplorerVersion;
-        Navigation.NavigateTo($"/docs/{Uri.EscapeDataString($"{Package.Name}@{ver}")}");
+        Navigation.NavigateTo(AppDocumentationRoutes.AppDocsBase(Package.Name, ver));
     }
 
     private static string FormatSize(long bytes)

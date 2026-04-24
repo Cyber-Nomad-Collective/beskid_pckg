@@ -12,6 +12,32 @@
     margin: 0 auto;
 }
 
+.docs-browser-root--dialog {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.docs-browser-root--dialog .docs-browser-split-stack {
+    max-height: min(58vh, 32rem);
+}
+
+.docs-browser-root--dialog .docs-nav-list {
+    max-height: min(52vh, 26rem);
+}
+
+.docs-browser-root--dialog .docs-article-card {
+    max-height: min(58vh, 32rem);
+    overflow: hidden;
+}
+
+.docs-browser-root--dialog .docs-markdown-body {
+    max-height: min(48vh, 24rem);
+    overflow-y: auto;
+}
+
 .docs-state-card {
     padding: 0.25rem;
 }

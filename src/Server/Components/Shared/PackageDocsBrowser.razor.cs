@@ -10,7 +10,8 @@ namespace Server.Components.Shared;
 public enum PackageDocsBrowserVariant
 {
     Embedded,
-    FullPage
+    FullPage,
+    Dialog
 }
 
 public partial class PackageDocsBrowser
@@ -198,8 +199,12 @@ public partial class PackageDocsBrowser
         }
     }
 
-    private static string RootClass(PackageDocsBrowserVariant v) =>
-        v == PackageDocsBrowserVariant.FullPage ? "docs-browser-root docs-browser-root--full" : "docs-browser-root docs-browser-root--embedded";
+    private static string RootClass(PackageDocsBrowserVariant v) => v switch
+    {
+        PackageDocsBrowserVariant.FullPage => "docs-browser-root docs-browser-root--full",
+        PackageDocsBrowserVariant.Dialog => "docs-browser-root docs-browser-root--dialog",
+        _ => "docs-browser-root docs-browser-root--embedded"
+    };
 
     private static string ShortPath(string? path)
     {

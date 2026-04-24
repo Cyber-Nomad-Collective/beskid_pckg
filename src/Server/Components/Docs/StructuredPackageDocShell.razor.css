@@ -1,0 +1,27 @@
+.structured-doc-symbol-search {
+    width: 100%;
+}
+
+.structured-doc-symbol-matches {
+    max-height: 12rem;
+    overflow-y: auto;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: var(--control-corner-radius);
+    padding: 0.35rem 0.25rem;
+}
+
+.structured-doc-symbol-match-btn {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    justify-content: flex-start !important;
+    width: 100%;
+    text-align: left;
+}
+
+.structured-doc-symbol-match-kind {
+    font-size: 0.8rem;
+    color: var(--neutral-foreground-hint);
+    flex: 0 0 auto;
+}

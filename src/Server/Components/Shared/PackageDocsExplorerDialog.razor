@@ -1,0 +1,18 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialogHeader ShowDismiss="true">
+    <FluentStack Orientation="Orientation.Vertical" Gap="4">
+        <FluentLabel Typo="Typography.PaneHeader">Documentation</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="muted">@Content.PackageName</FluentLabel>
+    </FluentStack>
+</FluentDialogHeader>
+
+<FluentDialogBody Class="package-docs-explorer-dialog-body">
+    <PackageDocsBrowser PackageIdentifier="@Content.PackageName"
+                        Version="@Content.Version"
+                        Variant="PackageDocsBrowserVariant.Dialog" />
+</FluentDialogBody>
+
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Accent" OnClick="CloseAsync">Close</FluentButton>
+</FluentDialogFooter>

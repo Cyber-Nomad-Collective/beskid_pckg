@@ -1,7 +1,5 @@
-@using System.Net
-@using System.Text.Json
-@using Server.Features.Packages
-@using Server.Services
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 <div class="docs-browser-root docs-browser-root--full structured-doc-shell">
     @if (_loading)
@@ -23,6 +21,11 @@
     {
         <FluentCard Class="docs-browser-shell-card">
             <FluentStack Orientation="Orientation.Vertical" Gap="14" Class="docs-browser-card-inner">
+                @if (!string.IsNullOrWhiteSpace(_deepLinkMissMessage))
+                {
+                    <FluentMessageBar Intent="MessageIntent.Warning">@_deepLinkMissMessage</FluentMessageBar>
+                }
+
                 @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
                 {
                     <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="muted">
@@ -36,6 +39,38 @@
                         }
                     </FluentStack>
                 }
+
+                <FluentStack Orientation="Orientation.Vertical" Gap="10" Class="structured-doc-symbol-search">
+                    <FluentTextField @bind-Value="_symbolQuery"
+                                     Label="Search symbols"
+                                     Placeholder="Filter by qualified name, name, or kind…"
+                                     AriaLabel="Filter API symbols"
+                                     IconStart="@(new Icons.Regular.Size20.Search())"
+                                     Style="max-width: 28rem;" />
+                    @if (!string.IsNullOrWhiteSpace(_symbolQuery))
+                    {
+                        <FluentLabel Typo="Typography.Body" Class="muted">@SymbolMatches.Count() match(es)</FluentLabel>
+                        <div class="structured-doc-symbol-matches">
+                            @if (!SymbolMatches.Any())
+                            {
+                                <FluentLabel Typo="Typography.Body" Class="muted">No symbols match this filter.</FluentLabel>
+                            }
+                            else
+                            {
+                                @foreach (var item in SymbolMatches)
+                                {
+                                    <FluentButton Appearance="Appearance.Stealth"
+                                                  Class="docs-file-link structured-doc-symbol-match-btn"
+                                                  Title="@(item.QualifiedName ?? item.Name)"
+                                                  OnClick="@(() => SelectItemAsync(item))">
+                                        <span class="structured-doc-symbol-match-kind">@(item.Kind ?? "?")</span>
+                                        <span>@(item.QualifiedName ?? item.Name)</span>
+                                    </FluentButton>
+                                }
+                            }
+                        </div>
+                    }
+                </FluentStack>
 
                 <FluentStack Orientation="Orientation.Horizontal" Gap="16" Wrap="true" Class="docs-browser-split-stack">
                     <FluentCard Class="docs-nav-card">
@@ -109,148 +144,3 @@
         </FluentCard>
     }
 </div>
-
-@code {
-    [Parameter]
-    public string PackageIdentifier { get; set; } = string.Empty;
-
-    [Parameter]
-    public string Version { get; set; } = "latest";
-
-    [Parameter]
-    public PackageDocsIndexResponse? MarkdownIndex { get; set; }
-
-    [Inject]
-    private HttpClient Http { get; set; } = default!;
-
-    [Inject]
-    private IMarkdownService MarkdownService { get; set; } = default!;
-
-    [Inject]
-    private IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
-    private bool _loading = true;
-    private string? _loadError;
-    private StructuredApiDocDto? _doc;
-    private StructuredApiItemDto? _selected;
-    private bool _showMarkdownPages;
-    private string? _mdPath;
-    private bool _loadingMd;
-    private MarkupString? _mdRendered;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (string.IsNullOrWhiteSpace(PackageIdentifier) || string.IsNullOrWhiteSpace(Version))
-        {
-            _loading = false;
-            _loadError = "Package or version is missing.";
-            return;
-        }
-
-        await LoadStructuredAsync();
-    }
-
-    private async Task LoadStructuredAsync()
-    {
-        _loading = true;
-        _loadError = null;
-        _doc = null;
-        _selected = null;
-        try
-        {
-            var url = PackageDocumentationUrls.DocsStructured(PackageIdentifier.Trim(), Version.Trim());
-            var response = await Http.GetAsync(url);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                _loadError = "Structured API documentation was not found for this version.";
-                return;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _loadError = "Could not load structured documentation.";
-                return;
-            }
-
-            var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, JsonOptions);
-            if (doc is null || doc.Items.Count == 0)
-            {
-                _loadError = "Structured documentation is empty.";
-                return;
-            }
-
-            _doc = doc;
-            _selected = doc.Items
-                .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal)
-                .FirstOrDefault();
-        }
-        catch
-        {
-            _loadError = "Could not load structured documentation (network or parse error).";
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
-
-    private Task SelectItemAsync(StructuredApiItemDto item)
-    {
-        _selected = item;
-        return Task.CompletedTask;
-    }
-
-    private Task NavigateToQualifiedNameAsync(string name)
-    {
-        if (_doc is null || string.IsNullOrWhiteSpace(name))
-        {
-            return Task.CompletedTask;
-        }
-
-        var match = _doc.Items.FirstOrDefault(x =>
-            string.Equals(x.QualifiedName ?? x.Name, name, StringComparison.Ordinal));
-        if (match is not null)
-        {
-            _selected = match;
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async Task SelectMarkdownAsync(string path)
-    {
-        _mdPath = path;
-        _loadingMd = true;
-        _mdRendered = null;
-        try
-        {
-            var url = PackageDocumentationUrls.DocsFile(PackageIdentifier.Trim(), Version.Trim(), path);
-            var response = await Http.GetAsync(url);
-            if (!response.IsSuccessStatusCode)
-            {
-                _mdRendered = new MarkupString("<p class=\"muted\">Could not load this page.</p>");
-                return;
-            }
-
-            var text = await response.Content.ReadAsStringAsync();
-            var html = MarkdownService.ToSafeHtml(text);
-            _mdRendered = new MarkupString(HtmlSanitization.Sanitize(html));
-        }
-        catch
-        {
-            _mdRendered = new MarkupString("<p class=\"muted\">Could not load this page.</p>");
-        }
-        finally
-        {
-            _loadingMd = false;
-        }
-    }
-}

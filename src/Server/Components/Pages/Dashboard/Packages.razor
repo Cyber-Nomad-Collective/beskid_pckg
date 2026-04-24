@@ -38,7 +38,8 @@
         else
         {
             <PackageGrid Packages="PackageItems" 
-                         ShowActions="true" 
+                         ShowActions="true"
+                         ShowPackageDocsExplorerAction="@IsSuperAdmin"
                          OnEditMetadata="StartMetadataEdit" 
                          OnUploadVersion="StartVersionUpload" />
 

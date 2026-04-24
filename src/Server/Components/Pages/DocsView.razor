@@ -1,6 +1,9 @@
 @page "/docs/{PackageWithVersion}"
+@page "/docs/{PackageWithVersion}/api/{QualifiedName}"
+@page "/docs/{PackageWithVersion}/search/{Symbol}"
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.FluentUI.AspNetCore.Components
 @using Server.Data
 @using Server.Components.Shared
 @using Server.Components.Docs
@@ -67,6 +70,15 @@
                 </FluentStack>
             </FluentCard>
 
+            @if (_apiOrSearchWithoutStructured)
+            {
+                <FluentCard Class="docs-state-card">
+                    <FluentMessageBar Intent="MessageIntent.Info">
+                        This package version has no structured API documentation. Deep links to a member (<code>/docs/…/api/…</code>) and symbol search URLs apply only when a structured API doc is published.
+                    </FluentMessageBar>
+                </FluentCard>
+            }
+
             @if (_docsIndexLoading)
             {
                 <FluentCard Class="docs-state-card">
@@ -83,7 +95,9 @@
             {
                 <StructuredPackageDocShell PackageIdentifier="@_packageSegment"
                                          Version="@_versionSegment"
-                                         MarkdownIndex="@_docsIndex" />
+                                         MarkdownIndex="@_docsIndex"
+                                         DeepLinkQualifiedName="@_deepLinkQualifiedName"
+                                         InitialSymbolSearch="@_initialSymbolSearch" />
             }
             else
             {
