@@ -5,6 +5,7 @@
 @using Server.Data
 @using Server.Features.Packages
 @using Server.Components.Shared
+@using Server.Components.Docs
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 @inject ApplicationDbContext DbContext
@@ -185,9 +186,9 @@ else
                                 }
                             </FluentSelect>
                         }
-                        <PackageDocsBrowser PackageIdentifier="@Package.Name"
-                                            Version="@ExplorerVersion"
-                                            Variant="PackageDocsBrowserVariant.Embedded" />
+                        <PackageDocs PackageIdentifier="@Package.Name"
+                                     Version="@ExplorerVersion"
+                                     Variant="PackageDocs.PackageDocsVariant.Embedded" />
                     </FluentStack>
                 </div>
             </FluentTab>

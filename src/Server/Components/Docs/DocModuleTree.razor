@@ -1,30 +1,32 @@
 <FluentStack Orientation="Orientation.Vertical" Gap="4" Class="docs-module-tree">
-    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">API</FluentLabel>
-    <div class="docs-nav-list docs-module-tree-scroll">
-        @foreach (var seg in _root.ChildSegments)
-        {
-                        <DocModuleTreeNode SegmentName="@seg"
-                               Node="@(_root.Children[seg])"
-                               Depth="0"
-                               SelectedItemId="SelectedItemId"
-                               SelectedQualifiedName="SelectedQualifiedName"
-                               OnItemSelected="OnItemSelected" />
-        }
-        @foreach (var m in _root.Members.OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal))
-        {
-            <FluentButton Appearance="@ButtonAppearance(m)"
-                          Class="docs-file-link"
-                          Style="padding-left: 0.25rem;"
-                          Title="@(m.QualifiedName ?? m.Name)"
-                          OnClick="@(() => SelectAsync(m))">
-                @(ShortName(m))
-            </FluentButton>
-        }
+    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@(string.IsNullOrWhiteSpace(PackageName) ? "Package" : PackageName)</FluentLabel>
+    <FluentLabel Typo="Typography.Body" Class="muted docs-module-tree-meta">
+        @PackageName @Version
+    </FluentLabel>
+    <div class="docs-module-tree-scroll">
+        <FluentNavMenu Title="API modules" Width="290">
+            @foreach (var group in Groups)
+            {
+                <FluentNavGroup Title="@group.Name">
+                    @foreach (var item in group.Items)
+                    {
+                        <FluentNavLink Href="#"
+                                       Class="@LinkClass(item)"
+                                       Title="@(item.QualifiedName ?? item.Name)"
+                                       OnClick="@(() => SelectAsync(item))">
+                            @ShortName(item)
+                        </FluentNavLink>
+                    }
+                </FluentNavGroup>
+            }
+        </FluentNavMenu>
     </div>
 </FluentStack>
 
 @code {
-    private NavTreeNode _root = new();
+    private sealed record NavGroupView(string Name, IReadOnlyList<StructuredApiItemDto> Items);
+
+    private IReadOnlyList<NavGroupView> Groups { get; set; } = [];
 
     [Parameter]
     public IReadOnlyList<StructuredApiItemDto> Items { get; set; } = Array.Empty<StructuredApiItemDto>();
@@ -38,34 +40,40 @@
     [Parameter]
     public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }
 
+    [Parameter]
+    public string PackageName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public string GroupBy { get; set; } = "module";
+
     protected override void OnParametersSet() => Rebuild();
 
     private void Rebuild()
     {
-        _root = new NavTreeNode();
-        foreach (var item in Items)
-        {
-            var q = item.QualifiedName ?? item.Name ?? string.Empty;
-            var segs = q.Split("::", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (segs.Length == 0)
-            {
-                continue;
-            }
+        var groupByKind = string.Equals(GroupBy, "kind", StringComparison.OrdinalIgnoreCase);
+        Groups = Items
+            .GroupBy(x => groupByKind ? KindName(x) : ModuleName(x), StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => new NavGroupView(
+                g.Key,
+                g.OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal).ToList()))
+            .ToList();
+    }
 
-            if (segs.Length == 1)
-            {
-                _root.Members.Add(item);
-                continue;
-            }
+    private static string ModuleName(StructuredApiItemDto item)
+    {
+        var q = item.QualifiedName ?? item.Name ?? string.Empty;
+        var segs = q.Split("::", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return segs.Length > 0 ? segs[0] : "global";
+    }
 
-            var node = _root;
-            for (var i = 0; i < segs.Length - 1; i++)
-            {
-                node = node.GetOrAddChild(segs[i]);
-            }
-
-            node.Members.Add(item);
-        }
+    private static string KindName(StructuredApiItemDto item)
+    {
+        var kind = (item.Kind ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(kind) ? "unknown" : kind;
     }
 
     private static string ShortName(StructuredApiItemDto m)
@@ -75,22 +83,27 @@
         return segs.Length > 0 ? segs[^1] : q;
     }
 
-    private Appearance ButtonAppearance(StructuredApiItemDto m)
+    private bool IsSelected(StructuredApiItemDto m)
     {
         if (SelectedItemId is int id && m.Id == id)
         {
-            return Appearance.Accent;
+            return true;
         }
 
         var key = m.QualifiedName ?? m.Name;
         if (!string.IsNullOrEmpty(SelectedQualifiedName)
             && string.Equals(key, SelectedQualifiedName, StringComparison.Ordinal))
         {
-            return Appearance.Accent;
+            return true;
         }
 
-        return Appearance.Stealth;
+        return false;
     }
+
+    private string LinkClass(StructuredApiItemDto item)
+        => IsSelected(item)
+            ? "docs-file-link docs-module-member-btn docs-module-member-btn--active"
+            : "docs-file-link docs-module-member-btn";
 
     private Task SelectAsync(StructuredApiItemDto m) => OnItemSelected.InvokeAsync(m);
 }

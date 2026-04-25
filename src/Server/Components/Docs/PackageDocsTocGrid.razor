@@ -1,0 +1,21 @@
+<PackageDocsGrid TItem="PackageDocsTocRow"
+                 Items="@Rows"
+                 Headers="@GridHeaders"
+                 Class="package-docs-toc-grid">
+    <RowTemplate Context="row">
+        <tr>
+            <td>
+                <FluentAnchor Href="@($"#{row.Anchor}")" Class="docs-file-link package-docs-toc-link">
+                    @($"{new string(' ', (row.Level - 2) * 2)}{row.Title}")
+                </FluentAnchor>
+            </td>
+            <td>@row.Level</td>
+        </tr>
+    </RowTemplate>
+</PackageDocsGrid>
+
+@code {
+    private static readonly IReadOnlyList<string> GridHeaders = ["Section", "Level"];
+
+    [Parameter] public IReadOnlyList<PackageDocsTocRow> Rows { get; set; } = [];
+}

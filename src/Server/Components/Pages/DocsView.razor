@@ -18,92 +18,78 @@
     @if (_parseError)
     {
         <FluentStack Orientation="Orientation.Vertical" Gap="16">
-            <FluentCard>
-                <FluentStack Orientation="Orientation.Vertical" Gap="12">
-                    <FluentMessageBar Intent="MessageIntent.Error">
-                        Invalid documentation URL. Use a single segment like <code>/docs/package-name%401.0.0</code> or <code>/docs/package-name%40latest</code>.
-                    </FluentMessageBar>
-                    <FluentLabel Typo="Typography.Body" Class="muted">
-                        The package name (or id) comes first, then an at-sign, then the version or <code>latest</code>.
-                    </FluentLabel>
-                    <FluentButton Appearance="Appearance.Accent"
-                                  IconStart="@(new Icons.Regular.Size20.ArrowLeft())"
-                                  OnClick="@(() => Navigation.NavigateTo("/packages"))">
-                        Browse packages
-                    </FluentButton>
-                </FluentStack>
-            </FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                <FluentMessageBar Intent="MessageIntent.Error">
+                    Invalid documentation URL. Use a single segment like <code>/docs/package-name%401.0.0</code> or <code>/docs/package-name%40latest</code>.
+                </FluentMessageBar>
+                <FluentLabel Typo="Typography.Body" Class="muted">
+                    The package name (or id) comes first, then an at-sign, then the version or <code>latest</code>.
+                </FluentLabel>
+                <FluentButton Appearance="Appearance.Accent"
+                              IconStart="@(new Icons.Regular.Size20.ArrowLeft())"
+                              OnClick="@(() => Navigation.NavigateTo("/packages"))">
+                    Browse packages
+                </FluentButton>
+            </FluentStack>
         </FluentStack>
     }
     else
     {
         <FluentStack Orientation="Orientation.Vertical" Gap="16">
-            <FluentCard Class="docs-view-hero-card">
-                <FluentStack Orientation="Orientation.Horizontal"
-                             VerticalAlignment="VerticalAlignment.Center"
-                             Wrap="true"
-                             Gap="16"
-                             Class="docs-view-header">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="6" Style="flex: 1; min-width: 0;">
-                        <FluentLabel Typo="Typography.H3" Class="docs-view-title">Documentation</FluentLabel>
-                        <FluentLabel Typo="Typography.Body" Class="muted docs-view-subtitle">
-                            @_packageLabel
-                        </FluentLabel>
-                        <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-badges">
-                            <FluentBadge Appearance="Appearance.Accent">@_versionSegment</FluentBadge>
-                            @if (!string.Equals(_packageSegment, _packageLabel, StringComparison.Ordinal))
-                            {
-                                <FluentBadge Appearance="Appearance.Neutral" Title="Package id">id</FluentBadge>
-                            }
-                        </FluentStack>
-                    </FluentStack>
-                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-header-actions">
-                        @if (_packagesHref is not null)
+            <FluentStack Orientation="Orientation.Horizontal"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         Wrap="true"
+                         Gap="16"
+                         Class="docs-view-header">
+                <FluentStack Orientation="Orientation.Vertical" Gap="6" Style="flex: 1; min-width: 0;">
+                    <FluentLabel Typo="Typography.H3" Class="docs-view-title">Documentation</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Class="muted docs-view-subtitle">
+                        @_packageLabel
+                    </FluentLabel>
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-badges">
+                        <FluentBadge Appearance="Appearance.Accent">@_versionSegment</FluentBadge>
+                        @if (!string.Equals(_packageSegment, _packageLabel, StringComparison.Ordinal))
                         {
-                            <FluentAnchor Href="@_packagesHref"
-                                          Appearance="Appearance.Outline"
-                                          IconStart="@(new Icons.Regular.Size20.Box())">
-                                Package page
-                            </FluentAnchor>
+                            <FluentBadge Appearance="Appearance.Neutral" Title="Package id">id</FluentBadge>
                         }
                     </FluentStack>
                 </FluentStack>
-            </FluentCard>
+                <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-header-actions">
+                    @if (_packagesHref is not null)
+                    {
+                        <FluentAnchor Href="@_packagesHref"
+                                      Appearance="Appearance.Outline"
+                                      IconStart="@(new Icons.Regular.Size20.Box())">
+                            Package page
+                        </FluentAnchor>
+                    }
+                </FluentStack>
+            </FluentStack>
 
             @if (_apiOrSearchWithoutStructured)
             {
-                <FluentCard Class="docs-state-card">
-                    <FluentMessageBar Intent="MessageIntent.Info">
-                        This package version has no structured API documentation. Deep links to a member (<code>/docs/…/api/…</code>) and symbol search URLs apply only when a structured API doc is published.
-                    </FluentMessageBar>
-                </FluentCard>
+                <FluentMessageBar Intent="MessageIntent.Info">
+                    This package version has no structured API documentation. Deep links to a member (<code>/docs/…/api/…</code>) and symbol search URLs apply only when a structured API doc is published.
+                </FluentMessageBar>
             }
 
             @if (_docsIndexLoading)
             {
-                <FluentCard Class="docs-state-card">
-                    <FluentStack Orientation="Orientation.Horizontal"
-                                 VerticalAlignment="VerticalAlignment.Center"
-                                 Gap="12"
-                                 Wrap="true">
-                        <FluentProgressRing />
-                        <FluentLabel Typo="Typography.Body">Loading documentation…</FluentLabel>
-                    </FluentStack>
-                </FluentCard>
-            }
-            else if (_useStructuredFullPage)
-            {
-                <StructuredPackageDocShell PackageIdentifier="@_packageSegment"
-                                         Version="@_versionSegment"
-                                         MarkdownIndex="@_docsIndex"
-                                         DeepLinkQualifiedName="@_deepLinkQualifiedName"
-                                         InitialSymbolSearch="@_initialSymbolSearch" />
+                <FluentStack Orientation="Orientation.Horizontal"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             Gap="12"
+                             Wrap="true">
+                    <FluentProgressRing />
+                    <FluentLabel Typo="Typography.Body">Loading documentation…</FluentLabel>
+                </FluentStack>
             }
             else
             {
-                <PackageDocsBrowser PackageIdentifier="@_packageSegment"
-                                    Version="@_versionSegment"
-                                    Variant="PackageDocsBrowserVariant.FullPage" />
+                <PackageDocs PackageIdentifier="@_packageSegment"
+                             Version="@_versionSegment"
+                             Variant="PackageDocs.PackageDocsVariant.FullPage"
+                             DeepLinkQualifiedName="@_deepLinkQualifiedName"
+                             InitialSymbolSearch="@_initialSymbolSearch" />
             }
         </FluentStack>
     }

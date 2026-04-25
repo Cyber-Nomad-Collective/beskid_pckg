@@ -1,0 +1,16 @@
+<FluentStack Orientation="Orientation.Vertical" Gap="8" Class="package-docs-toc-shell">
+    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@Heading</FluentLabel>
+    @if (Rows.Count == 0)
+    {
+        <FluentLabel Typo="Typography.Body" Class="muted">No headings in this section.</FluentLabel>
+    }
+    else
+    {
+        <PackageDocsTocGrid Rows="@Rows" />
+    }
+</FluentStack>
+
+@code {
+    [Parameter] public string Heading { get; set; } = "Table of contents";
+    [Parameter] public IReadOnlyList<PackageDocsTocRow> Rows { get; set; } = [];
+}

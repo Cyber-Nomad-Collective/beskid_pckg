@@ -1,0 +1,27 @@
+<PackageDocsGrid TItem="PackageDocsSymbolRow"
+                 Items="@Rows"
+                 Headers="@GridHeaders"
+                 Class="package-docs-symbol-grid">
+    <RowTemplate Context="row">
+        <tr>
+            <td>
+                <FluentButton Appearance="Appearance.Stealth"
+                              Class="docs-file-link"
+                              Title="@row.DisplayName"
+                              OnClick="@(() => OnSelect.InvokeAsync(row.Item))">
+                    @row.DisplayName
+                </FluentButton>
+            </td>
+            <td>@row.Kind</td>
+            <td>@row.Module</td>
+            <td>@row.Visibility</td>
+        </tr>
+    </RowTemplate>
+</PackageDocsGrid>
+
+@code {
+    private static readonly IReadOnlyList<string> GridHeaders = ["Name", "Kind", "Module", "Visibility"];
+
+    [Parameter] public IReadOnlyList<PackageDocsSymbolRow> Rows { get; set; } = [];
+    [Parameter] public EventCallback<StructuredApiItemDto> OnSelect { get; set; }
+}

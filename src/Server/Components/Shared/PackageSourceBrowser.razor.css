@@ -1,7 +1,12 @@
 .source-browser-layout {
     display: grid;
-    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
     gap: 14px;
+    width: 100%;
+}
+
+.source-browser-layout > * {
+    min-width: 0;
 }
 
 .source-tree-panel,
@@ -57,7 +62,7 @@
     font-size: 0.75rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 840px) {
     .source-browser-layout {
         grid-template-columns: 1fr;
     }
