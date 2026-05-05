@@ -1,0 +1,31 @@
+<FluentDialogHeader ShowDismiss="false">
+    <FluentLabel Typo="Typography.PaneHeader">Create user</FluentLabel>
+</FluentDialogHeader>
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" Gap="16px" Class="app-dialog-stack">
+        <p class="muted app-dialog-intro">Create a new account and assign roles. The <strong>User</strong> role is always included.</p>
+
+        <FluentStack Orientation="Orientation.Vertical" Gap="12px">
+            <FluentTextField @bind-Value="Content.Email" Label="Email" Placeholder="user@example.com" Autocomplete="off" />
+            <FluentTextField @bind-Value="Content.DisplayName" Label="Display name" Autocomplete="off" />
+            <FluentTextField @bind-Value="Content.Password" Label="Password" TextFieldType="TextFieldType.Password" Autocomplete="new-password" />
+
+            <FluentSwitch @bind-Value="Content.EmailConfirmed">Email confirmed</FluentSwitch>
+
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Additional roles</FluentLabel>
+            <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+                <FluentCheckbox @bind-Value="Content.IncludeModerator" Label="Moderator" />
+                <FluentCheckbox @bind-Value="Content.IncludeSuperAdmin" Label="SuperAdmin" />
+            </FluentStack>
+
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error">@_error</FluentMessageBar>
+            }
+        </FluentStack>
+    </FluentStack>
+</FluentDialogBody>
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Outline" OnClick="CancelAsync">Cancel</FluentButton>
+    <FluentButton Appearance="Appearance.Accent" OnClick="SubmitAsync" Disabled="_submitting">@(_submitting ? "Creating…" : "Create")</FluentButton>
+</FluentDialogFooter>

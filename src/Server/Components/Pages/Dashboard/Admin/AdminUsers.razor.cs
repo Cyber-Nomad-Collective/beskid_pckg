@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
+using Server.Features.Admin;
 
 namespace Server.Components.Pages.Dashboard.Admin;
 
@@ -11,7 +12,6 @@ public partial class AdminUsers
     private List<UserDto> Users = [];
     private IQueryable<UserDto> UsersQueryable => Users.AsQueryable();
     private bool IsLoading = true;
-    private bool IsSaving;
     private string? FeedbackMessage;
     private MessageIntent? FeedbackIntent;
     private string SearchQuery = string.Empty;
@@ -19,13 +19,14 @@ public partial class AdminUsers
     private int PageSize = 50;
     private int TotalCount;
     private int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    private bool IsEditDialogOpen;
     private UserDto? SelectedUser;
-    private List<string> EditUserRoles = [];
-    private readonly List<string> AvailableRoles = ["User", "SuperAdmin", "Moderator"];
+    private string? SelectedUserId;
 
     [Inject]
     public HttpClient ApiHttp { get; set; } = default!;
+
+    [Inject]
+    public IDialogService DialogService { get; set; } = default!;
 
     protected override async Task OnInitializedAsync() => await LoadUsersAsync();
 
@@ -52,6 +53,15 @@ public partial class AdminUsers
             {
                 Users = result.Users;
                 TotalCount = result.TotalCount;
+            }
+
+            if (SelectedUserId is not null)
+            {
+                SelectedUser = Users.FirstOrDefault(u => u.Id == SelectedUserId);
+                if (SelectedUser is null)
+                {
+                    SelectedUserId = null;
+                }
             }
         }
         finally
@@ -84,11 +94,23 @@ public partial class AdminUsers
         }
     }
 
-    private void OpenEditUserDialog(UserDto user)
+    private void SelectUserForManagement(UserDto user)
     {
+        SelectedUserId = user.Id;
         SelectedUser = user;
-        EditUserRoles = new List<string>(user.Roles);
-        IsEditDialogOpen = true;
+    }
+
+    private Task ClearSelectionAsync()
+    {
+        SelectedUserId = null;
+        SelectedUser = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnManagementSavedAsync()
+    {
+        SetFeedback("User updated successfully.", MessageIntent.Success);
+        await LoadUsersAsync();
     }
 
     private IReadOnlyList<GridActionDefinition> GetUserRowActions(UserDto user) =>
@@ -96,66 +118,32 @@ public partial class AdminUsers
         new GridActionDefinition
         {
             Icon = new Icons.Regular.Size20.PersonEdit(),
-            Tooltip = "Edit user",
-            OnClick = EventCallback.Factory.Create(this, () => OpenEditUserDialog(user))
+            Tooltip = "Manage user",
+            OnClick = EventCallback.Factory.Create(this, () => SelectUserForManagement(user))
         }
     ];
 
-    private void CloseEditDialog()
+    private async Task OpenCreateUserDialogAsync()
     {
-        IsEditDialogOpen = false;
-        SelectedUser = null;
-        EditUserRoles.Clear();
-    }
-
-    private void ToggleRole(string role, bool isChecked)
-    {
-        if (isChecked && !EditUserRoles.Contains(role))
+        var content = new AdminUserCreateDialog.CreateUserDialogContent();
+        var parameters = new DialogParameters
         {
-            EditUserRoles.Add(role);
-        }
-        else if (!isChecked && EditUserRoles.Contains(role))
-        {
-            EditUserRoles.Remove(role);
-        }
-    }
+            Width = "min(480px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
 
-    private async Task SaveUserRolesAsync()
-    {
-        if (SelectedUser is null)
+        var dialog = await DialogService.ShowDialogAsync<AdminUserCreateDialog>(content, parameters);
+        var result = await dialog.Result;
+        if (result?.Cancelled != false)
         {
             return;
         }
 
-        IsSaving = true;
-        try
-        {
-            var response = await ApiHttp.PutAsJsonAsync(
-                $"/api/admin/users/{SelectedUser.Id}/roles",
-                new UpdateUserRolesRequest(EditUserRoles));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                SetFeedback("Failed to update user roles.", MessageIntent.Error);
-                return;
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<UpdateUserRolesResponse>();
-            if (result?.Success == true)
-            {
-                SetFeedback("User roles updated successfully.", MessageIntent.Success);
-                CloseEditDialog();
-                await LoadUsersAsync();
-            }
-            else
-            {
-                SetFeedback(result?.Message ?? "Failed to update user roles.", MessageIntent.Error);
-            }
-        }
-        finally
-        {
-            IsSaving = false;
-        }
+        SetFeedback("User created successfully.", MessageIntent.Success);
+        CurrentPage = 1;
+        await LoadUsersAsync();
     }
 
     private void SetFeedback(string message, MessageIntent intent)
@@ -163,5 +151,4 @@ public partial class AdminUsers
         FeedbackMessage = message;
         FeedbackIntent = intent;
     }
-
 }

@@ -1,0 +1,12 @@
+.publisher-attribution {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.publisher-verified-wrap {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
+}

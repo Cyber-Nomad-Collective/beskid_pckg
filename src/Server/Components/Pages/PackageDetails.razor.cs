@@ -44,6 +44,9 @@ public partial class PackageDetails
     private MarkupString RenderReviewHtml(string html) => new(HtmlSanitization.Sanitize(html));
     private bool _packageIconFailed;
     private Guid? _packageIconContextId;
+    private string _ownerPublisherUserId = string.Empty;
+    private string _ownerPublisherDisplayName = string.Empty;
+    private bool _ownerPublisherVerified;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -141,8 +144,27 @@ public partial class PackageDetails
 
         if (Package is null)
         {
+            _ownerPublisherUserId = string.Empty;
+            _ownerPublisherDisplayName = string.Empty;
+            _ownerPublisherVerified = false;
             return;
         }
+
+        var ownerRow = await DbContext.Users.AsNoTracking()
+            .Where(u => u.Id == Package.OwnerUserId)
+            .Select(u => new { u.DisplayName, u.UserName, u.IsPublisherVerified })
+            .FirstOrDefaultAsync();
+
+        _ownerPublisherUserId = Package.OwnerUserId;
+        _ownerPublisherDisplayName = ownerRow is null
+            ? Package.OwnerUserId
+            : PackageOwnerQueries.PublisherDisplayLabel(ownerRow.DisplayName, ownerRow.UserName);
+        if (string.IsNullOrWhiteSpace(_ownerPublisherDisplayName))
+        {
+            _ownerPublisherDisplayName = Package.OwnerUserId;
+        }
+
+        _ownerPublisherVerified = ownerRow?.IsPublisherVerified ?? false;
 
         var reviewRows = await DbContext.PackageCommunityReviews
             .AsNoTracking()
@@ -388,6 +410,42 @@ public partial class PackageDetails
         var ver = string.IsNullOrWhiteSpace(ExplorerVersion) ? "latest" : ExplorerVersion;
         Navigation.NavigateTo(AppDocumentationRoutes.AppDocsBase(Package.Name, ver));
     }
+
+    private string EmbedOrigin => Navigation.BaseUri.TrimEnd('/');
+
+    private string EmbedBadgeAbsoluteUrl =>
+        Package is { IsPublic: true }
+            ? EmbedOrigin + PackageEmbedUrls.BadgeRelativePath(Package.Name)
+            : string.Empty;
+
+    private string EmbedCardAbsoluteUrl =>
+        Package is { IsPublic: true }
+            ? EmbedOrigin + PackageEmbedUrls.CardRelativePath(Package.Name)
+            : string.Empty;
+
+    private string EmbedPackagePageUrl =>
+        Package is null ? string.Empty : $"{EmbedOrigin}/packages/{Uri.EscapeDataString(Package.Name)}";
+
+    private string EmbedBadgeMarkdownLinked =>
+        Package is { IsPublic: true }
+            ? $"[![{EscapeMarkdownAltText(Package.Name)} on Beskid registry]({EmbedBadgeAbsoluteUrl})]({EmbedPackagePageUrl})"
+            : string.Empty;
+
+    private string EmbedBadgeMarkdownImageOnly =>
+        Package is { IsPublic: true }
+            ? $"![Beskid registry]({EmbedBadgeAbsoluteUrl})"
+            : string.Empty;
+
+    private string EmbedWidgetHtml =>
+        Package is { IsPublic: true }
+            ? $"""<iframe src="{EmbedCardAbsoluteUrl}" title="{WebUtility.HtmlEncode(Package.Name + " on Beskid registry")}" width="480" height="200" style="border:0;border-radius:8px;max-width:100%;" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>"""
+            : string.Empty;
+
+    private static string EscapeMarkdownAltText(string name)
+        => name.Replace("[", string.Empty, StringComparison.Ordinal)
+            .Replace("]", string.Empty, StringComparison.Ordinal)
+            .Replace("\r", string.Empty, StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal);
 
     private static string FormatSize(long bytes)
     {

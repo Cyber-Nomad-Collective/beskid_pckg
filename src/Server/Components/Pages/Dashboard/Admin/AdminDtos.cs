@@ -9,20 +9,6 @@ internal sealed record GetEmailSettingsResponse(
     string FromEmail,
     string FromName);
 
-internal sealed record ListUsersResponse(List<UserDto> Users, int TotalCount, int Page, int PageSize);
-
-internal sealed record UserDto(
-    string Id,
-    string Email,
-    string DisplayName,
-    bool EmailConfirmed,
-    List<string> Roles,
-    double Rating);
-
-internal sealed record UpdateUserRolesRequest(List<string> Roles);
-
-internal sealed record UpdateUserRolesResponse(bool Success, string Message);
-
 internal sealed record BlockedLinkRowDto(Guid Id, string Pattern, string? Note, DateTimeOffset CreatedAtUtc);
 
 internal sealed record AddBlockedLinkApiRequest(string Pattern, string? Note);

@@ -1,3 +1,4 @@
+# Database URL and migration behavior are driven by environment (see .env.example). Coolify: inject the same variables there.
 services:
   postgres:
     image: postgres:16
@@ -26,7 +27,9 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       HTTP_PORTS: ${HTTP_PORTS:-8082}
       HttpClient__InternalBaseAddress: ${HTTP_CLIENT_INTERNAL_BASE_ADDRESS:-http://127.0.0.1:8082}
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      # Same ASP.NET key as always; compose expands from POSTGRES_* + PCKG_DB_*. Coolify: override this one var with your full URL if you prefer.
+      ConnectionStrings__DefaultConnection: Host=${PCKG_DB_HOST:-postgres};Port=${PCKG_DB_PORT:-5432};Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      Pckg__Database__AutoMigrateOnStartup: ${PCKG_AUTO_MIGRATE_ON_STARTUP:-true}
       Storage__ArtifactsRootPath: /app/packages
       # reCAPTCHA Enterprise v3 (board posts/comments, package reviews; always verified server-side when keys are set)
       Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}

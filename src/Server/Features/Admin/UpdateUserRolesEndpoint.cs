@@ -53,6 +53,3 @@ public sealed class UpdateUserRolesEndpoint : Endpoint<UpdateUserRolesRequest, U
         await Send.OkAsync(new UpdateUserRolesResponse(true, "User roles updated successfully."), ct);
     }
 }
-
-public sealed record UpdateUserRolesRequest(List<string> Roles);
-public sealed record UpdateUserRolesResponse(bool Success, string Message);

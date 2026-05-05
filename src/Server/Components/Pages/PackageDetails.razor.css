@@ -185,6 +185,65 @@
     margin-bottom: 8px;
 }
 
+.package-embed-card {
+    padding: 16px 18px;
+}
+
+.package-embed-head {
+    margin-bottom: 12px;
+}
+
+.package-embed-title {
+    margin: 0 0 6px 0;
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+}
+
+.package-embed-lead {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.package-embed-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.75;
+    margin-bottom: 6px;
+}
+
+.package-embed-snippet {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--neutral-stroke-divider-rest);
+    background: var(--neutral-layer-2);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.package-embed-note {
+    margin: 6px 0 0 0;
+    font-size: 0.85rem;
+}
+
+.package-embed-preview-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.package-embed-preview-badge {
+    align-self: flex-start;
+    border-radius: 4px;
+}
+
 @media (max-width: 900px) {
     .package-header {
         grid-template-columns: 64px minmax(0, 1fr);

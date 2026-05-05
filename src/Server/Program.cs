@@ -25,6 +25,7 @@ using Server.Features.Auth;
 using System.Security.Cryptography.X509Certificates;
 using GoogleCaptchaComponent;
 using GoogleCaptchaComponent.Configuration;
+using Server.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -121,15 +122,18 @@ builder.Services.AddRateLimiter(options =>
         limiter.QueueLimit = 0;
         limiter.AutoReplenishment = true;
     });
+    options.AddFixedWindowLimiter("embed", limiter =>
+    {
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.PermitLimit = 180;
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
 });
 
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
-var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
-var aspireConnection = builder.Configuration.GetConnectionString("pckgdb");
-var connectionString = defaultConnection
-                       ?? aspireConnection
-                       ?? "Host=localhost;Port=5432;Database=pckgdb;Username=postgres;Password=postgres";
+var connectionString = ConnectionStringResolver.ResolveDefaultConnection(builder.Configuration);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseNpgsql(connectionString);
@@ -279,10 +283,14 @@ app.MapDefaultEndpoints();
 
 app.UseHttpLogging();
 
+var autoMigrateOnStartup = builder.Configuration.GetValue("Pckg:Database:AutoMigrateOnStartup", true);
 using (var scope = app.Services.CreateScope())
 {
-    var migrations = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
-    await migrations.ApplyAsync();
+    if (autoMigrateOnStartup)
+    {
+        var migrations = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
+        await migrations.ApplyAsync();
+    }
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if (!await roleManager.RoleExistsAsync("Moderator"))

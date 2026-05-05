@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Http;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Server.Components.Shared;
 using Server.Features.Packages;
@@ -21,11 +20,6 @@ public partial class Packages
     private readonly MetadataFormModel MetadataForm = new();
     [Inject]
     public IDialogService DialogService { get; set; } = default!;
-
-    [Inject]
-    public IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
-
-    private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
 
     protected override async Task OnInitializedAsync()
     {

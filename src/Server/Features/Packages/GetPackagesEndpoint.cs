@@ -58,20 +58,32 @@ public sealed class GetPackagesEndpoint(
             .Select(group => new { group.Key, Tags = group.Select(x => x.Tag).OrderBy(tag => tag).ToList() })
             .ToDictionaryAsync(x => x.Key, x => (IReadOnlyList<string>)x.Tags, ct);
 
-        var response = packages.Select(x => new PackageSummaryResponse(
-                x.Id,
-                x.Name,
-                x.Description,
-                x.Category,
-                x.RepositoryUrl,
-                x.WebsiteUrl,
-                tagsByPackageId.GetValueOrDefault(x.Id) ?? [],
-                x.IsPublic,
-                x.TotalDownloads,
-                x.UpdatedAtUtc,
-                pendingCounts.GetValueOrDefault(x.Id),
-                Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2),
-                x.IconUrl))
+        var owners = await dbContext.GetPublisherRowsAsync(packages.Select(p => p.OwnerUserId), ct);
+
+        var response = packages.Select(x =>
+            {
+                var owner = owners.TryGetValue(x.OwnerUserId, out var row)
+                    ? row
+                    : new PublisherOwnerRow(string.Empty, false);
+                var ownerDisplay = string.IsNullOrWhiteSpace(owner.DisplayLabel) ? x.OwnerUserId : owner.DisplayLabel;
+                return new PackageSummaryResponse(
+                    x.Id,
+                    x.Name,
+                    x.Description,
+                    x.Category,
+                    x.RepositoryUrl,
+                    x.WebsiteUrl,
+                    tagsByPackageId.GetValueOrDefault(x.Id) ?? [],
+                    x.IsPublic,
+                    x.TotalDownloads,
+                    x.UpdatedAtUtc,
+                    pendingCounts.GetValueOrDefault(x.Id),
+                    Math.Round(ratingAverages.GetValueOrDefault(x.Id), 2),
+                    x.IconUrl,
+                    x.OwnerUserId,
+                    ownerDisplay,
+                    owner.IsPublisherVerified);
+            })
             .ToList();
 
         await Send.OkAsync(response, ct);

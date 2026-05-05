@@ -1,0 +1,46 @@
+<FluentCard Class="admin-user-manage-card">
+    <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+        <header>
+            <FluentLabel Typo="Typography.H5">Manage user</FluentLabel>
+            <p class="muted" style="margin: 4px 0 0 0;">@User.Email</p>
+        </header>
+
+        <FluentStack Orientation="Orientation.Vertical" Gap="4px">
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Display name</FluentLabel>
+            <FluentLabel Typo="Typography.Body">@User.DisplayName</FluentLabel>
+        </FluentStack>
+
+        <FluentStack Orientation="Orientation.Vertical" Gap="4px">
+            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Email confirmed</FluentLabel>
+            <FluentLabel Typo="Typography.Body">@(User.EmailConfirmed ? "Yes" : "No")</FluentLabel>
+        </FluentStack>
+
+        <FluentDivider />
+
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Roles</FluentLabel>
+        <FluentStack Orientation="Orientation.Vertical" Gap="8px">
+            @foreach (var role in AvailableRoles)
+            {
+                <FluentCheckbox Label="@role"
+                                Disabled="@(role == "User")"
+                                Checked="@EditRoles.Contains(role)"
+                                CheckedChanged="@BuildRoleToggle(role)" />
+            }
+        </FluentStack>
+
+        <FluentDivider />
+
+        <FluentSwitch @bind-Value="PublisherVerified">Verified publisher</FluentSwitch>
+        <p class="muted" style="margin: 0;">Shows a verified badge next to this account on public profiles and package listings.</p>
+
+        @if (!string.IsNullOrWhiteSpace(PanelError))
+        {
+            <FluentMessageBar Intent="@MessageIntent.Error">@PanelError</FluentMessageBar>
+        }
+
+        <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End" Wrap="true">
+            <FluentButton Appearance="Appearance.Outline" OnClick="DismissAsync" Disabled="_saving">Close</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync" Disabled="_saving">@(_saving ? "Saving…" : "Save changes")</FluentButton>
+        </FluentStack>
+    </FluentStack>
+</FluentCard>

@@ -58,6 +58,7 @@ public sealed class ListUsersEndpoint : EndpointWithoutRequest<ListUsersResponse
                 user.Email ?? string.Empty,
                 user.DisplayName,
                 user.EmailConfirmed,
+                user.IsPublisherVerified,
                 roles.ToList(),
                 rating
             ));
@@ -66,19 +67,3 @@ public sealed class ListUsersEndpoint : EndpointWithoutRequest<ListUsersResponse
         await Send.OkAsync(new ListUsersResponse(userDtos, totalCount, page, pageSize), ct);
     }
 }
-
-public sealed record ListUsersResponse(
-    List<UserDto> Users,
-    int TotalCount,
-    int Page,
-    int PageSize
-);
-
-public sealed record UserDto(
-    string Id,
-    string Email,
-    string DisplayName,
-    bool EmailConfirmed,
-    List<string> Roles,
-    double Rating
-);

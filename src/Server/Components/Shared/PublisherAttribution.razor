@@ -1,0 +1,12 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+
+<span class="publisher-attribution">
+    <FluentAnchor Appearance="Appearance.Stealth" Href="@($"/profile/{Uri.EscapeDataString(OwnerUserId)}")">@DisplayName</FluentAnchor>
+    @if (IsVerified)
+    {
+        <span class="publisher-verified-wrap" title="Verified publisher" aria-label="Verified publisher">
+            <FluentIcon Value="@(new Icons.Filled.Size16.CheckmarkCircle())" Color="Color.Success" />
+        </span>
+    }
+</span>

@@ -1,0 +1,38 @@
+.admin-users-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.admin-users-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .admin-users-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-users-panel {
+        position: static;
+    }
+}
+
+.admin-users-panel {
+    position: sticky;
+    top: 16px;
+}
+
+.admin-users-panel-empty {
+    padding: 24px;
+}
+
+.admin-user-manage-card {
+    padding: 20px;
+}

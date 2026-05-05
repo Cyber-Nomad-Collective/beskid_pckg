@@ -260,6 +260,7 @@ public sealed class GetPublicProfileEndpoint(
                 new PublicProfilePayload(
                     user.Id,
                     displayName,
+                    user.IsPublisherVerified,
                     string.IsNullOrWhiteSpace(user.Bio) ? null : user.Bio,
                     string.IsNullOrWhiteSpace(ProfileSocialLinks.GetLegacyUrl(socialLinks, Components.Shared.SocialPlatform.GitHub)) ? null : ProfileSocialLinks.GetLegacyUrl(socialLinks, Components.Shared.SocialPlatform.GitHub),
                     string.IsNullOrWhiteSpace(ProfileSocialLinks.GetLegacyUrl(socialLinks, Components.Shared.SocialPlatform.Website)) ? null : ProfileSocialLinks.GetLegacyUrl(socialLinks, Components.Shared.SocialPlatform.Website),
@@ -297,6 +298,7 @@ public sealed record PublicProfileResponse(bool Success, string Message, PublicP
 public sealed record PublicProfilePayload(
     string UserId,
     string DisplayName,
+    bool IsPublisherVerified,
     string? Bio,
     string? GitHubUrl,
     string? WebsiteUrl,

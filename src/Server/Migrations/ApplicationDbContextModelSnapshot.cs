@@ -242,6 +242,9 @@ namespace Server.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsPublisherVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("GitHubUrl")
                         .IsRequired()
                         .HasColumnType("text");

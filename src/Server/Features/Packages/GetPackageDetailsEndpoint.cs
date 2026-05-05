@@ -123,6 +123,12 @@ public sealed class GetPackageDetailsEndpoint(
         var latestVersion = PackageVersioning.GetLatestNonYankedVersionString(
             packageVersions.Select(x => (x.Version, x.IsYanked)));
 
+        var ownerMap = await dbContext.GetPublisherRowsAsync(new[] { package.OwnerUserId }, ct);
+        var ownerRow = ownerMap.TryGetValue(package.OwnerUserId, out var o)
+            ? o
+            : new PublisherOwnerRow(string.Empty, false);
+        var ownerDisplay = string.IsNullOrWhiteSpace(ownerRow.DisplayLabel) ? package.OwnerUserId : ownerRow.DisplayLabel;
+
         var response = new PackageDetailsResponse(
             new PackageSummaryResponse(
                 package.Id,
@@ -137,7 +143,10 @@ public sealed class GetPackageDetailsEndpoint(
                 package.UpdatedAtUtc,
                 pendingReviewCount,
                 Math.Round(averageRating, 2),
-                package.IconUrl),
+                package.IconUrl,
+                package.OwnerUserId,
+                ownerDisplay,
+                ownerRow.IsPublisherVerified),
             packageVersions
                 .Select(x => new PackageVersionSummaryResponse(
                     x.Id,

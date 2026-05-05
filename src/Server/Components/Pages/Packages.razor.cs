@@ -72,7 +72,10 @@ public partial class Packages
                 x.Package.AverageRating,
                 x.ReviewCount,
                 normalizedTags,
-                status)
+                status,
+                x.Package.OwnerUserId,
+                x.Package.OwnerDisplayName,
+                x.Package.OwnerIsPublisherVerified)
                 {
                     Topic = x.Package.Category
                 };
@@ -132,7 +135,10 @@ public partial class Packages
         double AverageRating,
         int ReviewCount,
         IReadOnlyList<string> Tags,
-        PackageHealthStatus Status)
+        PackageHealthStatus Status,
+        string OwnerUserId,
+        string OwnerDisplayName,
+        bool OwnerIsPublisherVerified)
     {
         public string Topic { get; init; } = string.Empty;
     }

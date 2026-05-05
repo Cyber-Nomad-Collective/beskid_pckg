@@ -15,7 +15,10 @@ public sealed record PackageSummaryResponse(
     DateTimeOffset UpdatedAtUtc,
     int PendingReviewsCount,
     double AverageRating,
-    [property: JsonPropertyName("iconUrl")] string? IconUrl);
+    [property: JsonPropertyName("iconUrl")] string? IconUrl,
+    string OwnerUserId,
+    string OwnerDisplayName,
+    bool OwnerIsPublisherVerified);
 
 public sealed record PackageVersionSummaryResponse(
     Guid Id,

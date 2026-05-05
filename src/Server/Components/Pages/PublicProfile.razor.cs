@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
 using System.Net.Http.Json;
-using Microsoft.FluentUI.AspNetCore.Components.Icons.Filled;
 using Server.Features.Users;
 using Server.Components.Shared;
 

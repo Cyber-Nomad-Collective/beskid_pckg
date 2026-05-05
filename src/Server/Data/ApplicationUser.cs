@@ -11,4 +11,7 @@ public sealed class ApplicationUser : IdentityUser
     public string XUrl { get; set; } = string.Empty;
     public string SocialLinksJson { get; set; } = string.Empty;
     public string ProfileImageUrl { get; set; } = string.Empty;
+
+    /// <summary>When true, registry UI may show a verified badge for this account as a publisher.</summary>
+    public bool IsPublisherVerified { get; set; }
 }

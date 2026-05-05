@@ -43,6 +43,12 @@ else
             <div class="package-hero-main">
                 <h1>@Package.Name</h1>
                 <p class="package-description">@Package.Description</p>
+                <p class="package-publisher-line muted" style="display: flex; align-items: center; gap: 8px; margin: 8px 0 0 0; flex-wrap: wrap;">
+                    <span>Publisher</span>
+                    <PublisherAttribution OwnerUserId="@_ownerPublisherUserId"
+                                          DisplayName="@_ownerPublisherDisplayName"
+                                          IsVerified="@_ownerPublisherVerified" />
+                </p>
                 <div class="package-meta-badges">
                     <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
                     <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
@@ -73,6 +79,39 @@ else
                 </div>
             }
         </header>
+
+        @if (Package.IsPublic)
+        {
+            <FluentCard Class="package-embed-card">
+                <div class="package-embed-head">
+                    <h2 class="package-embed-title">README &amp; external sites</h2>
+                    <p class="muted package-embed-lead">GitHub-friendly badge (SVG) and an optional iframe card. Scoped names such as <code>@@pckg/…</code> use the <code>package=</code> query parameter so paths stay valid everywhere.</p>
+                </div>
+                <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                    <div>
+                        <div class="package-embed-label">Badge (markdown, links to this package)</div>
+                        <pre class="package-embed-snippet" tabindex="0">@EmbedBadgeMarkdownLinked</pre>
+                    </div>
+                    <div>
+                        <div class="package-embed-label">Badge (markdown, image only)</div>
+                        <pre class="package-embed-snippet" tabindex="0">@EmbedBadgeMarkdownImageOnly</pre>
+                    </div>
+                    <div>
+                        <div class="package-embed-label">Widget (HTML iframe)</div>
+                        <pre class="package-embed-snippet" tabindex="0">@EmbedWidgetHtml</pre>
+                        <p class="muted package-embed-note">Many README hosts render images reliably; iframes may be stripped or sandboxed.</p>
+                    </div>
+                    <div class="package-embed-preview-row">
+                        <div class="package-embed-label">Preview</div>
+                        <img src="@EmbedBadgeAbsoluteUrl"
+                             height="20"
+                             alt="pckg registry badge"
+                             referrerpolicy="no-referrer"
+                             class="package-embed-preview-badge" />
+                    </div>
+                </FluentStack>
+            </FluentCard>
+        }
 
         <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
             <FluentTab Id="pkg-tab-versions" Label="Versions">

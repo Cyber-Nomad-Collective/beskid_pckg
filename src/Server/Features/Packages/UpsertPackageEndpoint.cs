@@ -202,6 +202,12 @@ public sealed class UpsertPackageEndpoint(
             userId,
             entity.Name);
 
+        var ownerMap = await dbContext.GetPublisherRowsAsync(new[] { entity.OwnerUserId }, ct);
+        var ownerRow = ownerMap.TryGetValue(entity.OwnerUserId, out var o)
+            ? o
+            : new PublisherOwnerRow(string.Empty, false);
+        var ownerDisplay = string.IsNullOrWhiteSpace(ownerRow.DisplayLabel) ? entity.OwnerUserId : ownerRow.DisplayLabel;
+
         var response = new UpsertPackageResponse(
             true,
             req.SubmitForReview ? "Package saved and submitted for review." : "Package saved.",
@@ -218,7 +224,10 @@ public sealed class UpsertPackageEndpoint(
                 entity.UpdatedAtUtc,
                 pendingReviewCount,
                 Math.Round(averageRating, 2),
-                entity.IconUrl),
+                entity.IconUrl,
+                entity.OwnerUserId,
+                ownerDisplay,
+                ownerRow.IsPublisherVerified),
             reviewId);
 
         await Send.OkAsync(response, ct);

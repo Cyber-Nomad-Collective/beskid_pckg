@@ -31,8 +31,12 @@
                     </div>
                 }
 
-                <div class="public-profile-title" style="display:flex; align-items:center; gap:12px;">
-                    <h1>@Profile.DisplayName</h1>
+                <div class="public-profile-title" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <h1 style="display:inline-flex; align-items:center; gap:8px; margin:0;">
+                        <PublisherAttribution OwnerUserId="@Profile.UserId"
+                                              DisplayName="@Profile.DisplayName"
+                                              IsVerified="@Profile.IsPublisherVerified" />
+                    </h1>
                     <p class="muted">Public profile</p>
                     <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true">
                         <FluentBadge Appearance="Appearance.Accent">Publisher</FluentBadge>

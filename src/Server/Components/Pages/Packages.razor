@@ -76,6 +76,12 @@
                                 <div>
                                     <h3><a href="@($"/packages/{package.Name}")">@package.Name</a></h3>
                                     <p class="muted">@package.Description</p>
+                                    <p class="muted" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 0 0;">
+                                        <span>Publisher</span>
+                                        <PublisherAttribution OwnerUserId="@package.OwnerUserId"
+                                                              DisplayName="@package.OwnerDisplayName"
+                                                              IsVerified="@package.OwnerIsPublisherVerified" />
+                                    </p>
                                 </div>
                                 <FluentBadge Appearance="Appearance.Accent">@package.Status.State / @package.Status.SubState</FluentBadge>
                             </div>

@@ -76,12 +76,18 @@ public sealed class SearchPackagesEndpoint(
 
         var avgDownloads = packages.Count == 0 ? 0d : packages.Average(x => (double)x.TotalDownloads);
 
+        var owners = await dbContext.GetPublisherRowsAsync(packages.Select(p => p.OwnerUserId), ct);
+
         var rows = packages.Select(x =>
         {
             var avgRating = avgRatingById.GetValueOrDefault(x.Id);
             var reviewCount = reviewCountById.GetValueOrDefault(x.Id);
             var health = PackageHealthScoring.Calculate(x, avgDownloads, avgRating, reviewCount);
             var tags = tagsByPackageId.GetValueOrDefault(x.Id) ?? [];
+            var owner = owners.TryGetValue(x.OwnerUserId, out var row)
+                ? row
+                : new PublisherOwnerRow(string.Empty, false);
+            var ownerDisplay = string.IsNullOrWhiteSpace(owner.DisplayLabel) ? x.OwnerUserId : owner.DisplayLabel;
             return new PackageSearchResponse(
                 new PackageSummaryResponse(
                     x.Id,
@@ -96,7 +102,10 @@ public sealed class SearchPackagesEndpoint(
                     x.UpdatedAtUtc,
                     pendingCounts.GetValueOrDefault(x.Id),
                     Math.Round(avgRating, 2),
-                    x.IconUrl),
+                    x.IconUrl,
+                    x.OwnerUserId,
+                    ownerDisplay,
+                    owner.IsPublisherVerified),
                 reviewCount,
                 new PackageHealthSnapshotResponse(
                     health.State,
