@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Server.Data;
@@ -18,6 +19,14 @@ public sealed class DatabaseMigrationService(
     ApplicationDbContext dbContext,
     ILogger<DatabaseMigrationService> logger) : IDatabaseMigrationService
 {
+    internal readonly record struct LegacySchemaSnapshot(
+        bool HasAspNetUsers,
+        bool HasAspNetRoles,
+        bool HasPackages,
+        bool HasDataProtectionKeys,
+        bool HasBlockedLinkPatterns,
+        bool HasAspNetUsersPublisherVerifiedColumn);
+
     public async Task ApplyAsync(CancellationToken cancellationToken = default)
     {
         if (!dbContext.Database.IsNpgsql())
@@ -31,17 +40,17 @@ public sealed class DatabaseMigrationService(
             try
             {
                 await dbContext.Database.MigrateAsync(cancellationToken);
-                await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
-                await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
-                await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+                await ApplyPostMigrationRepairsAsync(cancellationToken);
                 return;
             }
             catch (PostgresException ex) when (ex.SqlState == "42P07")
             {
-                await EnsureCurrentMigrationRecordedAsync(cancellationToken);
-                await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
-                await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
-                await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+                logger.LogWarning(
+                    ex,
+                    "Legacy schema detected while applying migrations. Reconstructing migration history from existing schema objects.");
+                await EnsureLegacyMigrationHistoryAsync(cancellationToken);
+                await dbContext.Database.MigrateAsync(cancellationToken);
+                await ApplyPostMigrationRepairsAsync(cancellationToken);
                 return;
             }
             catch (Exception ex) when (IsTransientStartupFailure(ex) && attempt < maxAttempts)
@@ -58,9 +67,66 @@ public sealed class DatabaseMigrationService(
         }
 
         await dbContext.Database.MigrateAsync(cancellationToken);
+        await ApplyPostMigrationRepairsAsync(cancellationToken);
+    }
+
+    private async Task ApplyPostMigrationRepairsAsync(CancellationToken cancellationToken)
+    {
+        await EnsureAspNetUsersPublisherVerifiedColumnAsync(cancellationToken);
         await EnsurePostgresLegacyBooleanColumnsAsync(cancellationToken);
         await EnsurePostgresLegacyGuidColumnsAsync(cancellationToken);
         await EnsurePostgresLegacyIdentityColumnsAsync(cancellationToken);
+    }
+
+    private async Task EnsureAspNetUsersPublisherVerifiedColumnAsync(CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsNpgsql())
+        {
+            return;
+        }
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'AspNetUsers'
+                ) THEN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'AspNetUsers'
+                          AND column_name = 'IsPublisherVerified'
+                          AND data_type IN ('smallint', 'integer', 'bigint')
+                    ) THEN
+                        ALTER TABLE "AspNetUsers" ALTER COLUMN "IsPublisherVerified" DROP DEFAULT;
+                        ALTER TABLE "AspNetUsers" ALTER COLUMN "IsPublisherVerified" TYPE boolean USING ("IsPublisherVerified" <> 0);
+                    END IF;
+
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'AspNetUsers'
+                          AND column_name = 'IsPublisherVerified'
+                    ) THEN
+                        ALTER TABLE "AspNetUsers" ADD COLUMN "IsPublisherVerified" boolean;
+                    END IF;
+
+                    UPDATE "AspNetUsers"
+                    SET "IsPublisherVerified" = false
+                    WHERE "IsPublisherVerified" IS NULL;
+
+                    ALTER TABLE "AspNetUsers" ALTER COLUMN "IsPublisherVerified" SET DEFAULT false;
+                    ALTER TABLE "AspNetUsers" ALTER COLUMN "IsPublisherVerified" SET NOT NULL;
+                END IF;
+            END
+            $$;
+            """,
+            cancellationToken);
     }
 
     private async Task EnsurePostgresLegacyBooleanColumnsAsync(CancellationToken cancellationToken)
@@ -432,10 +498,10 @@ public sealed class DatabaseMigrationService(
             cancellationToken);
     }
 
-    private async Task EnsureCurrentMigrationRecordedAsync(CancellationToken cancellationToken)
+    private async Task EnsureLegacyMigrationHistoryAsync(CancellationToken cancellationToken)
     {
-        var currentMigrationId = dbContext.Database.GetMigrations().LastOrDefault();
-        if (string.IsNullOrWhiteSpace(currentMigrationId))
+        var migrations = dbContext.Database.GetMigrations().ToArray();
+        if (migrations.Length == 0)
         {
             return;
         }
@@ -450,12 +516,124 @@ public sealed class DatabaseMigrationService(
             """,
             cancellationToken);
 
-        await dbContext.Database.ExecuteSqlAsync(
-            $"""
-            INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-            VALUES ({currentMigrationId}, {"10.0.5"})
-            ON CONFLICT ("MigrationId") DO NOTHING;
-            """,
-            cancellationToken);
+        var schemaSnapshot = await ReadLegacySchemaSnapshotAsync(cancellationToken);
+        var migrationIdsToRecord = DetermineLegacyMigrationsToRecord(migrations, schemaSnapshot);
+        foreach (var migrationId in migrationIdsToRecord)
+        {
+            await dbContext.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+                VALUES ({migrationId}, {"10.0.5"})
+                ON CONFLICT ("MigrationId") DO NOTHING;
+                """,
+                cancellationToken);
+        }
+    }
+
+    internal static IReadOnlyList<string> DetermineLegacyMigrationsToRecord(
+        IEnumerable<string> migrations,
+        LegacySchemaSnapshot snapshot)
+    {
+        var result = new List<string>();
+        foreach (var migration in migrations)
+        {
+            if (migration.EndsWith("_InitialPostgres", StringComparison.Ordinal)
+                && snapshot is { HasAspNetUsers: true, HasAspNetRoles: true, HasPackages: true })
+            {
+                result.Add(migration);
+                continue;
+            }
+
+            if (migration.EndsWith("_DataProtectionKeys", StringComparison.Ordinal) && snapshot.HasDataProtectionKeys)
+            {
+                result.Add(migration);
+                continue;
+            }
+
+            if (migration.EndsWith("_BlockedLinkPatterns", StringComparison.Ordinal) && snapshot.HasBlockedLinkPatterns)
+            {
+                result.Add(migration);
+                continue;
+            }
+
+            if (migration.EndsWith("_ApplicationUserPublisherVerified", StringComparison.Ordinal)
+                && snapshot.HasAspNetUsersPublisherVerifiedColumn)
+            {
+                result.Add(migration);
+            }
+        }
+
+        return result;
+    }
+
+    internal static bool NeedsPublisherVerifiedRepair(LegacySchemaSnapshot snapshot)
+        => snapshot.HasAspNetUsers && !snapshot.HasAspNetUsersPublisherVerifiedColumn;
+
+    private async Task<LegacySchemaSnapshot> ReadLegacySchemaSnapshotAsync(CancellationToken cancellationToken)
+    {
+        await using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        if (command.Connection is null)
+        {
+            throw new InvalidOperationException("Database connection unavailable.");
+        }
+
+        var shouldCloseConnection = command.Connection.State == ConnectionState.Closed;
+        if (shouldCloseConnection)
+        {
+            await command.Connection.OpenAsync(cancellationToken);
+        }
+
+        try
+        {
+            command.CommandText =
+                """
+                SELECT
+                    EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = 'AspNetUsers'
+                    ) AS "HasAspNetUsers",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = 'AspNetRoles'
+                    ) AS "HasAspNetRoles",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = 'Packages'
+                    ) AS "HasPackages",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = 'DataProtectionKeys'
+                    ) AS "HasDataProtectionKeys",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_schema = 'public' AND table_name = 'BlockedLinkPatterns'
+                    ) AS "HasBlockedLinkPatterns",
+                    EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = 'AspNetUsers' AND column_name = 'IsPublisherVerified'
+                    ) AS "HasAspNetUsersPublisherVerifiedColumn";
+                """;
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return default;
+            }
+
+            return new LegacySchemaSnapshot(
+                reader.GetBoolean(0),
+                reader.GetBoolean(1),
+                reader.GetBoolean(2),
+                reader.GetBoolean(3),
+                reader.GetBoolean(4),
+                reader.GetBoolean(5));
+        }
+        finally
+        {
+            if (shouldCloseConnection)
+            {
+                await command.Connection.CloseAsync();
+            }
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Server.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(Server.Data.ApplicationDbContext))]
+[Migration("20260501120000_ApplicationUserPublisherVerified")]
 public partial class ApplicationUserPublisherVerified : Migration
 {
     /// <inheritdoc />
