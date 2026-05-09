@@ -1,9 +1,8 @@
 <FluentButton Class="notification-icon-button"
-              Appearance="@(UnreadCount > 0 ? Appearance.Accent : Appearance.Stealth)"
-              
+              Appearance="Appearance.Stealth"
               OnClick="OnClick"
-              Title="Open notifications"
-              AriaLabel="Open notifications">
+              Title="@NotificationTitle"
+              AriaLabel="@NotificationTitle">
     @if (IsOpen)
     {
         <FluentIcon Value="@(new Icons.Regular.Size20.AlertOff())" />
@@ -18,4 +17,7 @@
     [Parameter] public int UnreadCount { get; set; }
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
+
+    private string NotificationTitle =>
+        UnreadCount > 0 ? $"Open notifications ({UnreadCount} unread)" : "Open notifications";
 }

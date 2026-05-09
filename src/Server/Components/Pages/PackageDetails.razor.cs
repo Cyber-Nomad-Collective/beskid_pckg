@@ -66,6 +66,11 @@ public partial class PackageDetails
         await RefreshBoardModerationAsync();
         await LoadSecondaryDataAsync();
         await LoadFollowAsync();
+
+        if (SelectedTabId == "pkg-tab-badges" && (Package is null || !Package.IsPublic))
+        {
+            SelectedTabId = "pkg-tab-versions";
+        }
     }
 
     private void OnPackageIconError() => _packageIconFailed = true;

@@ -5,3 +5,12 @@
     padding: 0;
     border-radius: 999px;
 }
+
+::deep .notification-icon-button::part(control):hover {
+    background: var(--neutral-fill-layer-hover);
+}
+
+::deep .notification-icon-button::part(control):focus-visible {
+    outline: 2px solid var(--accent-fill-rest);
+    outline-offset: 2px;
+}

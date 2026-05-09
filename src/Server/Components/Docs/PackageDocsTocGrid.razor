@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+
 <PackageDocsGrid TItem="PackageDocsTocRow"
                  Items="@Rows"
                  Headers="@GridHeaders"
@@ -5,7 +8,7 @@
     <RowTemplate Context="row">
         <tr>
             <td>
-                <FluentAnchor Href="@($"#{row.Anchor}")" Class="docs-file-link package-docs-toc-link">
+                <FluentAnchor Href="@FragmentHref(row.Anchor)" Class="docs-file-link package-docs-toc-link">
                     @($"{new string(' ', (row.Level - 2) * 2)}{row.Title}")
                 </FluentAnchor>
             </td>
@@ -18,4 +21,10 @@
     private static readonly IReadOnlyList<string> GridHeaders = ["Section", "Level"];
 
     [Parameter] public IReadOnlyList<PackageDocsTocRow> Rows { get; set; } = [];
+
+    private string FragmentHref(string anchor)
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath;
+        return $"{path}#{anchor}";
+    }
 }

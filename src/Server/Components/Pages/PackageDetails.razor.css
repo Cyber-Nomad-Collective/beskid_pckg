@@ -74,6 +74,11 @@
     display: grid;
 }
 
+.package-badges-tab {
+    justify-items: start;
+    width: 100%;
+}
+
 .content-section {
     display: grid;
     gap: 14px;
@@ -187,6 +192,9 @@
 
 .package-embed-card {
     padding: 16px 18px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: min(72rem, 100%);
 }
 
 .package-embed-head {

@@ -15,7 +15,7 @@
     }
     else if (_doc is not null)
     {
-        <FluentStack Orientation="Orientation.Vertical" Gap="14" Class="package-docs-content">
+        <div class="package-docs-content">
             @if (!string.IsNullOrWhiteSpace(_deepLinkMissMessage))
             {
                 <FluentMessageBar Intent="MessageIntent.Warning">@_deepLinkMissMessage</FluentMessageBar>
@@ -34,70 +34,6 @@
                     }
                 </FluentStack>
             }
-
-            <FluentStack Orientation="Orientation.Vertical" Gap="10" Class="package-docs-toolbar">
-                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="8" Wrap="true">
-                    <FluentTextField @bind-Value="_symbolQuery"
-                                     Label="Search symbols"
-                                     Placeholder="Filter by qualified name, name, or kind…"
-                                     AriaLabel="Filter API symbols"
-                                     Style="flex: 1; min-width: 14rem; max-width: 28rem;" />
-                    <div class="package-docs-filter-anchor">
-                        <FluentButton Appearance="Appearance.Outline"
-                                      Class="package-docs-filter-button"
-                                      IconStart="@(new Icons.Regular.Size20.Search())"
-                                      Title="Open grouping and filters"
-                                      OnClick="ToggleFilterPopover">
-                        </FluentButton>
-                        @if (_showFilterPopover)
-                        {
-                            <FluentCard Class="package-docs-filter-popover">
-                                <FluentStack Orientation="Orientation.Vertical" Gap="10">
-                                    <FluentStack Orientation="Orientation.Horizontal"
-                                                 VerticalAlignment="VerticalAlignment.Center"
-                                                 HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                                                 Gap="8">
-                                        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Group and filter</FluentLabel>
-                                        <FluentButton Appearance="Appearance.Stealth" OnClick="CloseFilterPopover">Close</FluentButton>
-                                    </FluentStack>
-                                    <FluentSelect TOption="string"
-                                                  Value="@_groupBy"
-                                                  ValueChanged="SetGroupBy"
-                                                  AriaLabel="Group navigation by">
-                                        <FluentOption TOption="string" Value="module">Group by module</FluentOption>
-                                        <FluentOption TOption="string" Value="kind">Group by kind</FluentOption>
-                                    </FluentSelect>
-                                    <FluentSelect TOption="string"
-                                                  Value="@_moduleFilter"
-                                                  ValueChanged="SetModuleFilter"
-                                                  AriaLabel="Filter by module">
-                                        <FluentOption TOption="string" Value="">All modules</FluentOption>
-                                        @foreach (var module in AvailableModules)
-                                        {
-                                            <FluentOption TOption="string" Value="@module">@module</FluentOption>
-                                        }
-                                    </FluentSelect>
-                                    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Kinds</FluentLabel>
-                                    <div class="package-docs-kind-grid">
-                                        @foreach (var kind in AvailableKinds)
-                                        {
-                                            <label class="package-docs-kind-item">
-                                                <input type="checkbox"
-                                                       checked="@IsKindSelected(kind)"
-                                                       @onchange="@(() => ToggleKindFilter(kind))" />
-                                                <span>@kind</span>
-                                            </label>
-                                        }
-                                    </div>
-                                    <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
-                                </FluentStack>
-                            </FluentCard>
-                        }
-                    </div>
-                </FluentStack>
-
-                <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
-            </FluentStack>
 
             <div class="package-docs-main-grid">
                 <div class="package-docs-nav-col">
@@ -131,10 +67,79 @@
                     </FluentStack>
                 </div>
 
-                <div class="package-docs-toc-col">
-                    <TableOfContents Rows="@TocRows" Heading="Table of contents" />
-                </div>
+                <aside class="package-docs-right-rail" aria-label="Outline and symbol tools">
+                    <div class="package-docs-toc-col">
+                        <TableOfContents Rows="@TocRows" Heading="Table of contents" />
+                    </div>
+
+                    <FluentStack Orientation="Orientation.Vertical" Gap="10" Class="package-docs-toolbar">
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="8" Wrap="true" Class="package-docs-toolbar-search-row">
+                            <div class="package-docs-symbol-search-wrap">
+                                <FluentTextField @bind-Value="_symbolQuery"
+                                                 Label="Search symbols"
+                                                 Placeholder="Filter by qualified name, name, or kind…"
+                                                 AriaLabel="Filter API symbols" />
+                            </div>
+                            <div class="package-docs-filter-anchor">
+                                <FluentButton Appearance="Appearance.Outline"
+                                              Class="package-docs-filter-button"
+                                              IconStart="@(new Icons.Regular.Size20.Search())"
+                                              Title="Open grouping and filters"
+                                              OnClick="ToggleFilterPopover">
+                                </FluentButton>
+                                @if (_showFilterPopover)
+                                {
+                                    <FluentCard Class="package-docs-filter-popover">
+                                        <FluentStack Orientation="Orientation.Vertical" Gap="10">
+                                            <FluentStack Orientation="Orientation.Horizontal"
+                                                         VerticalAlignment="VerticalAlignment.Center"
+                                                         HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                                                         Gap="8">
+                                                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Group and filter</FluentLabel>
+                                                <FluentButton Appearance="Appearance.Stealth" OnClick="CloseFilterPopover">Close</FluentButton>
+                                            </FluentStack>
+                                            <FluentSelect TOption="string"
+                                                          Value="@_groupBy"
+                                                          ValueChanged="SetGroupBy"
+                                                          AriaLabel="Group navigation by">
+                                                <FluentOption TOption="string" Value="module">Group by module</FluentOption>
+                                                <FluentOption TOption="string" Value="kind">Group by kind</FluentOption>
+                                            </FluentSelect>
+                                            <FluentSelect TOption="string"
+                                                          Value="@_moduleFilter"
+                                                          ValueChanged="SetModuleFilter"
+                                                          AriaLabel="Filter by module">
+                                                <FluentOption TOption="string" Value="">All modules</FluentOption>
+                                                @foreach (var module in AvailableModules)
+                                                {
+                                                    <FluentOption TOption="string" Value="@module">@module</FluentOption>
+                                                }
+                                            </FluentSelect>
+                                            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Kinds</FluentLabel>
+                                            <div class="package-docs-kind-grid">
+                                                @foreach (var kind in AvailableKinds)
+                                                {
+                                                    <label class="package-docs-kind-item">
+                                                        <input type="checkbox"
+                                                               checked="@IsKindSelected(kind)"
+                                                               @onchange="@(() => ToggleKindFilter(kind))" />
+                                                        <span>@kind</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                            <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
+                                        </FluentStack>
+                                    </FluentCard>
+                                }
+                            </div>
+                        </FluentStack>
+
+                        <div class="package-docs-symbol-scroll">
+                            <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
+                        </div>
+                    </FluentStack>
+                </aside>
             </div>
-        </FluentStack>
+        </div>
     }
 </div>
