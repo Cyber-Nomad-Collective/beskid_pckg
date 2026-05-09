@@ -40,7 +40,8 @@
             <PackageGrid Packages="PackageItems" 
                          ShowActions="true"
                          OnEditMetadata="StartMetadataEdit" 
-                         OnUploadVersion="StartVersionUpload" />
+                         OnUploadVersion="StartVersionUpload"
+                         OnDeletePackage="PromptDeletePackageAsync" />
 
             @if (!string.IsNullOrWhiteSpace(MetadataFeedbackMessage))
             {
@@ -51,6 +52,13 @@
             {
                 <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
                     @UploadFeedbackMessage
+                </p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(DeleteFeedbackMessage))
+            {
+                <p class="feedback-message @(DeleteFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
+                    @DeleteFeedbackMessage
                 </p>
             }
 

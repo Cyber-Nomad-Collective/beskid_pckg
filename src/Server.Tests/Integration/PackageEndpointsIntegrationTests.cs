@@ -189,4 +189,61 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
         var restoredDownload = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/download");
         Assert.Equal(HttpStatusCode.OK, restoredDownload.StatusCode);
     }
+
+    [Fact]
+    public async Task DeletePackage_Requires_Authentication()
+    {
+        var (_, _, package) = await _factory.SeedOwnerWithPackageAsync("Delete.Auth", isPublic: true);
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.DeleteAsync($"/api/packages/{Uri.EscapeDataString(package.Name)}");
+
+        // Cookie auth challenges typically redirect to the login page instead of returning 401.
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Unauthorized
+            || response.StatusCode == HttpStatusCode.Redirect
+            || response.StatusCode == HttpStatusCode.Found);
+    }
+
+    [Fact]
+    public async Task DeletePackage_AsOwner_Succeeds()
+    {
+        var (user, _, package) = await _factory.SeedOwnerWithPackageAsync("Delete.Owner", isPublic: true);
+        var client = await _factory.CreateAuthenticatedPublisherClientAsync(user);
+
+        var response = await client.DeleteAsync($"/api/packages/{Uri.EscapeDataString(package.Name)}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":true", body, StringComparison.OrdinalIgnoreCase);
+
+        var anon = _factory.CreateClient();
+        var get = await anon.GetAsync($"/api/packages/{Uri.EscapeDataString(package.Name)}");
+        Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeletePackage_AsSuperAdmin_Succeeds()
+    {
+        var (_, _, package) = await _factory.SeedOwnerWithPackageAsync("Delete.Admin", isPublic: true);
+        var admin = await _factory.CreateAuthenticatedSuperAdminClientAsync();
+
+        var response = await admin.DeleteAsync($"/api/packages/{Uri.EscapeDataString(package.Name)}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"success\":true", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task DeletePackage_AsOtherPublisher_Returns_Forbidden()
+    {
+        var (_, _, victim) = await _factory.SeedOwnerWithPackageAsync("Delete.Victim", isPublic: true);
+        var (otherUser, _, _) = await _factory.SeedOwnerWithPackageAsync("Delete.Attacker", isPublic: true);
+        var otherClient = await _factory.CreateAuthenticatedPublisherClientAsync(otherUser);
+
+        var response = await otherClient.DeleteAsync($"/api/packages/{Uri.EscapeDataString(victim.Name)}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }

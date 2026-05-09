@@ -35,9 +35,11 @@
             <FluentMenu Anchor="@oflow.IdMoreButton"
                         @bind-Open="_menuOpen"
                         Anchored="true"
-                        UseMenuService="false"
+                        UseMenuService="true"
                         Trigger="MouseButton.Left"
-                        VerticalPosition="VerticalPosition.Bottom">
+                        VerticalPosition="VerticalPosition.Bottom"
+                        HorizontalViewportLock="true"
+                        VerticalInset="true">
                 @foreach (var overflowItem in oflow.ItemsOverflow)
                 {
                     var def = ResolveDefinition(overflowItem);

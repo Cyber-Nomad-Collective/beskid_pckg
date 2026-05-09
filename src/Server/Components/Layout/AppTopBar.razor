@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
 
 <header class="top-nav">
         <div class="top-nav-left">
@@ -7,7 +8,7 @@
                 @HeaderStart
             }
 
-            <a class="brand-link" href="/" aria-label="Beskid home">
+            <a class="brand-link" href="@HomeUrl" aria-label="Beskid home">
                 <img src="favicon.svg" width="28" height="17" alt="Beskid" />
                 <span class="brand">beskid pckg</span>
             </a>
@@ -15,9 +16,9 @@
 
         
         <div class="top-nav-right">
-                <FluentNavLink href="/" Match="NavLinkMatch.All">Home</FluentNavLink>
-                <FluentNavLink href="/packages">Packages</FluentNavLink>
-                <FluentNavLink href="/scalar">API</FluentNavLink>
+                <FluentNavLink Href="@HomeUrl" Match="NavLinkMatch.All">Home</FluentNavLink>
+                <FluentNavLink Href="@PackagesUrl">Packages</FluentNavLink>
+                <FluentNavLink Href="@ApiDocsUrl">API</FluentNavLink>
             <div class="top-nav-controls">
                 <ThemeToggle />
 
@@ -37,8 +38,8 @@
                     </Authorized>
                     <NotAuthorized>
                         <div class="top-nav-auth">
-                            <FluentAnchor Appearance="Appearance.Outline" Href="/auth?mode=login">Login</FluentAnchor>
-                            <FluentAnchor Appearance="Appearance.Accent" Href="/auth?mode=register">Register</FluentAnchor>
+                            <FluentAnchor Appearance="Appearance.Outline" Href="@LoginUrl">Login</FluentAnchor>
+                            <FluentAnchor Appearance="Appearance.Accent" Href="@RegisterUrl">Register</FluentAnchor>
                         </div>
                     </NotAuthorized>
                 </AuthorizeView>
@@ -53,3 +54,20 @@
                             UnreadCountChanged="OnNotificationUnreadCountChanged" />
     </Authorized>
 </AuthorizeView>
+
+@code {
+    /// <summary>Resolves a path (and optional query) against the app base so links work when PathBase or reverse-proxy path prefixes are used.</summary>
+    private string AppUrl(string relativePathAndQuery)
+    {
+        var baseUri = Navigation.BaseUri;
+        if (!baseUri.EndsWith('/'))
+            baseUri += "/";
+        return new Uri(new Uri(baseUri, UriKind.Absolute), relativePathAndQuery).AbsoluteUri;
+    }
+
+    private string HomeUrl => Navigation.BaseUri;
+    private string PackagesUrl => AppUrl("packages");
+    private string ApiDocsUrl => AppUrl("scalar");
+    private string LoginUrl => AppUrl("auth?mode=login");
+    private string RegisterUrl => AppUrl("auth?mode=register");
+}

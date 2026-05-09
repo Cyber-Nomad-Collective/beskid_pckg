@@ -16,6 +16,9 @@ namespace Server.Tests.Integration;
 
 public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAsyncDisposable
 {
+    /// <summary>Password assigned to seeded publisher accounts for cookie login tests.</summary>
+    public const string PublisherTestPassword = "TestPublisher#123";
+
     private readonly string _tempRoot;
     private readonly string _artifactRoot;
     private readonly string _dataProtectionKeysPath;
@@ -71,17 +74,23 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
     {
         await using var scope = Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<ApiKeyEntity>>();
 
+        var email = $"user-{Guid.NewGuid():N}@test.local";
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid().ToString("N"),
-            UserName = $"user-{Guid.NewGuid():N}@test.local",
-            NormalizedUserName = $"USER-{Guid.NewGuid():N}@TEST.LOCAL",
-            Email = $"user-{Guid.NewGuid():N}@test.local",
-            NormalizedEmail = $"USER-{Guid.NewGuid():N}@TEST.LOCAL",
+            UserName = email,
+            Email = email,
             EmailConfirmed = true,
         };
+
+        var createUser = await userManager.CreateAsync(user, PublisherTestPassword);
+        if (!createUser.Succeeded)
+        {
+            throw new InvalidOperationException(string.Join(' ', createUser.Errors.Select(e => e.Description)));
+        }
 
         var uniquePackageName = $"{packageName}.{Guid.NewGuid():N}";
 
@@ -108,12 +117,22 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
         };
         apiKey.KeyHash = hasher.HashPassword(apiKey, plain);
 
-        db.Users.Add(user);
         db.Packages.Add(package);
         db.ApiKeys.Add(apiKey);
         await db.SaveChangesAsync();
 
         return (user, plain, package);
+    }
+
+    /// <summary>Cookie-authenticated client for a seeded publisher created via <see cref="SeedOwnerWithPackageAsync"/>.</summary>
+    public async Task<HttpClient> CreateAuthenticatedPublisherClientAsync(ApplicationUser user)
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        var loginResp = await client.PostAsJsonAsync(
+            "/api/users/login",
+            new { email = user.Email, password = PublisherTestPassword, rememberMe = true });
+        loginResp.EnsureSuccessStatusCode();
+        return client;
     }
 
     /// <summary>

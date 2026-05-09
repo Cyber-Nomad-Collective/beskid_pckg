@@ -18,6 +18,9 @@ public interface IPackageArtifactStore
         string storageKey,
         string expectedSha256,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Best-effort removal of an artifact file under the configured artifacts root.</summary>
+    Task DeleteArtifactAsync(string storageKey, CancellationToken cancellationToken = default);
 }
 
 public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment, IConfiguration configuration) : IPackageArtifactStore
@@ -101,6 +104,34 @@ public sealed class PackageArtifactStore(IHostEnvironment hostEnvironment, IConf
         using var sha = SHA256.Create();
         var digest = Convert.ToHexString(await sha.ComputeHashAsync(stream, cancellationToken)).ToLowerInvariant();
         return string.Equals(digest, expectedSha256, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public Task DeleteArtifactAsync(string storageKey, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var absolutePath = ResolveStoragePath(storageKey);
+        if (absolutePath is null || !File.Exists(absolutePath))
+        {
+            return Task.CompletedTask;
+        }
+
+        File.Delete(absolutePath);
+        var versionDir = Path.GetDirectoryName(absolutePath);
+        if (!string.IsNullOrEmpty(versionDir)
+            && Directory.Exists(versionDir)
+            && Directory.GetFileSystemEntries(versionDir).Length == 0)
+        {
+            try
+            {
+                Directory.Delete(versionDir);
+            }
+            catch
+            {
+                // Keep deletion non-throwing for callers after DB commit.
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     private static string ResolveArtifactsRoot(IHostEnvironment hostEnvironment, IConfiguration configuration)

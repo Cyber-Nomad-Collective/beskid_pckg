@@ -11,6 +11,7 @@ public partial class PackageGrid
     [Parameter] public bool ShowActions { get; set; } = true;
     [Parameter] public EventCallback<PackageSummaryResponse> OnEditMetadata { get; set; }
     [Parameter] public EventCallback<PackageSummaryResponse> OnUploadVersion { get; set; }
+    [Parameter] public EventCallback<PackageSummaryResponse> OnDeletePackage { get; set; }
 
     private IReadOnlyList<GridActionDefinition> GetPackageRowActions(PackageSummaryResponse package)
     {
@@ -34,6 +35,17 @@ public partial class PackageGrid
                 Icon = new Icons.Regular.Size20.DocumentEdit(),
                 Tooltip = "Edit metadata",
                 OnClick = EventCallback.Factory.Create(this, () => OnEditMetadata.InvokeAsync(package))
+            });
+        }
+
+        if (OnDeletePackage.HasDelegate)
+        {
+            list.Add(new GridActionDefinition
+            {
+                Icon = new Icons.Regular.Size20.Delete(),
+                Tooltip = "Delete package",
+                Appearance = Appearance.Outline,
+                OnClick = EventCallback.Factory.Create(this, () => OnDeletePackage.InvokeAsync(package))
             });
         }
 

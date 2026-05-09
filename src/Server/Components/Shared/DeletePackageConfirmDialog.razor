@@ -1,0 +1,18 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+
+<FluentDialogHeader ShowDismiss="false">
+    <FluentLabel Typo="Typography.PaneHeader">Delete package</FluentLabel>
+</FluentDialogHeader>
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" Gap="12px" Class="app-dialog-stack">
+        <p>
+            Permanently delete <strong>@Content.PackageName</strong> and all of its published versions, reviews, and stored artifacts? This cannot be undone.
+        </p>
+        <p class="muted" style="margin: 0;">You will need to publish again under a new name if you change your mind.</p>
+    </FluentStack>
+</FluentDialogBody>
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Outline" OnClick="CancelAsync">Cancel</FluentButton>
+    <FluentButton Appearance="Appearance.Accent" OnClick="ConfirmAsync" IconStart="@(new Icons.Regular.Size16.Delete())">Delete package</FluentButton>
+</FluentDialogFooter>

@@ -368,14 +368,13 @@ app.Use(async (context, next) =>
 });
 app.UseFastEndpoints(c => c.Endpoints.RoutePrefix = "api");
 
-if (app.Environment.IsDevelopment())
+// Scalar + OpenAPI JSON are linked from the site chrome ("API" nav); expose in all environments
+// so production matches onboarding middleware bypasses for /scalar and /swagger.
+app.UseSwaggerGen();
+app.MapScalarApiReference("/scalar", o =>
 {
-    app.UseSwaggerGen();
-    app.MapScalarApiReference("/scalar", o =>
-    {
-        o.OpenApiRoutePattern = "/swagger/v1/swagger.json";
-    });
-}
+    o.OpenApiRoutePattern = "/swagger/v1/swagger.json";
+});
 
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");

@@ -1,8 +1,13 @@
+@inject NavigationManager Navigation
+
 <FluentStack Orientation="Orientation.Vertical" Gap="4" Class="docs-module-tree">
-    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@(string.IsNullOrWhiteSpace(PackageName) ? "Package" : PackageName)</FluentLabel>
-    <FluentLabel Typo="Typography.Body" Class="muted docs-module-tree-meta">
-        @PackageName @Version
-    </FluentLabel>
+    @if (ShowPackageSummary)
+    {
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@(string.IsNullOrWhiteSpace(PackageName) ? "Package" : PackageName)</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="muted docs-module-tree-meta">
+            @PackageName @Version
+        </FluentLabel>
+    }
     <div class="docs-module-tree-scroll">
         <FluentNavMenu Title="API modules" Width="290">
             @foreach (var group in Groups)
@@ -10,7 +15,7 @@
                 <FluentNavGroup Title="@group.Name">
                     @foreach (var item in group.Items)
                     {
-                        <FluentNavLink Href="#"
+                        <FluentNavLink Href="@($"{NavDocPath}#")"
                                        Class="@LinkClass(item)"
                                        Title="@(item.QualifiedName ?? item.Name)"
                                        OnClick="@(() => SelectAsync(item))">
@@ -48,6 +53,12 @@
 
     [Parameter]
     public string GroupBy { get; set; } = "module";
+
+    /// <summary>When false, package name/version lines above the nav are hidden (e.g. full-page docs already show them in the page header).</summary>
+    [Parameter]
+    public bool ShowPackageSummary { get; set; } = true;
+
+    private string NavDocPath => new Uri(Navigation.Uri).AbsolutePath;
 
     protected override void OnParametersSet() => Rebuild();
 

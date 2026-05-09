@@ -23,7 +23,7 @@
 
             @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
             {
-                <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="muted">
+                <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="6" Class="muted package-docs-meta-row">
                     @if (_doc.SchemaVersion > 0)
                     {
                         <FluentBadge Appearance="Appearance.Neutral">schema @(_doc.SchemaVersion)</FluentBadge>
@@ -40,6 +40,7 @@
                     <DocModuleTree Items="@FilteredItems.ToList()"
                                    PackageName="@PackageIdentifier"
                                    Version="@Version"
+                                   ShowPackageSummary="@(Variant != PackageDocs.PackageDocsVariant.FullPage)"
                                    GroupBy="@_groupBy"
                                    SelectedItemId="@_selected?.Id"
                                    SelectedQualifiedName="@(_selected?.QualifiedName ?? _selected?.Name)"
@@ -47,7 +48,7 @@
                 </div>
 
                 <div class="package-docs-article-col">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="14">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
                         @if (_selected is not null)
                         {
                             <DocMemberHeader Item="@_selected" />

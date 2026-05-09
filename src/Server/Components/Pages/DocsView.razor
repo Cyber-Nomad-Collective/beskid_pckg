@@ -35,17 +35,14 @@
     }
     else
     {
-        <FluentStack Orientation="Orientation.Vertical" Gap="16">
+        <FluentStack Orientation="Orientation.Vertical" Gap="12">
             <FluentStack Orientation="Orientation.Horizontal"
                          VerticalAlignment="VerticalAlignment.Center"
                          Wrap="true"
-                         Gap="16"
+                         Gap="12"
                          Class="docs-view-header">
-                <FluentStack Orientation="Orientation.Vertical" Gap="6" Style="flex: 1; min-width: 0;">
-                    <FluentLabel Typo="Typography.H3" Class="docs-view-title">Documentation</FluentLabel>
-                    <FluentLabel Typo="Typography.Body" Class="muted docs-view-subtitle">
-                        @_packageLabel
-                    </FluentLabel>
+                <FluentStack Orientation="Orientation.Vertical" Gap="8" Style="flex: 1; min-width: 0;">
+                    <FluentLabel Typo="Typography.H3" Class="docs-view-title">@_packageLabel</FluentLabel>
                     <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-badges">
                         <FluentBadge Appearance="Appearance.Accent">@_versionSegment</FluentBadge>
                         @if (!string.Equals(_packageSegment, _packageLabel, StringComparison.Ordinal))

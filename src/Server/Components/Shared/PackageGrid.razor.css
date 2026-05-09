@@ -1,27 +1,8 @@
-/* Table */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    border-spacing: 0;
+/* Let anchored overflow menus (via FluentMenuProvider) escape table cell clipping. */
+.package-grid ::deep td {
+    overflow: visible;
 }
 
-table td,
-table th {
-    padding: var(--spacingVerticalS) var(--spacingHorizontalM);
-    text-align: left;
-    vertical-align: middle;
-    border-bottom: calc(var(--stroke-width) * 1px) solid var(--neutral-stroke-divider-rest);
-}
-
-table thead th {
-    background: var(--neutral-fill-stencil-rest);
-    font-weight: 700;
-}
-
-table tbody tr {
-    transition: background-color 120ms ease;
-}
-
-table tbody tr:hover {
-    background: rgba(58, 172, 158, 0.08);
+.package-grid ::deep [role="cell"] {
+    overflow: visible;
 }

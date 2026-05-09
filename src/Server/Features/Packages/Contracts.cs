@@ -59,6 +59,8 @@ public sealed record UpsertPackageResponse(
     PackageSummaryResponse? Package,
     Guid? ReviewId);
 
+public sealed record DeletePackageResponse(bool Success, string Message);
+
 public sealed record PackageReviewResponse(
     Guid Id,
     Guid PackageId,

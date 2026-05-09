@@ -17,6 +17,8 @@ public partial class Packages
     private string? EditingPackageName;
     private string? UploadFeedbackMessage;
     private bool UploadFeedbackIsError;
+    private string? DeleteFeedbackMessage;
+    private bool DeleteFeedbackIsError;
     private readonly MetadataFormModel MetadataForm = new();
     [Inject]
     public IDialogService DialogService { get; set; } = default!;
@@ -47,6 +49,59 @@ public partial class Packages
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task PromptDeletePackageAsync(PackageSummaryResponse package)
+    {
+        DeleteFeedbackMessage = null;
+        var content = new DeletePackageConfirmDialog.DeletePackageConfirmContent { PackageName = package.Name };
+        var parameters = new DialogParameters
+        {
+            Width = "min(520px, calc(100vw - 32px))",
+            Modal = true,
+            TrapFocus = true,
+            PreventDismissOnOverlayClick = true
+        };
+
+        var dialog = await DialogService.ShowDialogAsync<DeletePackageConfirmDialog>(content, parameters);
+        var result = await dialog.Result;
+        if (result?.Cancelled != false || result.Data is not bool confirmed || !confirmed)
+        {
+            return;
+        }
+
+        await DeletePackageAsync(package.Name);
+    }
+
+    private async Task DeletePackageAsync(string packageName)
+    {
+        DeleteFeedbackMessage = null;
+        DeleteFeedbackIsError = false;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/packages/{Uri.EscapeDataString(packageName)}");
+            var payload = await response.Content.ReadFromJsonAsync<DeletePackageResponse>();
+            if (!response.IsSuccessStatusCode || payload is null || !payload.Success)
+            {
+                DeleteFeedbackIsError = true;
+                DeleteFeedbackMessage = payload?.Message ?? "Failed to delete package.";
+                return;
+            }
+
+            DeleteFeedbackMessage = payload.Message;
+            if (EditingPackageName == packageName)
+            {
+                EditingPackageName = null;
+            }
+
+            await LoadPackagesAsync();
+        }
+        catch
+        {
+            DeleteFeedbackIsError = true;
+            DeleteFeedbackMessage = "Failed to delete package.";
         }
     }
 
