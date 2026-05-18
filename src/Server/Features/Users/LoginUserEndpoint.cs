@@ -18,16 +18,14 @@ public sealed class LoginUserEndpoint(SignInManager<ApplicationUser> signInManag
     {
         if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Email and password are required."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Email and password are required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var result = await signInManager.PasswordSignInAsync(req.Email.Trim(), req.Password, req.RememberMe, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new AuthActionResponse(false, "Invalid credentials."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Invalid credentials."), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 

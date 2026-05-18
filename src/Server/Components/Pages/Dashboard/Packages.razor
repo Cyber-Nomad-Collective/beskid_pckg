@@ -2,105 +2,11 @@
 @layout DashboardLayout
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
-@using Server.Components.Shared
-@inject HttpClient Http
 
 <PageTitle>My Packages - Dashboard</PageTitle>
 
-<FluentStack Orientation="Orientation.Vertical" Gap="24px">
-    <header style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%;">
-        <div>
-            <h2>My Packages</h2>
-            <p class="muted">Manage packages you have published to the registry.</p>
-        </div>
-        <FluentButton Appearance="Appearance.Accent" OnClick="OpenUploadDialogAsync" IconStart="@(new Icons.Regular.Size16.ArrowUpload())">
-            Upload
-        </FluentButton>
-    </header>
-
-    <FluentCard Class="dashboard-card" Style="padding: 24px;">
-        @if (IsLoading)
-        {
-            <p class="muted">Loading packages...</p>
-        }
-        else if (!string.IsNullOrWhiteSpace(FeedbackMessage))
-        {
-            <p class="feedback-message is-error">@FeedbackMessage</p>
-        }
-        else if (PackageItems.Count == 0)
-        {
-            <div style="text-align: center; padding: 48px 0; color: var(--neutral-foreground-hint);">
-                <FluentIcon Value="@(new Icons.Regular.Size32.Box())" Color="Color.Neutral" Style="margin-bottom: 16px; opacity: 0.5; width: 48px; height: 48px;" />
-                <h3>No packages yet</h3>
-                <p>You haven't published any packages. Create a package via the CLI or upload one manually.</p>
-            </div>
-        }
-        else
-        {
-            <PackageGrid Packages="PackageItems" 
-                         ShowActions="true"
-                         OnEditMetadata="StartMetadataEdit" 
-                         OnUploadVersion="StartVersionUpload"
-                         OnDeletePackage="PromptDeletePackageAsync" />
-
-            @if (!string.IsNullOrWhiteSpace(MetadataFeedbackMessage))
-            {
-                <p class="feedback-message is-success" style="margin-top: 16px;">@MetadataFeedbackMessage</p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(UploadFeedbackMessage))
-            {
-                <p class="feedback-message @(UploadFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
-                    @UploadFeedbackMessage
-                </p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(DeleteFeedbackMessage))
-            {
-                <p class="feedback-message @(DeleteFeedbackIsError ? "is-error" : "is-success")" style="margin-top: 16px;">
-                    @DeleteFeedbackMessage
-                </p>
-            }
-
-            @if (EditingPackageName is not null)
-            {
-                <FluentDivider Style="margin: 20px 0;" />
-
-                <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
-                    <header>
-                        <h3>Edit Metadata: @EditingPackageName</h3>
-                        <p class="muted">Update description, links, and visibility for the selected package.</p>
-                    </header>
-
-                    <EditForm Model="MetadataForm" OnValidSubmit="SaveMetadataAsync">
-                        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
-                            <FluentTextField @bind-Value="MetadataForm.PackageName" Label="Package name" Disabled />
-                            <FluentTextArea @bind-Value="MetadataForm.Description" Label="Description" Placeholder="Describe what this package provides" />
-
-                            <FluentTextField @bind-Value="MetadataForm.Topic" Label="Topic" Placeholder="e.g. tooling, runtime, ai" />
-                            <FluentTextField @bind-Value="MetadataForm.TagsInput" Label="Tags" Placeholder="Comma-separated: starter, official, demo" />
-
-                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="true">
-                                <FluentTextField @bind-Value="MetadataForm.RepositoryUrl" Label="Repository URL" Placeholder="https://..." />
-                                <FluentTextField @bind-Value="MetadataForm.WebsiteUrl" Label="Website URL" Placeholder="https://..." />
-                            </FluentStack>
-
-                            <FluentTextField @bind-Value="MetadataForm.IconUrl"
-                                             Label="Icon URL"
-                                             Placeholder="https://… (square PNG or SVG)"
-                                             Style="max-width: 42rem;" />
-
-                            <FluentSwitch @bind-Value="MetadataForm.IsPublic">Public package</FluentSwitch>
-
-                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
-                                <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Button" OnClick="CancelMetadataEdit">Cancel</FluentButton>
-                                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="IsSavingMetadata">Save metadata</FluentButton>
-                            </FluentStack>
-                        </FluentStack>
-                    </EditForm>
-                </FluentCard>
-            }
-
-        }
-    </FluentCard>
-</FluentStack>
+<PackageDashboard Title="My Packages"
+                    Description="Manage packages you have published to the registry."
+                    ShowUploadButton="true"
+                    EmptyTitle="No packages yet"
+                    EmptyMessage="You haven't published any packages. Create a package via the CLI or upload one manually." />

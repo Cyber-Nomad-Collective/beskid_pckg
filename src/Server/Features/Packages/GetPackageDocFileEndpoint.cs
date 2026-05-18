@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Server.Features.Packages.Internal;
 using Server.Services;
 
 namespace Server.Features.Packages;
@@ -20,19 +21,15 @@ public sealed class GetPackageDocFileEndpoint(IPackageDocsArchiveService docsArc
         var path = Query<string>("path", isRequired: false);
 
         var result = await docsArchive.ReadDocAsync(HttpContext, idOrName, version, path ?? string.Empty, ct);
-        if (result.StatusCode != StatusCodes.Status200OK)
+        if (await PackageArtifactEndpointResults.TrySendErrorAsync(this, result.StatusCode, ct))
         {
-            if (result.StatusCode == StatusCodes.Status404NotFound)
-            {
-                await Send.NotFoundAsync(ct);
-                return;
-            }
-
-            await Send.StringAsync(string.Empty, result.StatusCode, cancellation: ct);
             return;
         }
 
-        HttpContext.Response.ContentType = result.ContentType;
-        await HttpContext.Response.WriteAsync(result.Markdown ?? string.Empty, ct);
+        await Send.StringAsync(
+            result.Markdown ?? string.Empty,
+            StatusCodes.Status200OK,
+            result.ContentType ?? "text/markdown",
+            ct);
     }
 }

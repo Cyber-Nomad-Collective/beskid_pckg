@@ -23,24 +23,21 @@ public sealed class RevokeApiKeyEndpoint(IApiKeyManagementService apiKeyManageme
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new RevokeApiKeyResponse(false, "Unauthorized.", null), ct);
+            await Send.ResponseAsync(new RevokeApiKeyResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
         var keyId = Route<Guid>("KeyId");
         if (keyId == Guid.Empty)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new RevokeApiKeyResponse(false, "Invalid key id.", null), ct);
+            await Send.ResponseAsync(new RevokeApiKeyResponse(false, "Invalid key id.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var result = await apiKeyManagementService.RevokeAsync(userId, keyId, ct);
         if (!result.Success)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new RevokeApiKeyResponse(false, result.Message, null), ct);
+            await Send.ResponseAsync(new RevokeApiKeyResponse(false, result.Message, null), StatusCodes.Status404NotFound, ct);
             return;
         }
 

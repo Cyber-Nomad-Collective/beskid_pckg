@@ -35,8 +35,7 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         if (!await Captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.BoardComment, remoteIp, ct))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreateBoardCommentResponse(false, "Robot check failed. Please try again."), ct);
+            await Send.ResponseAsync(new CreateBoardCommentResponse(false, "Robot check failed. Please try again."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -49,16 +48,14 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
 
         if (post.IsLocked)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await Send.OkAsync(new CreateBoardCommentResponse(false, "This post is locked."), ct);
+            await Send.ResponseAsync(new CreateBoardCommentResponse(false, "This post is locked."), StatusCodes.Status403Forbidden, ct);
             return;
         }
 
         var linkBlock = await LinkGuard.GetBlockReasonAsync(req.Content, ct);
         if (linkBlock is not null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreateBoardCommentResponse(false, linkBlock), ct);
+            await Send.ResponseAsync(new CreateBoardCommentResponse(false, linkBlock), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

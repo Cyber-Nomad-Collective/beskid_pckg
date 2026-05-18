@@ -93,19 +93,6 @@ public sealed record CommunityReviewResponse(
     string Comment,
     DateTimeOffset CreatedAtUtc);
 
-public sealed record PackageIssueRequest(Guid PackageId, string Title, string Body);
-
-public sealed record PackageIssueResponse(
-    Guid Id,
-    Guid PackageId,
-    string Title,
-    string Body,
-    string AuthorUserId,
-    DateTimeOffset CreatedAtUtc,
-    int Score);
-
-public sealed record VoteIssueRequest(Guid IssueId, int Value);
-
 public sealed record PackageDependencyResponse(
     string Name,
     string? Version,
@@ -144,27 +131,3 @@ public sealed record PackageDetailsResponse(
     [property: JsonPropertyName("firstPublishedAtUtc")] DateTimeOffset? FirstPublishedAtUtc = null,
     [property: JsonPropertyName("lastPublishedAtUtc")] DateTimeOffset? LastPublishedAtUtc = null,
     [property: JsonPropertyName("latestVersion")] string? LatestVersion = null);
-
-public sealed record PackageDocFileEntry(
-    [property: JsonPropertyName("path")] string Path,
-    [property: JsonPropertyName("title")] string Title);
-
-public sealed record PackageDocsIndexResponse(
-    [property: JsonPropertyName("files")] IReadOnlyList<PackageDocFileEntry> Files,
-    [property: JsonPropertyName("hasStructuredApiDoc")] bool HasStructuredApiDoc = false,
-    [property: JsonPropertyName("structuredDocRelativePath")] string? StructuredDocRelativePath = null);
-
-public sealed record PackageSourceTreeNodeResponse(
-    [property: JsonPropertyName("path")] string Path,
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("isDirectory")] bool IsDirectory,
-    [property: JsonPropertyName("parentPath")] string? ParentPath,
-    [property: JsonPropertyName("sizeBytes")] long? SizeBytes,
-    [property: JsonPropertyName("fileType")] string FileType,
-    [property: JsonPropertyName("iconKey")] string IconKey,
-    [property: JsonPropertyName("previewKind")] string PreviewKind,
-    [property: JsonPropertyName("monacoLanguage")] string? MonacoLanguage,
-    [property: JsonPropertyName("contentType")] string? ContentType);
-
-public sealed record PackageSourceTreeResponse(
-    [property: JsonPropertyName("nodes")] IReadOnlyList<PackageSourceTreeNodeResponse> Nodes);

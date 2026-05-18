@@ -1,0 +1,21 @@
+.stack-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacingVerticalM, 12px);
+    min-height: 0;
+}
+
+.toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--spacingHorizontalM, 12px);
+    width: 100%;
+}
+
+.tab-fill {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}

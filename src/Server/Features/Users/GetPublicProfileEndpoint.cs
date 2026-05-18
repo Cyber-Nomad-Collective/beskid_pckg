@@ -22,16 +22,14 @@ public sealed class GetPublicProfileEndpoint(
         var userId = Route<string>("userId");
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublicProfileResponse(false, "User id is required.", null), ct);
+            await Send.ResponseAsync(new PublicProfileResponse(false, "User id is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new PublicProfileResponse(false, "Profile not found.", null), ct);
+            await Send.ResponseAsync(new PublicProfileResponse(false, "Profile not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
 

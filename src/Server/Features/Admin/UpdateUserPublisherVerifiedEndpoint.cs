@@ -34,8 +34,7 @@ public sealed class UpdateUserPublisherVerifiedEndpoint(UserManager<ApplicationU
         if (!update.Succeeded)
         {
             var message = string.Join(' ', update.Errors.Select(e => e.Description));
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UpdatePublisherVerifiedResponse(false, message), ct);
+            await Send.ResponseAsync(new UpdatePublisherVerifiedResponse(false, message), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

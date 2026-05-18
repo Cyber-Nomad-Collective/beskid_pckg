@@ -22,8 +22,7 @@ public sealed class CreateInitialAdminEndpoint(
     {
         if (await userManager.Users.AnyAsync(ct))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            await Send.OkAsync(new AuthActionResponse(false, "Initial admin already exists."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Initial admin already exists."), StatusCodes.Status409Conflict, ct);
             return;
         }
 
@@ -32,15 +31,13 @@ public sealed class CreateInitialAdminEndpoint(
             || string.IsNullOrWhiteSpace(req.Password)
             || string.IsNullOrWhiteSpace(req.ConfirmPassword))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Display name, email, password, and password confirmation are required."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Display name, email, password, and password confirmation are required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         if (!string.Equals(req.Password, req.ConfirmPassword, StringComparison.Ordinal))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Passwords do not match."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Passwords do not match."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -58,8 +55,7 @@ public sealed class CreateInitialAdminEndpoint(
         if (!createResult.Succeeded)
         {
             var message = string.Join(' ', createResult.Errors.Select(e => e.Description));
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, message), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, message), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -73,8 +69,7 @@ public sealed class CreateInitialAdminEndpoint(
         var signInResult = await signInManager.PasswordSignInAsync(email, req.Password, isPersistent: true, lockoutOnFailure: false);
         if (!signInResult.Succeeded)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await Send.OkAsync(new AuthActionResponse(false, "Admin account created but automatic sign-in failed."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Admin account created but automatic sign-in failed."), StatusCodes.Status500InternalServerError, ct);
             return;
         }
 

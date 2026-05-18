@@ -31,7 +31,6 @@ public sealed class GetPackageEmbedBadgeEndpoint(ApplicationDbContext dbContext)
     private async Task WriteBadgeAsync(byte[] bytes, CancellationToken ct)
     {
         HttpContext.Response.Headers.CacheControl = "public, max-age=120";
-        HttpContext.Response.ContentType = "image/svg+xml; charset=utf-8";
-        await HttpContext.Response.Body.WriteAsync(bytes, ct);
+        await Send.BytesAsync(bytes, string.Empty, "image/svg+xml; charset=utf-8", cancellation: ct);
     }
 }

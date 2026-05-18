@@ -36,8 +36,7 @@ public sealed class RemoveUserEmailEndpoint : EndpointWithoutRequest<RemoveUserE
 
         if (email.IsPrimary)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new RemoveUserEmailResponse(false, "Cannot remove primary email."), ct);
+            await Send.ResponseAsync(new RemoveUserEmailResponse(false, "Cannot remove primary email."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

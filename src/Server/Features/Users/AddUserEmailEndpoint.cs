@@ -30,8 +30,7 @@ public sealed class AddUserEmailEndpoint : Endpoint<AddUserEmailRequest, AddUser
 
         if (emailExists)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AddUserEmailResponse(false, "This email is already added."), ct);
+            await Send.ResponseAsync(new AddUserEmailResponse(false, "This email is already added."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

@@ -57,8 +57,7 @@ public sealed class UpsertPackageEndpoint(
         {
             logger.LogWarning("Upsert rejected: missing package name.");
             Record("Warning", "upsert", "Package name is required.", userId, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UpsertPackageResponse(false, "Package name is required.", null, null), ct);
+            await Send.ResponseAsync(new UpsertPackageResponse(false, "Package name is required.", null, null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -86,8 +85,7 @@ public sealed class UpsertPackageEndpoint(
         {
             logger.LogWarning("Upsert rejected: namespace conflict for {PackageName}.", normalizedName);
             Record("Warning", "upsert_forbidden", "You do not own this package namespace.", userId, normalizedName);
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await Send.OkAsync(new UpsertPackageResponse(false, "You do not own this package namespace.", null, null), ct);
+            await Send.ResponseAsync(new UpsertPackageResponse(false, "You do not own this package namespace.", null, null), StatusCodes.Status403Forbidden, ct);
             return;
         }
         else

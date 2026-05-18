@@ -43,7 +43,7 @@ else
             <div class="package-hero-main">
                 <h1>@Package.Name</h1>
                 <p class="package-description">@Package.Description</p>
-                <p class="package-publisher-line muted" style="display: flex; align-items: center; gap: 8px; margin: 8px 0 0 0; flex-wrap: wrap;">
+                <p class="package-publisher-line muted">
                     <span>Publisher</span>
                     <PublisherAttribution OwnerUserId="@_ownerPublisherUserId"
                                           DisplayName="@_ownerPublisherDisplayName"
@@ -79,6 +79,16 @@ else
                 </div>
             }
         </header>
+
+        @if (Versions.Count > 0)
+        {
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12" Class="toolbar-row">
+                <FluentLabel Typo="Typography.Body">Version for docs and source</FluentLabel>
+                <PackageVersionSelect Versions="Versions"
+                                      @bind-SelectedVersion="ExplorerVersion"
+                                      AriaLabel="Select version for documentation and source" />
+            </FluentStack>
+        }
 
         <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
             <FluentTab Id="pkg-tab-versions" Label="Versions">
@@ -206,8 +216,8 @@ else
             </FluentTab>
 
             <FluentTab Id="pkg-tab-docs" Label="Documentation">
-                <div class="content-section package-tab-content">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                <div class="content-section package-tab-content package-tab-fill">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12" Class="package-tab-inner-stack">
                         <FluentStack Orientation="Orientation.Horizontal"
                                      VerticalAlignment="VerticalAlignment.Center"
                                      Wrap="true"
@@ -220,15 +230,6 @@ else
                                 Open full page
                             </FluentButton>
                         </FluentStack>
-                        @if (Versions.Count > 0)
-                        {
-                            <FluentSelect TOption="string" @bind-Value="ExplorerVersion" Style="max-width: 240px;" AriaLabel="Select version for source and docs">
-                                @foreach (var version in Versions)
-                                {
-                                    <FluentOption TOption="string" Value="@version.Version">@version.Version</FluentOption>
-                                }
-                            </FluentSelect>
-                        }
                         <PackageDocs PackageIdentifier="@Package.Name"
                                      Version="@ExplorerVersion"
                                      Variant="PackageDocs.PackageDocsVariant.Embedded" />
@@ -237,27 +238,19 @@ else
             </FluentTab>
 
             <FluentTab Id="pkg-tab-source" Label="Source">
-                <div class="content-section package-tab-content">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
+                <div class="content-section package-tab-content package-tab-fill">
+                    <FluentStack Orientation="Orientation.Vertical" Gap="12" Class="package-tab-inner-stack">
                         <FluentStack Orientation="Orientation.Horizontal"
                                      VerticalAlignment="VerticalAlignment.Center"
                                      Wrap="true"
                                      Gap="12"
                                      Class="content-section-title-row">
                             <h2 style="margin: 0;">Source</h2>
-                            @if (Versions.Count > 0)
-                            {
-                                <FluentSelect TOption="string" @bind-Value="ExplorerVersion" Style="max-width: 240px;" AriaLabel="Select version for source explorer">
-                                    @foreach (var version in Versions)
-                                    {
-                                        <FluentOption TOption="string" Value="@version.Version">@version.Version</FluentOption>
-                                    }
-                                </FluentSelect>
-                            }
                         </FluentStack>
 
                         <PackageSourceBrowser PackageIdentifier="@Package.Name"
-                                             Version="@ExplorerVersion" />
+                                             Version="@ExplorerVersion"
+                                             TabActive="@(SelectedTabId == "pkg-tab-source")" />
                     </FluentStack>
                 </div>
             </FluentTab>

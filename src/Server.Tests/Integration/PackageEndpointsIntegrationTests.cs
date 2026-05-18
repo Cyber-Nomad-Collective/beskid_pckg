@@ -44,7 +44,7 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
 
         var response = await client.PostAsync($"/api/packages/{package.Name}/publish", form);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("ZIP", body, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("\"success\":false", body, StringComparison.OrdinalIgnoreCase);

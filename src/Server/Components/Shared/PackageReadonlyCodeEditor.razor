@@ -1,18 +1,24 @@
 @using BlazorMonaco.Editor
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
 <div class="source-editor-shell">
     <StandaloneCodeEditor @key="_editorKey"
+                          @ref="_editor"
                           Id="@EditorId"
-                          ConstructionOptions="BuildOptions"
-                          />
+                          ConstructionOptions="BuildOptions" />
 </div>
 
 @code {
     [Parameter] public string Value { get; set; } = string.Empty;
     [Parameter] public string Language { get; set; } = "plaintext";
     [Parameter] public string EditorId { get; set; } = "pkg-src-editor";
+    /// <summary>Increment when the editor container becomes visible (e.g. Source tab selected) to force Monaco layout.</summary>
+    [Parameter] public int LayoutGeneration { get; set; }
 
     private string _editorKey = string.Empty;
+    private StandaloneCodeEditor? _editor;
+    private int _appliedLayoutGeneration = -1;
 
     private StandaloneEditorConstructionOptions BuildOptions(StandaloneCodeEditor _)
         => new()
@@ -30,6 +36,29 @@
     protected override void OnParametersSet()
     {
         _editorKey = $"{NormalizeLanguage(Language)}::{Value?.GetHashCode() ?? 0}::{EditorId}";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (LayoutGeneration == _appliedLayoutGeneration)
+        {
+            return;
+        }
+
+        _appliedLayoutGeneration = LayoutGeneration;
+        if (_editor is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("blazorMonaco.editor.layout", EditorId, null, false);
+        }
+        catch (JSException)
+        {
+            // Editor may not be mounted yet; AutomaticLayout will recover on resize.
+        }
     }
 
     private static string NormalizeLanguage(string? language)

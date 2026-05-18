@@ -1,23 +1,18 @@
 using System.IO.Compression;
 using System.Text;
 using Server.Features.Packages;
+using Server.Services.Artifacts;
 
 namespace Server.Services;
 
 public interface IPackageDocsArchiveService
 {
-    /// <summary>
-    /// Lists markdown documentation files from the package artifact (docs/*.md, .beskid/docs/*.md from Beskid pack, and optional README.md).
-    /// </summary>
     Task<PackageDocsListResult> ListDocsAsync(
         HttpContext httpContext,
         string idOrName,
         string versionOrLatest,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads raw markdown for a single allowed documentation path.
-    /// </summary>
     Task<PackageDocsFileResult> ReadDocAsync(
         HttpContext httpContext,
         string idOrName,
@@ -25,9 +20,6 @@ public interface IPackageDocsArchiveService
         string relativePath,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Reads Beskid-generated structured API documentation (<c>.beskid/docs/api.json</c>) when present.
-    /// </summary>
     Task<PackageDocsStructuredResult> ReadStructuredDocAsync(
         HttpContext httpContext,
         string idOrName,
@@ -35,34 +27,29 @@ public interface IPackageDocsArchiveService
         CancellationToken cancellationToken = default);
 }
 
-public sealed class PackageDocsListResult(
-    int statusCode,
-    IReadOnlyList<PackageDocFileEntry>? files = null,
-    bool hasStructuredApiDoc = false,
-    string? structuredDocRelativePath = null)
+public sealed class PackageDocsListResult(int statusCode, IReadOnlyList<PackageDocFileEntry>? files = null, bool hasStructuredApiDoc = false, string? structuredDocRelativePath = null)
+    : PackageArtifactResult(statusCode)
 {
-    public int StatusCode { get; } = statusCode;
     public IReadOnlyList<PackageDocFileEntry>? Files { get; } = files;
     public bool HasStructuredApiDoc { get; } = hasStructuredApiDoc;
     public string? StructuredDocRelativePath { get; } = structuredDocRelativePath;
 }
 
 public sealed class PackageDocsFileResult(int statusCode, string? markdown = null, string? contentType = null)
+    : PackageArtifactResult(statusCode)
 {
-    public int StatusCode { get; } = statusCode;
     public string? Markdown { get; } = markdown;
     public string? ContentType { get; } = contentType ?? "text/markdown; charset=utf-8";
 }
 
 public sealed class PackageDocsStructuredResult(int statusCode, string? json = null, string? contentType = null)
+    : PackageArtifactResult(statusCode)
 {
-    public int StatusCode { get; } = statusCode;
     public string? Json { get; } = json;
     public string? ContentType { get; } = contentType ?? "application/json; charset=utf-8";
 }
 
-public sealed class PackageDocsArchiveService(
-    IPackageArtifactExplorerService artifactExplorer) : IPackageDocsArchiveService
+public sealed class PackageDocsArchiveService(IPackageArtifactZipReader zipReader) : IPackageDocsArchiveService
 {
     public const int MaxListedFiles = 500;
     public const int MaxDocFileBytes = 512 * 1024;
@@ -73,75 +60,23 @@ public sealed class PackageDocsArchiveService(
         string versionOrLatest,
         CancellationToken cancellationToken = default)
     {
-        var resolved = await artifactExplorer.ResolveVersionAsync(httpContext, idOrName, versionOrLatest, cancellationToken);
-        if (!resolved.IsSuccess)
+        var (statusCode, listed) = await zipReader.WithZipAsync(
+            httpContext,
+            idOrName,
+            versionOrLatest,
+            ListDocsFromZipAsync,
+            cancellationToken);
+
+        if (statusCode != StatusCodes.Status200OK || listed is null)
         {
-            return new PackageDocsListResult(resolved.StatusCode);
-        }
-        var openResult = await artifactExplorer.OpenVerifiedArchiveAsync(resolved.Version!, cancellationToken);
-        if (openResult.StatusCode != StatusCodes.Status200OK || openResult.Stream is null)
-        {
-            return new PackageDocsListResult(openResult.StatusCode);
+            return new PackageDocsListResult(statusCode);
         }
 
-        using var memory = openResult.Stream;
-        using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
-        using (zip)
-        {
-            var entries = new List<PackageDocFileEntry>();
-            var hasStructuredApiDoc = false;
-            foreach (var entry in zip.Entries)
-            {
-                if (string.IsNullOrEmpty(entry.Name))
-                {
-                    continue;
-                }
-
-                var full = NormalizeEntryPath(entry.FullName);
-                if (PackageDocsPaths.IsStructuredApiDocPath(full))
-                {
-                    hasStructuredApiDoc = true;
-                }
-
-                if (!PackageDocsPaths.IsListableMarkdownPath(full))
-                {
-                    continue;
-                }
-
-                if (entries.Count < MaxListedFiles)
-                {
-                    entries.Add(new PackageDocFileEntry(full, TitleFromPath(full)));
-                }
-            }
-
-            var ordered = entries
-                .DistinctBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
-                .OrderBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            // README first when present
-            var readme = ordered.FirstOrDefault(e => string.Equals(e.Path, "README.md", StringComparison.OrdinalIgnoreCase));
-            if (readme is not null)
-            {
-                ordered.Remove(readme);
-                ordered.Insert(0, readme);
-            }
-
-            // Beskid-generated API doc index next (after README) when present
-            var apiIndex = ordered.FirstOrDefault(e =>
-                string.Equals(e.Path, ".beskid/docs/index.md", StringComparison.OrdinalIgnoreCase));
-            if (apiIndex is not null)
-            {
-                ordered.Remove(apiIndex);
-                ordered.Insert(readme is not null ? 1 : 0, apiIndex);
-            }
-
-            return new PackageDocsListResult(
-                StatusCodes.Status200OK,
-                ordered,
-                hasStructuredApiDoc,
-                hasStructuredApiDoc ? PackageDocsPaths.StructuredApiDocRelativePath : null);
-        }
+        return new PackageDocsListResult(
+            StatusCodes.Status200OK,
+            listed.Files,
+            listed.HasStructuredApiDoc,
+            listed.StructuredDocRelativePath);
     }
 
     public async Task<PackageDocsFileResult> ReadDocAsync(
@@ -156,49 +91,36 @@ public sealed class PackageDocsArchiveService(
             return new PackageDocsFileResult(StatusCodes.Status400BadRequest);
         }
 
-        var normalizedRequested = NormalizeEntryPath(relativePath);
+        var normalizedRequested = PackageZipPathNormalizer.Normalize(relativePath);
         if (!PackageDocsPaths.IsListableMarkdownPath(normalizedRequested))
         {
             return new PackageDocsFileResult(StatusCodes.Status400BadRequest);
         }
 
-        var resolved = await artifactExplorer.ResolveVersionAsync(httpContext, idOrName, versionOrLatest, cancellationToken);
-        if (!resolved.IsSuccess)
+        try
         {
-            return new PackageDocsFileResult(resolved.StatusCode);
-        }
-        var openResult = await artifactExplorer.OpenVerifiedArchiveAsync(resolved.Version!, cancellationToken);
-        if (openResult.StatusCode != StatusCodes.Status200OK || openResult.Stream is null)
-        {
-            return new PackageDocsFileResult(openResult.StatusCode);
-        }
+            var (statusCode, markdown) = await zipReader.WithZipAsync(
+                httpContext,
+                idOrName,
+                versionOrLatest,
+                (zip, ct) => ReadMarkdownEntryAsync(zip, normalizedRequested, ct),
+                cancellationToken);
 
-        using var memory = openResult.Stream;
-        using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
-        using (zip)
-        {
-            var entry = zip.GetEntry(normalizedRequested)
-                        ?? zip.Entries.FirstOrDefault(e =>
-                            string.Equals(NormalizeEntryPath(e.FullName), normalizedRequested, StringComparison.OrdinalIgnoreCase));
-            if (entry is null || string.IsNullOrEmpty(entry.Name))
+            if (statusCode != StatusCodes.Status200OK)
+            {
+                return new PackageDocsFileResult(statusCode);
+            }
+
+            if (markdown is null)
             {
                 return new PackageDocsFileResult(StatusCodes.Status404NotFound);
             }
 
-            if (entry.Length > MaxDocFileBytes)
-            {
-                return new PackageDocsFileResult(StatusCodes.Status413PayloadTooLarge);
-            }
-
-            await using var entryStream = entry.Open();
-            using var reader = new StreamReader(entryStream, Encoding.UTF8);
-            var text = await reader.ReadToEndAsync(cancellationToken);
-            if (Encoding.UTF8.GetByteCount(text) > MaxDocFileBytes)
-            {
-                return new PackageDocsFileResult(StatusCodes.Status413PayloadTooLarge);
-            }
-
-            return new PackageDocsFileResult(StatusCodes.Status200OK, text);
+            return new PackageDocsFileResult(StatusCodes.Status200OK, markdown);
+        }
+        catch (PackageArtifactPayloadTooLargeException)
+        {
+            return new PackageDocsFileResult(StatusCodes.Status413PayloadTooLarge);
         }
     }
 
@@ -208,48 +130,145 @@ public sealed class PackageDocsArchiveService(
         string versionOrLatest,
         CancellationToken cancellationToken = default)
     {
-        var resolved = await artifactExplorer.ResolveVersionAsync(httpContext, idOrName, versionOrLatest, cancellationToken);
-        if (!resolved.IsSuccess)
+        try
         {
-            return new PackageDocsStructuredResult(resolved.StatusCode);
-        }
-        var openResult = await artifactExplorer.OpenVerifiedArchiveAsync(resolved.Version!, cancellationToken);
-        if (openResult.StatusCode != StatusCodes.Status200OK || openResult.Stream is null)
-        {
-            return new PackageDocsStructuredResult(openResult.StatusCode);
-        }
+            var (statusCode, json) = await zipReader.WithZipAsync(
+                httpContext,
+                idOrName,
+                versionOrLatest,
+                ReadStructuredJsonFromZipAsync,
+                cancellationToken);
 
-        using var memory = openResult.Stream;
-        using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
-        using (zip)
-        {
-            var canonical = PackageDocsPaths.StructuredApiDocRelativePath;
-            var entry = zip.GetEntry(canonical)
-                        ?? zip.Entries.FirstOrDefault(e =>
-                            PackageDocsPaths.IsStructuredApiDocPath(NormalizeEntryPath(e.FullName)));
-            if (entry is null || string.IsNullOrEmpty(entry.Name))
+            if (statusCode != StatusCodes.Status200OK)
+            {
+                return new PackageDocsStructuredResult(statusCode);
+            }
+
+            if (json is null)
             {
                 return new PackageDocsStructuredResult(StatusCodes.Status404NotFound);
             }
 
-            if (entry.Length > MaxDocFileBytes)
-            {
-                return new PackageDocsStructuredResult(StatusCodes.Status413PayloadTooLarge);
-            }
-
-            await using var entryStream = entry.Open();
-            using var reader = new StreamReader(entryStream, Encoding.UTF8);
-            var text = await reader.ReadToEndAsync(cancellationToken);
-            if (Encoding.UTF8.GetByteCount(text) > MaxDocFileBytes)
-            {
-                return new PackageDocsStructuredResult(StatusCodes.Status413PayloadTooLarge);
-            }
-
-            return new PackageDocsStructuredResult(StatusCodes.Status200OK, text);
+            return new PackageDocsStructuredResult(StatusCodes.Status200OK, json);
+        }
+        catch (PackageArtifactPayloadTooLargeException)
+        {
+            return new PackageDocsStructuredResult(StatusCodes.Status413PayloadTooLarge);
         }
     }
-    private static string NormalizeEntryPath(string path)
-        => path.Replace('\\', '/').TrimStart('/');
+
+    private static async Task<ListedDocs> ListDocsFromZipAsync(ZipArchive zip, CancellationToken cancellationToken)
+    {
+        var entries = new List<PackageDocFileEntry>();
+        var hasStructuredApiDoc = false;
+        foreach (var entry in zip.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name))
+            {
+                continue;
+            }
+
+            var full = PackageZipPathNormalizer.Normalize(entry.FullName);
+            if (PackageDocsPaths.IsStructuredApiDocPath(full))
+            {
+                hasStructuredApiDoc = true;
+            }
+
+            if (!PackageDocsPaths.IsListableMarkdownPath(full))
+            {
+                continue;
+            }
+
+            if (entries.Count < MaxListedFiles)
+            {
+                entries.Add(new PackageDocFileEntry(full, TitleFromPath(full)));
+            }
+        }
+
+        var ordered = entries
+            .DistinctBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(e => e.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var readme = ordered.FirstOrDefault(e => string.Equals(e.Path, "README.md", StringComparison.OrdinalIgnoreCase));
+        if (readme is not null)
+        {
+            ordered.Remove(readme);
+            ordered.Insert(0, readme);
+        }
+
+        var apiIndex = ordered.FirstOrDefault(e =>
+            string.Equals(e.Path, ".beskid/docs/index.md", StringComparison.OrdinalIgnoreCase));
+        if (apiIndex is not null)
+        {
+            ordered.Remove(apiIndex);
+            ordered.Insert(readme is not null ? 1 : 0, apiIndex);
+        }
+
+        return new ListedDocs(
+            ordered,
+            hasStructuredApiDoc,
+            hasStructuredApiDoc ? PackageDocsPaths.StructuredApiDocRelativePath : null);
+    }
+
+    private static async Task<string?> ReadMarkdownEntryAsync(
+        ZipArchive zip,
+        string normalizedRequested,
+        CancellationToken cancellationToken)
+    {
+        var entry = FindEntry(zip, normalizedRequested);
+        if (entry is null || string.IsNullOrEmpty(entry.Name))
+        {
+            return null;
+        }
+
+        if (entry.Length > MaxDocFileBytes)
+        {
+            throw new PackageArtifactPayloadTooLargeException();
+        }
+
+        await using var entryStream = entry.Open();
+        using var reader = new StreamReader(entryStream, Encoding.UTF8);
+        var text = await reader.ReadToEndAsync(cancellationToken);
+        if (Encoding.UTF8.GetByteCount(text) > MaxDocFileBytes)
+        {
+            throw new PackageArtifactPayloadTooLargeException();
+        }
+
+        return text;
+    }
+
+    private static async Task<string?> ReadStructuredJsonFromZipAsync(ZipArchive zip, CancellationToken cancellationToken)
+    {
+        var canonical = PackageDocsPaths.StructuredApiDocRelativePath;
+        var entry = zip.GetEntry(canonical)
+                    ?? zip.Entries.FirstOrDefault(e =>
+                        PackageDocsPaths.IsStructuredApiDocPath(PackageZipPathNormalizer.Normalize(e.FullName)));
+        if (entry is null || string.IsNullOrEmpty(entry.Name))
+        {
+            return null;
+        }
+
+        if (entry.Length > MaxDocFileBytes)
+        {
+            throw new PackageArtifactPayloadTooLargeException();
+        }
+
+        await using var entryStream = entry.Open();
+        using var reader = new StreamReader(entryStream, Encoding.UTF8);
+        var text = await reader.ReadToEndAsync(cancellationToken);
+        if (Encoding.UTF8.GetByteCount(text) > MaxDocFileBytes)
+        {
+            throw new PackageArtifactPayloadTooLargeException();
+        }
+
+        return text;
+    }
+
+    private static ZipArchiveEntry? FindEntry(ZipArchive zip, string normalizedRequested)
+        => zip.GetEntry(normalizedRequested)
+           ?? zip.Entries.FirstOrDefault(e =>
+               string.Equals(PackageZipPathNormalizer.Normalize(e.FullName), normalizedRequested, StringComparison.OrdinalIgnoreCase));
 
     private static string TitleFromPath(string path)
     {
@@ -258,4 +277,11 @@ public sealed class PackageDocsArchiveService(
             ? file[..^3].Replace('-', ' ')
             : file;
     }
+
+    private sealed record ListedDocs(
+        IReadOnlyList<PackageDocFileEntry> Files,
+        bool HasStructuredApiDoc,
+        string? StructuredDocRelativePath);
 }
+
+internal sealed class PackageArtifactPayloadTooLargeException : Exception;

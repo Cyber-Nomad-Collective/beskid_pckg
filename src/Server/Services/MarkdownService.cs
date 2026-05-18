@@ -1,4 +1,5 @@
 using Markdig;
+using Markdig.Extensions.AutoIdentifiers;
 
 namespace Server.Services;
 
@@ -17,10 +18,12 @@ public sealed class MarkdownService : IMarkdownService
     {
         _pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
+            .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
             .Build();
 
         _safePipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
+            .UseAutoIdentifiers(AutoIdentifierOptions.GitHub)
             .DisableHtml()
             .Build();
     }

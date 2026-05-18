@@ -1,0 +1,81 @@
+@using Server.Components.Shared
+@inject HttpClient Http
+
+<FluentStack Orientation="Orientation.Vertical" Gap="24px">
+    <PageHeader Title="@Title" Description="@Description">
+        <Actions>
+            @if (ShowUploadButton)
+            {
+                <FluentButton Appearance="Appearance.Accent" OnClick="OpenUploadDialogAsync" IconStart="@(new Icons.Regular.Size16.ArrowUpload())">
+                    Upload
+                </FluentButton>
+            }
+        </Actions>
+    </PageHeader>
+
+    <FluentCard Class="dashboard-card" Style="padding: 24px;">
+        @if (IsLoading)
+        {
+            <LoadingIndicator Message="Loading packages…" />
+        }
+        else if (!string.IsNullOrWhiteSpace(FeedbackMessage))
+        {
+            <FeedbackMessage Message="@FeedbackMessage" />
+        }
+        else if (PackageItems.Count == 0)
+        {
+            <EmptyState Title="@EmptyTitle" Message="@EmptyMessage" />
+        }
+        else
+        {
+            <PackageGrid Packages="PackageItems"
+                         ShowActions="true"
+                         OnEditMetadata="StartMetadataEdit"
+                         OnUploadVersion="StartVersionUpload"
+                         OnDeletePackage="PromptDeletePackageAsync" />
+
+            <FeedbackMessage Message="@MetadataFeedbackMessage" IsSuccess="true" />
+            <FeedbackMessage Message="@UploadFeedbackMessage" IsSuccess="@(!UploadFeedbackIsError)" />
+            <FeedbackMessage Message="@DeleteFeedbackMessage" IsSuccess="@(!DeleteFeedbackIsError)" />
+
+            @if (EditingPackageName is not null)
+            {
+                <FluentDivider Style="margin: 20px 0;" />
+
+                <FluentCard Class="dashboard-card" Style="padding: 24px; max-width: 900px;">
+                    <header>
+                        <h3>Edit Metadata: @EditingPackageName</h3>
+                        <p class="muted">Update description, links, and visibility for the selected package.</p>
+                    </header>
+
+                    <EditForm Model="MetadataForm" OnValidSubmit="SaveMetadataAsync">
+                        <FluentStack Orientation="Orientation.Vertical" Gap="16px">
+                            <FluentTextField @bind-Value="MetadataForm.PackageName" Label="Package name" Disabled />
+                            <FluentTextArea @bind-Value="MetadataForm.Description" Label="Description" Placeholder="Describe what this package provides" />
+
+                            <FluentTextField @bind-Value="MetadataForm.Topic" Label="Topic" Placeholder="e.g. tooling, runtime, ai" />
+                            <FluentTextField @bind-Value="MetadataForm.TagsInput" Label="Tags" Placeholder="Comma-separated: starter, official, demo" />
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Wrap="true">
+                                <FluentTextField @bind-Value="MetadataForm.RepositoryUrl" Label="Repository URL" Placeholder="https://..." />
+                                <FluentTextField @bind-Value="MetadataForm.WebsiteUrl" Label="Website URL" Placeholder="https://..." />
+                            </FluentStack>
+
+                            <FluentTextField @bind-Value="MetadataForm.IconUrl"
+                                             Label="Icon URL"
+                                             Placeholder="https://… (square PNG or SVG)"
+                                             Style="max-width: 42rem;" />
+
+                            <FluentSwitch @bind-Value="MetadataForm.IsPublic">Public package</FluentSwitch>
+
+                            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" HorizontalAlignment="HorizontalAlignment.End">
+                                <FluentButton Appearance="Appearance.Outline" Type="ButtonType.Button" OnClick="CancelMetadataEdit">Cancel</FluentButton>
+                                <FluentButton Appearance="Appearance.Accent" Type="ButtonType.Submit" Disabled="IsSavingMetadata">Save metadata</FluentButton>
+                            </FluentStack>
+                        </FluentStack>
+                    </EditForm>
+                </FluentCard>
+            }
+        }
+    </FluentCard>
+</FluentStack>

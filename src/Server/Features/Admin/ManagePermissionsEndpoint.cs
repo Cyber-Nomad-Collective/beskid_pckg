@@ -47,8 +47,7 @@ public sealed class ManagePermissionsEndpoint : Endpoint<ManagePermissionsReques
         }
         else
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new ManagePermissionsResponse(false, "Invalid action."), ct);
+            await Send.ResponseAsync(new ManagePermissionsResponse(false, "Invalid action."), StatusCodes.Status400BadRequest, ct);
         }
     }
 }

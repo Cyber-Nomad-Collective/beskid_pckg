@@ -21,10 +21,7 @@
         </FluentButton>
     </header>
 
-    @if (!string.IsNullOrWhiteSpace(FeedbackMessage))
-    {
-        <div class="feedback-message @(FeedbackIsError ? "is-error" : "is-success")">@FeedbackMessage</div>
-    }
+    <FeedbackMessage Message="@FeedbackMessage" IsSuccess="@(!FeedbackIsError)" />
 
     @if (!string.IsNullOrWhiteSpace(LastCreatedKey))
     {

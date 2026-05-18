@@ -1,0 +1,46 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentStack Orientation="Orientation.Vertical" Gap="4" Class="docs-module-tree">
+    @if (ShowPackageSummary)
+    {
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@(string.IsNullOrWhiteSpace(PackageName) ? "Package" : PackageName)</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="muted docs-module-tree-meta">
+            @PackageName @Version
+        </FluentLabel>
+    }
+    <div class="docs-module-tree-scroll">
+        <FluentStack Orientation="Orientation.Vertical" Gap="2">
+            @foreach (var root in Roots)
+            {
+                <DocModuleGraphBranch Node="root"
+                                      Depth="0"
+                                      SelectedItemId="SelectedItemId"
+                                      SelectedQualifiedName="SelectedQualifiedName"
+                                      OnItemSelected="OnItemSelected" />
+            }
+        </FluentStack>
+    </div>
+</FluentStack>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<GraphNavNode> Roots { get; set; } = Array.Empty<GraphNavNode>();
+
+    [Parameter]
+    public string PackageName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public int? SelectedItemId { get; set; }
+
+    [Parameter]
+    public string? SelectedQualifiedName { get; set; }
+
+    [Parameter]
+    public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }
+
+    [Parameter]
+    public bool ShowPackageSummary { get; set; } = true;
+}

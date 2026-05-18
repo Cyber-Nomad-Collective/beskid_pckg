@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using Server.Features.Packages;
+using Server.Services.Artifacts;
 
 namespace Server.Services;
 
@@ -21,8 +22,8 @@ public interface IPackageSourceArchiveService
 }
 
 public sealed class PackageSourceTreeResult(int statusCode, IReadOnlyList<PackageSourceTreeNodeResponse>? nodes = null)
+    : PackageArtifactResult(statusCode)
 {
-    public int StatusCode { get; } = statusCode;
     public IReadOnlyList<PackageSourceTreeNodeResponse>? Nodes { get; } = nodes;
 }
 
@@ -34,8 +35,8 @@ public sealed class PackageSourceFileResult(
     PackageSourcePreviewKind previewKind = PackageSourcePreviewKind.None,
     string? monacoLanguage = null,
     string? fileTypeKind = null)
+    : PackageArtifactResult(statusCode)
 {
-    public int StatusCode { get; } = statusCode;
     public string? ContentType { get; } = contentType;
     public string? Text { get; } = text;
     public byte[]? Bytes { get; } = bytes;
@@ -45,7 +46,7 @@ public sealed class PackageSourceFileResult(
 }
 
 public sealed class PackageSourceArchiveService(
-    IPackageArtifactExplorerService artifactExplorer,
+    IPackageArtifactZipReader zipReader,
     IPackageSourceFileTypeMapper fileTypeMapper) : IPackageSourceArchiveService
 {
     public const int MaxSourceFileBytes = 1024 * 1024;
@@ -57,26 +58,71 @@ public sealed class PackageSourceArchiveService(
         string versionOrLatest,
         CancellationToken cancellationToken = default)
     {
-        var resolved = await artifactExplorer.ResolveVersionAsync(httpContext, idOrName, versionOrLatest, cancellationToken);
-        if (!resolved.IsSuccess)
+        var (statusCode, nodes) = await zipReader.WithZipAsync(
+            httpContext,
+            idOrName,
+            versionOrLatest,
+            BuildTreeFromZipAsync,
+            cancellationToken);
+
+        if (statusCode != StatusCodes.Status200OK || nodes is null)
         {
-            return new PackageSourceTreeResult(resolved.StatusCode);
+            return new PackageSourceTreeResult(statusCode);
         }
 
-        var openResult = await artifactExplorer.OpenVerifiedArchiveAsync(resolved.Version!, cancellationToken);
-        if (openResult.StatusCode != StatusCodes.Status200OK || openResult.Stream is null)
+        return new PackageSourceTreeResult(StatusCodes.Status200OK, nodes);
+    }
+
+    public async Task<PackageSourceFileResult> ReadFileAsync(
+        HttpContext httpContext,
+        string idOrName,
+        string versionOrLatest,
+        string relativePath,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
         {
-            return new PackageSourceTreeResult(openResult.StatusCode);
+            return new PackageSourceFileResult(StatusCodes.Status400BadRequest);
         }
 
-        using var memory = openResult.Stream;
-        using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
+        var normalizedRequested = PackageZipPathNormalizer.Normalize(relativePath);
+        if (!PackageDocsPaths.HasOnlySafePathSegments(normalizedRequested))
+        {
+            return new PackageSourceFileResult(StatusCodes.Status400BadRequest);
+        }
+
+        try
+        {
+            var (statusCode, file) = await zipReader.WithZipAsync(
+                httpContext,
+                idOrName,
+                versionOrLatest,
+                (zip, ct) => ReadFileFromZipAsync(zip, normalizedRequested, ct),
+                cancellationToken);
+
+            if (statusCode != StatusCodes.Status200OK)
+            {
+                return new PackageSourceFileResult(statusCode);
+            }
+
+            return file ?? new PackageSourceFileResult(StatusCodes.Status404NotFound);
+        }
+        catch (PackageArtifactPayloadTooLargeException)
+        {
+            return new PackageSourceFileResult(StatusCodes.Status413PayloadTooLarge);
+        }
+    }
+
+    private Task<IReadOnlyList<PackageSourceTreeNodeResponse>> BuildTreeFromZipAsync(
+        ZipArchive zip,
+        CancellationToken cancellationToken)
+    {
         var entries = new List<PackageSourceTreeNodeResponse>();
         var addedDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var entry in zip.Entries)
         {
-            var normalizedPath = NormalizeEntryPath(entry.FullName);
+            var normalizedPath = PackageZipPathNormalizer.Normalize(entry.FullName);
             if (string.IsNullOrWhiteSpace(normalizedPath))
             {
                 continue;
@@ -120,54 +166,26 @@ public sealed class PackageSourceArchiveService(
             .OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new PackageSourceTreeResult(StatusCodes.Status200OK, ordered);
+        return Task.FromResult<IReadOnlyList<PackageSourceTreeNodeResponse>>(ordered);
     }
 
-    public async Task<PackageSourceFileResult> ReadFileAsync(
-        HttpContext httpContext,
-        string idOrName,
-        string versionOrLatest,
-        string relativePath,
-        CancellationToken cancellationToken = default)
+    private async Task<PackageSourceFileResult?> ReadFileFromZipAsync(
+        ZipArchive zip,
+        string normalizedRequested,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(relativePath))
-        {
-            return new PackageSourceFileResult(StatusCodes.Status400BadRequest);
-        }
-
-        var normalizedRequested = NormalizeEntryPath(relativePath);
-        if (!PackageDocsPaths.HasOnlySafePathSegments(normalizedRequested))
-        {
-            return new PackageSourceFileResult(StatusCodes.Status400BadRequest);
-        }
-
-        var resolved = await artifactExplorer.ResolveVersionAsync(httpContext, idOrName, versionOrLatest, cancellationToken);
-        if (!resolved.IsSuccess)
-        {
-            return new PackageSourceFileResult(resolved.StatusCode);
-        }
-
-        var openResult = await artifactExplorer.OpenVerifiedArchiveAsync(resolved.Version!, cancellationToken);
-        if (openResult.StatusCode != StatusCodes.Status200OK || openResult.Stream is null)
-        {
-            return new PackageSourceFileResult(openResult.StatusCode);
-        }
-
-        using var memory = openResult.Stream;
-        using var zip = new ZipArchive(memory, ZipArchiveMode.Read, leaveOpen: false);
-
         var entry = zip.GetEntry(normalizedRequested)
                     ?? zip.Entries.FirstOrDefault(e =>
-                        string.Equals(NormalizeEntryPath(e.FullName), normalizedRequested, StringComparison.OrdinalIgnoreCase));
+                        string.Equals(PackageZipPathNormalizer.Normalize(e.FullName), normalizedRequested, StringComparison.OrdinalIgnoreCase));
 
         if (entry is null || string.IsNullOrEmpty(entry.Name))
         {
-            return new PackageSourceFileResult(StatusCodes.Status404NotFound);
+            return null;
         }
 
         if (entry.Length > MaxSourceFileBytes)
         {
-            return new PackageSourceFileResult(StatusCodes.Status413PayloadTooLarge);
+            throw new PackageArtifactPayloadTooLargeException();
         }
 
         await using var entryStream = entry.Open();
@@ -177,7 +195,7 @@ public sealed class PackageSourceArchiveService(
 
         if (bytes.Length > MaxSourceFileBytes)
         {
-            return new PackageSourceFileResult(StatusCodes.Status413PayloadTooLarge);
+            throw new PackageArtifactPayloadTooLargeException();
         }
 
         var info = fileTypeMapper.FromPathAndBytes(normalizedRequested, bytes);
@@ -203,9 +221,6 @@ public sealed class PackageSourceArchiveService(
             monacoLanguage: info.MonacoLanguage,
             fileTypeKind: info.Kind);
     }
-
-    private static string NormalizeEntryPath(string path)
-        => path.Replace('\\', '/').TrimStart('/');
 
     private static string NameFromPath(string path)
         => path.Split('/').LastOrDefault() ?? path;

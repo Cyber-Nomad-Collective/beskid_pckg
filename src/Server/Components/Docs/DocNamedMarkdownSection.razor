@@ -1,0 +1,21 @@
+@if (Entries.Count > 0)
+{
+    <FluentStack Orientation="Orientation.Vertical" Gap="8">
+        <FluentLabel Typo="Typography.Body" Style="font-weight: 600;">@Title</FluentLabel>
+        @foreach (var entry in Entries)
+        {
+            @if (!string.IsNullOrWhiteSpace(entry.Label))
+            {
+                <FluentLabel Typo="Typography.Body">@entry.Label</FluentLabel>
+            }
+            <DocMarkdownRegion Markdown="@entry.Markdown" />
+        }
+    </FluentStack>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<DocMarkdownEntry> Entries { get; set; } = [];
+
+    public sealed record DocMarkdownEntry(string? Label, string Markdown);
+}

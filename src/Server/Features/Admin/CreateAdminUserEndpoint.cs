@@ -28,8 +28,7 @@ public sealed class CreateAdminUserEndpoint(
             || string.IsNullOrWhiteSpace(req.Password)
             || string.IsNullOrWhiteSpace(req.DisplayName))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreateAdminUserResponse(false, "Email, password, and display name are required.", null), ct);
+            await Send.ResponseAsync(new CreateAdminUserResponse(false, "Email, password, and display name are required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -37,8 +36,7 @@ public sealed class CreateAdminUserEndpoint(
         var normalizedEmail = userManager.NormalizeEmail(email);
         if (await userManager.FindByEmailAsync(email) is not null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            await Send.OkAsync(new CreateAdminUserResponse(false, "A user with this email already exists.", null), ct);
+            await Send.ResponseAsync(new CreateAdminUserResponse(false, "A user with this email already exists.", null), StatusCodes.Status409Conflict, ct);
             return;
         }
 
@@ -55,8 +53,7 @@ public sealed class CreateAdminUserEndpoint(
                 var trimmed = r.Trim();
                 if (!AllowedRoles.Contains(trimmed))
                 {
-                    HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-                    await Send.OkAsync(new CreateAdminUserResponse(false, $"Role '{trimmed}' is not allowed.", null), ct);
+                    await Send.ResponseAsync(new CreateAdminUserResponse(false, $"Role '{trimmed}' is not allowed.", null), StatusCodes.Status400BadRequest, ct);
                     return;
                 }
 
@@ -81,8 +78,7 @@ public sealed class CreateAdminUserEndpoint(
         if (!createResult.Succeeded)
         {
             var message = string.Join(' ', createResult.Errors.Select(e => e.Description));
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreateAdminUserResponse(false, message, null), ct);
+            await Send.ResponseAsync(new CreateAdminUserResponse(false, message, null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

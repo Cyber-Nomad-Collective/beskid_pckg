@@ -1,16 +1,42 @@
-<FluentStack Orientation="Orientation.Vertical" Gap="8" Class="package-docs-toc-shell">
-    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@Heading</FluentLabel>
+@using Microsoft.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<div class="package-docs-toc-shell">
+    @if (!string.IsNullOrWhiteSpace(Heading))
+    {
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold" Class="package-docs-toc-heading">@Heading</FluentLabel>
+    }
     @if (Rows.Count == 0)
     {
-        <FluentLabel Typo="Typography.Body" Class="muted">No headings in this section.</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="muted">No headings in this article.</FluentLabel>
     }
     else
     {
-        <PackageDocsTocGrid Rows="@Rows" />
+        <nav class="package-docs-toc-nav" aria-label="@Heading">
+            <ul class="package-docs-toc-list">
+                @foreach (var row in Rows)
+                {
+                    var pad = Math.Clamp((row.Level - 2) * 0.65, 0, 4);
+                    <li class="package-docs-toc-item" style="padding-left: @(pad.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))rem">
+                        <FluentAnchor Href="@FragmentHref(row.Anchor)" Class="docs-file-link package-docs-toc-link">@row.Title</FluentAnchor>
+                    </li>
+                }
+            </ul>
+        </nav>
     }
-</FluentStack>
+</div>
 
 @code {
-    [Parameter] public string Heading { get; set; } = "Table of contents";
-    [Parameter] public IReadOnlyList<PackageDocsTocRow> Rows { get; set; } = [];
+    [Parameter]
+    public string? Heading { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<PackageDocsTocRow> Rows { get; set; } = [];
+
+    private string FragmentHref(string anchor)
+    {
+        var path = new Uri(Navigation.Uri).AbsolutePath;
+        return $"{path}#{anchor}";
+    }
 }

@@ -64,8 +64,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: unauthenticated caller.");
             Record("Warning", "publish", "Unauthorized.", null, Route<string>("PackageName")?.Trim(), null);
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Unauthorized.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
@@ -76,8 +75,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: missing package name.");
             Record("Warning", "publish", "Package name is required.", userId, null, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Package name is required.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Package name is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -86,8 +84,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: package {PackageName} not found.", packageName);
             Record("Warning", "publish", "Package was not found.", userId, packageName, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Package was not found.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Package was not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
 
@@ -98,8 +95,7 @@ public sealed class PublishPackageVersionEndpoint(
                 userId,
                 packageName);
             Record("Warning", "publish", "You do not own this package.", userId, packageName, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "You do not own this package.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "You do not own this package.", null), StatusCodes.Status403Forbidden, ct);
             return;
         }
 
@@ -107,8 +103,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: expected multipart form for {PackageName}.", packageName);
             Record("Warning", "publish", "Expected multipart form payload.", userId, packageName, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Expected multipart form payload.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Expected multipart form payload.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -123,8 +118,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: missing artifact for {PackageName}.", packageName);
             Record("Warning", "publish", "Artifact file is required.", userId, packageName, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Artifact file is required.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Artifact file is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -150,8 +144,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: invalid semver {Version} for {PackageName}.", version, packageName);
             Record("Warning", "publish", "Version must be a valid semantic version.", userId, packageName, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Version must be a valid semantic version.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Version must be a valid semantic version.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -163,9 +156,9 @@ public sealed class PublishPackageVersionEndpoint(
                 packageName,
                 version);
             Record("Warning", "publish", $"Artifact size must be between 1 byte and {MaxArtifactSizeBytes} bytes.", userId, packageName, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(
+            await Send.ResponseAsync(
                 new PublishPackageVersionResponse(false, $"Artifact size must be between 1 byte and {MaxArtifactSizeBytes} bytes.", null),
+                StatusCodes.Status400BadRequest,
                 ct);
             return;
         }
@@ -204,8 +197,7 @@ public sealed class PublishPackageVersionEndpoint(
 
             logger.LogWarning("Publish rejected: immutable version conflict for {PackageName} {Version}.", package.Name, version);
             Record("Warning", "publish_conflict", "Version already exists and is immutable.", userId, package.Name, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Version already exists and is immutable.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Version already exists and is immutable.", null), StatusCodes.Status409Conflict, ct);
             return;
         }
 
@@ -219,8 +211,7 @@ public sealed class PublishPackageVersionEndpoint(
                 version,
                 validation.Message);
             Record("Warning", "publish_validation_failed", validation.Message, userId, package.Name, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, validation.Message, null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, validation.Message, null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -229,8 +220,7 @@ public sealed class PublishPackageVersionEndpoint(
         {
             logger.LogWarning("Publish rejected: checksum mismatch for {PackageName} {Version}.", package.Name, version);
             Record("Warning", "publish_checksum_mismatch", "Checksum mismatch for uploaded artifact.", userId, package.Name, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Checksum mismatch for uploaded artifact.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Checksum mismatch for uploaded artifact.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -252,8 +242,7 @@ public sealed class PublishPackageVersionEndpoint(
                 package.Name,
                 version);
             Record("Error", "publish_persist_checksum", "Artifact checksum could not be verified after persistence.", userId, package.Name, version);
-            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await Send.OkAsync(new PublishPackageVersionResponse(false, "Artifact checksum could not be verified after persistence.", null), ct);
+            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Artifact checksum could not be verified after persistence.", null), StatusCodes.Status500InternalServerError, ct);
             return;
         }
 

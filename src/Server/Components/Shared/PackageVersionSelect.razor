@@ -1,0 +1,21 @@
+@using Server.Features.Packages
+
+@if (Versions.Count > 0)
+{
+    <FluentSelect TOption="string"
+                  @bind-Value="SelectedVersion"
+                  Style="max-width: 240px;"
+                  AriaLabel="@AriaLabel">
+        @foreach (var version in Versions)
+        {
+            <FluentOption TOption="string" Value="@version.Version">@version.Version</FluentOption>
+        }
+    </FluentSelect>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<PackageVersionSummaryResponse> Versions { get; set; } = [];
+    [Parameter] public string SelectedVersion { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SelectedVersionChanged { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Select package version";
+}

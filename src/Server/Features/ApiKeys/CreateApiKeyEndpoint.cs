@@ -24,8 +24,7 @@ public sealed class CreateApiKeyEndpoint(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await HttpContext.Response.WriteAsJsonAsync(new CreateApiKeyResponse(false, null, null, "Unauthorized."), ct);
+            await Send.ResponseAsync(new CreateApiKeyResponse(false, null, null, "Unauthorized."), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
@@ -36,8 +35,7 @@ public sealed class CreateApiKeyEndpoint(
 
         if (!result.Success)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await HttpContext.Response.WriteAsJsonAsync(new CreateApiKeyResponse(false, null, null, result.Message), ct);
+            await Send.ResponseAsync(new CreateApiKeyResponse(false, null, null, result.Message), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

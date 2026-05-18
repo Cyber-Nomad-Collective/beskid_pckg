@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Server.Features.Packages.Internal;
 using Server.Services;
 
 namespace Server.Features.Packages;
@@ -20,15 +21,8 @@ public sealed class ListPackageDocsEndpoint(IPackageDocsArchiveService docsArchi
         var version = Route<string>("Version")?.Trim() ?? string.Empty;
 
         var result = await docsArchive.ListDocsAsync(HttpContext, idOrName, version, ct);
-        if (result.StatusCode != StatusCodes.Status200OK)
+        if (await PackageArtifactEndpointResults.TrySendErrorAsync(this, result.StatusCode, ct))
         {
-            if (result.StatusCode == StatusCodes.Status404NotFound)
-            {
-                await Send.NotFoundAsync(ct);
-                return;
-            }
-
-            await Send.StringAsync(string.Empty, result.StatusCode, cancellation: ct);
             return;
         }
 

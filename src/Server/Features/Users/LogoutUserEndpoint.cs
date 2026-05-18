@@ -25,8 +25,7 @@ public sealed class LogoutUserEndpoint(SignInManager<ApplicationUser> signInMana
         var requestedReturnUrl = Query<string>("returnUrl", false);
         var returnUrl = IsLocalReturnUrl(requestedReturnUrl) ? requestedReturnUrl! : "/";
 
-        HttpContext.Response.Redirect(returnUrl, permanent: false);
-        await HttpContext.Response.CompleteAsync();
+        await Send.RedirectAsync(returnUrl, isPermanent: false);
     }
 
     private static bool IsLocalReturnUrl(string? returnUrl)

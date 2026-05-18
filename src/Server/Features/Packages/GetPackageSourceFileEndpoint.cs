@@ -1,4 +1,5 @@
 using FastEndpoints;
+using Server.Features.Packages.Internal;
 using Server.Services;
 
 namespace Server.Features.Packages;
@@ -21,19 +22,11 @@ public sealed class GetPackageSourceFileEndpoint(IPackageSourceArchiveService so
         var path = Query<string>("path", isRequired: false);
 
         var result = await sourceArchive.ReadFileAsync(HttpContext, idOrName, version, path ?? string.Empty, ct);
-        if (result.StatusCode != StatusCodes.Status200OK)
+        if (await PackageArtifactEndpointResults.TrySendErrorAsync(this, result.StatusCode, ct))
         {
-            if (result.StatusCode == StatusCodes.Status404NotFound)
-            {
-                await Send.NotFoundAsync(ct);
-                return;
-            }
-
-            await Send.StringAsync(string.Empty, result.StatusCode, cancellation: ct);
             return;
         }
 
-        HttpContext.Response.ContentType = result.ContentType ?? "application/octet-stream";
         HttpContext.Response.Headers["X-Beskid-Source-Preview"] = result.PreviewKind.ToString().ToLowerInvariant();
         if (!string.IsNullOrWhiteSpace(result.MonacoLanguage))
         {
@@ -45,18 +38,19 @@ public sealed class GetPackageSourceFileEndpoint(IPackageSourceArchiveService so
             HttpContext.Response.Headers["X-Beskid-File-Type"] = result.FileTypeKind!;
         }
 
+        var contentType = result.ContentType ?? "application/octet-stream";
         if (result.Text is not null)
         {
-            await HttpContext.Response.WriteAsync(result.Text, ct);
+            await Send.StringAsync(result.Text, StatusCodes.Status200OK, contentType, ct);
             return;
         }
 
         if (result.Bytes is { Length: > 0 })
         {
-            await HttpContext.Response.Body.WriteAsync(result.Bytes, ct);
+            await Send.BytesAsync(result.Bytes, string.Empty, contentType, cancellation: ct);
             return;
         }
 
-        await Send.StringAsync(string.Empty, StatusCodes.Status200OK, cancellation: ct);
+        await Send.StringAsync(string.Empty, StatusCodes.Status200OK, contentType, ct);
     }
 }

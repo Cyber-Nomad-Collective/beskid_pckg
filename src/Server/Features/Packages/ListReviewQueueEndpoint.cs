@@ -26,8 +26,7 @@ public sealed class ListReviewQueueEndpoint(
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync([], ct);
+            await Send.ResponseAsync([], StatusCodes.Status401Unauthorized, ct);
             return;
         }
 

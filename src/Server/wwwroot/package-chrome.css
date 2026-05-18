@@ -1,0 +1,17 @@
+/* Shared package browse/detail chrome (used across pages). */
+
+.package-publisher-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    flex-wrap: wrap;
+}
+
+.package-result-metrics,
+.package-result-signals,
+.package-result-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}

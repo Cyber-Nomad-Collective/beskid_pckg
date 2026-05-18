@@ -29,23 +29,20 @@ public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> user
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Unauthorized.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "User not found.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "User not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
 
         if (!HttpContext.Request.HasFormContentType)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Expected multipart form payload.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "Expected multipart form payload.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -53,22 +50,19 @@ public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> user
         var file = form.Files.GetFile("image");
         if (file is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Profile image is required.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "Profile image is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         if (file.Length <= 0 || file.Length > MaxFileSizeBytes)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Image size must be between 1 byte and 10 MB.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "Image size must be between 1 byte and 10 MB.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         if (!AllowedContentTypes.Contains(file.ContentType))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, "Unsupported image type.", null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, "Unsupported image type.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -100,8 +94,7 @@ public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> user
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UploadProfileImageResponse(false, string.Join(" ", result.Errors.Select(x => x.Description)), null), ct);
+            await Send.ResponseAsync(new UploadProfileImageResponse(false, string.Join(" ", result.Errors.Select(x => x.Description)), null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

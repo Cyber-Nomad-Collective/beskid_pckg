@@ -19,8 +19,7 @@ public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManage
     {
         if (!await userManager.Users.AnyAsync(ct))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            await Send.OkAsync(new AuthActionResponse(false, "No users exist yet. Complete onboarding first."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "No users exist yet. Complete onboarding first."), StatusCodes.Status409Conflict, ct);
             return;
         }
 
@@ -28,15 +27,13 @@ public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManage
             || string.IsNullOrWhiteSpace(req.Password)
             || string.IsNullOrWhiteSpace(req.ConfirmPassword))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Email, password, and password confirmation are required."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Email, password, and password confirmation are required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         if (!string.Equals(req.Password, req.ConfirmPassword, StringComparison.Ordinal))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, "Passwords do not match."), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, "Passwords do not match."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -52,8 +49,7 @@ public sealed class RegisterUserEndpoint(UserManager<ApplicationUser> userManage
         if (!result.Succeeded)
         {
             var message = string.Join(' ', result.Errors.Select(e => e.Description));
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AuthActionResponse(false, message), ct);
+            await Send.ResponseAsync(new AuthActionResponse(false, message), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

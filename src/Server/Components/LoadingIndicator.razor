@@ -1,0 +1,9 @@
+<FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="10" Class="@Class">
+    <FluentProgressRing />
+    <FluentLabel Typo="Typography.Body">@Message</FluentLabel>
+</FluentStack>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Loading…";
+    [Parameter] public string? Class { get; set; }
+}

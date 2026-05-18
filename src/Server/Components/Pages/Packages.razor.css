@@ -109,14 +109,6 @@
     text-decoration: underline;
 }
 
-.package-result-metrics,
-.package-result-signals,
-.package-result-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
 .package-rating-row {
     margin-top: 8px;
     display: flex;

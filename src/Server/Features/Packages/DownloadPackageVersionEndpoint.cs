@@ -60,7 +60,7 @@ public sealed class DownloadPackageVersionEndpoint(
         var digestOk = await artifactStore.VerifyChecksumAsync(packageVersion.StorageKey, packageVersion.ChecksumSha256, ct);
         if (!digestOk)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            await Send.StatusCodeAsync(StatusCodes.Status500InternalServerError, ct);
             return;
         }
 
@@ -79,14 +79,12 @@ public sealed class DownloadPackageVersionEndpoint(
             package.Name,
             packageVersion.Version);
 
-        HttpContext.Response.ContentType = artifact.Value.ContentType;
-        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{package.Name}-{packageVersion.Version}.bpk\"";
-        if (artifact.Value.SizeBytes is long size)
-        {
-            HttpContext.Response.ContentLength = size;
-        }
-
         await using var stream = artifact.Value.Stream;
-        await stream.CopyToAsync(HttpContext.Response.Body, ct);
+        await Send.StreamAsync(
+            stream,
+            artifact.Value.ContentType,
+            artifact.Value.SizeBytes,
+            $"{package.Name}-{packageVersion.Version}.bpk",
+            cancellation: ct);
     }
 }

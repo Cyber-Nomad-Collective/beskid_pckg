@@ -15,6 +15,9 @@ public partial class PackageSourceBrowser
     [Parameter] public string PackageIdentifier { get; set; } = string.Empty;
     [Parameter] public string Version { get; set; } = "latest";
 
+    /// <summary>When true, the Source tab is active and Monaco should relayout after paint.</summary>
+    [Parameter] public bool TabActive { get; set; }
+
     private readonly List<PackageSourceTreeNodeResponse> _nodes = [];
     private string? _cachedPackage;
     private string? _cachedVersion;
@@ -30,6 +33,8 @@ public partial class PackageSourceBrowser
     private string _textContent = string.Empty;
     private string _monacoLanguage = "plaintext";
     private string? _imageUrl;
+    private int _layoutGeneration;
+    private bool _wasTabActive;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -41,6 +46,13 @@ public partial class PackageSourceBrowser
             _isLoadingTree = false;
             return;
         }
+
+        if (TabActive && !_wasTabActive)
+        {
+            _layoutGeneration++;
+        }
+
+        _wasTabActive = TabActive;
 
         if (string.Equals(_cachedPackage, pkg, StringComparison.Ordinal)
             && string.Equals(_cachedVersion, ver, StringComparison.Ordinal))
@@ -152,6 +164,7 @@ public partial class PackageSourceBrowser
             }
 
             _previewKind = "text";
+            _layoutGeneration++;
         }
         catch
         {
@@ -161,6 +174,22 @@ public partial class PackageSourceBrowser
         {
             _isLoadingPreview = false;
         }
+    }
+
+    private static string KindDisplayLabel(PackageSourceTreeNodeResponse node)
+    {
+        var raw = (node.FileType ?? node.IconKey ?? "file").Trim();
+        if (raw.Length == 0)
+        {
+            return "File";
+        }
+
+        if (raw.Length <= 28)
+        {
+            return char.ToUpperInvariant(raw[0]) + raw[1..];
+        }
+
+        return $"{char.ToUpperInvariant(raw[0])}{raw[1..25]}…";
     }
 
     private IEnumerable<TreeRow> FilteredRows()
@@ -173,29 +202,6 @@ public partial class PackageSourceBrowser
         {
             yield return new TreeRow(node, node.Path.Count(ch => ch == '/'));
         }
-    }
-
-    private static string IconFor(PackageSourceTreeNodeResponse node)
-    {
-        if (node.IsDirectory)
-        {
-            return "📁";
-        }
-
-        return node.IconKey switch
-        {
-            "image" => "🖼",
-            "json" => "🧩",
-            "yaml" => "📄",
-            "toml" => "📄",
-            "xml" => "🧾",
-            "markdown" => "📝",
-            "beskid" => "λ",
-            "project" => "⚙",
-            "code" => "⌘",
-            "binary" => "📦",
-            _ => "📄"
-        };
     }
 
     private static string FormatSize(long bytes)

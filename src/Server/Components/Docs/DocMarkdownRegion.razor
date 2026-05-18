@@ -1,7 +1,6 @@
 @using Microsoft.AspNetCore.Components
 @using Server.Services
-@inject IMarkdownService MarkdownService
-@inject IHtmlSanitizationService HtmlSanitization
+@inject IDocumentationRendering DocumentationRendering
 @inject NavigationManager Navigation
 
 <div class="docs-markdown-body">
@@ -23,10 +22,8 @@
             return;
         }
 
-        var safe = MarkdownService.ToSafeHtml(raw);
-        var sanitized = HtmlSanitization.Sanitize(safe);
         var path = new Uri(Navigation.Uri).AbsolutePath;
-        var rewritten = DocumentationAnchorRewriter.RewriteDocumentationAnchors(sanitized, path);
+        var rewritten = DocumentationRendering.RenderPackageMarkdown(raw, path);
         _html = new MarkupString(rewritten);
     }
 }

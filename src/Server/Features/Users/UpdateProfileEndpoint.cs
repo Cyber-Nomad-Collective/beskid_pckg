@@ -21,16 +21,14 @@ public sealed class UpdateProfileEndpoint(UserManager<ApplicationUser> userManag
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new UpdateProfileResponse(false, "Unauthorized.", null), ct);
+            await Send.ResponseAsync(new UpdateProfileResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new UpdateProfileResponse(false, "User not found.", null), ct);
+            await Send.ResponseAsync(new UpdateProfileResponse(false, "User not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
 
@@ -48,8 +46,7 @@ public sealed class UpdateProfileEndpoint(UserManager<ApplicationUser> userManag
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new UpdateProfileResponse(false, string.Join(" ", result.Errors.Select(x => x.Description)), null), ct);
+            await Send.ResponseAsync(new UpdateProfileResponse(false, string.Join(" ", result.Errors.Select(x => x.Description)), null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

@@ -37,7 +37,7 @@ public sealed class PackageArtifactArchiveReadResult(
 public sealed class PackageArtifactExplorerService(
     ApplicationDbContext dbContext,
     IPackageArtifactStore artifactStore,
-    IApiPrincipalResolver principalResolver) : IPackageArtifactExplorerService
+    IPackageAccessService packageAccess) : IPackageArtifactExplorerService
 {
     public async Task<PackageArtifactVersionResolutionResult> ResolveVersionAsync(
         HttpContext httpContext,
@@ -66,14 +66,9 @@ public sealed class PackageArtifactExplorerService(
             return new PackageArtifactVersionResolutionResult(StatusCodes.Status404NotFound);
         }
 
-        if (!package.IsPublic)
+        if (!await packageAccess.CanViewPackageAsync(httpContext, package, cancellationToken))
         {
-            var userId = await principalResolver.ResolveUserIdAsync(httpContext, cancellationToken);
-            var isSuperAdmin = httpContext.User.IsInRole("SuperAdmin");
-            if (string.IsNullOrWhiteSpace(userId) || (!isSuperAdmin && userId != package.OwnerUserId))
-            {
-                return new PackageArtifactVersionResolutionResult(StatusCodes.Status404NotFound);
-            }
+            return new PackageArtifactVersionResolutionResult(StatusCodes.Status404NotFound);
         }
 
         PackageVersionEntity? versionEntity;

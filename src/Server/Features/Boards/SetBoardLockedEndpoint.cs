@@ -37,8 +37,7 @@ public sealed class SetBoardLockedEndpoint(
 
         if (!await authorization.CanModerateBoardAsync(userId, boardId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await Send.OkAsync(new SetBoardLockedResponse(false, "You cannot change lock state for this board."), ct);
+            await Send.ResponseAsync(new SetBoardLockedResponse(false, "You cannot change lock state for this board."), StatusCodes.Status403Forbidden, ct);
             return;
         }
 

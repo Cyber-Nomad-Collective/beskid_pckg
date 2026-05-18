@@ -13,14 +13,14 @@
                 </FluentButton>
             </td>
             <td>@row.Kind</td>
-            <td>@row.Module</td>
+            <td>@row.Parent</td>
             <td>@row.Visibility</td>
         </tr>
     </RowTemplate>
 </PackageDocsGrid>
 
 @code {
-    private static readonly IReadOnlyList<string> GridHeaders = ["Name", "Kind", "Module", "Visibility"];
+    private static readonly IReadOnlyList<string> GridHeaders = ["Name", "Kind", "Parent", "Visibility"];
 
     [Parameter] public IReadOnlyList<PackageDocsSymbolRow> Rows { get; set; } = [];
     [Parameter] public EventCallback<StructuredApiItemDto> OnSelect { get; set; }

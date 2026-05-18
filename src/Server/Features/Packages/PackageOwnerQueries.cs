@@ -3,7 +3,7 @@ using Server.Data;
 
 namespace Server.Features.Packages;
 
-internal readonly record struct PublisherOwnerRow(string DisplayLabel, bool IsPublisherVerified);
+public readonly record struct PublisherOwnerRow(string DisplayLabel, bool IsPublisherVerified);
 
 internal static class PackageOwnerQueries
 {

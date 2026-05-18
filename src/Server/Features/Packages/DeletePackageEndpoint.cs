@@ -48,8 +48,7 @@ public sealed class DeletePackageEndpoint(
         {
             logger.LogWarning("Delete package rejected: unauthenticated.");
             Record("Warning", "delete_package", "Unauthorized.", null, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await HttpContext.Response.WriteAsJsonAsync(new DeletePackageResponse(false, "Unauthorized."), ct);
+            await Send.ResponseAsync(new DeletePackageResponse(false, "Unauthorized."), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
@@ -57,8 +56,7 @@ public sealed class DeletePackageEndpoint(
         if (string.IsNullOrWhiteSpace(packageName))
         {
             Record("Warning", "delete_package", "Package name is required.", userId, null);
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await HttpContext.Response.WriteAsJsonAsync(new DeletePackageResponse(false, "Package name is required."), ct);
+            await Send.ResponseAsync(new DeletePackageResponse(false, "Package name is required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -67,8 +65,7 @@ public sealed class DeletePackageEndpoint(
         {
             logger.LogWarning("Delete package rejected: {PackageName} not found.", packageName);
             Record("Warning", "delete_package", "Package was not found.", userId, packageName);
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await HttpContext.Response.WriteAsJsonAsync(new DeletePackageResponse(false, "Package was not found."), ct);
+            await Send.ResponseAsync(new DeletePackageResponse(false, "Package was not found."), StatusCodes.Status404NotFound, ct);
             return;
         }
 
@@ -76,8 +73,7 @@ public sealed class DeletePackageEndpoint(
         {
             logger.LogWarning("Delete package rejected: forbidden for user {UserId} on {PackageName}.", userId, packageName);
             Record("Warning", "delete_package", "You do not have permission to delete this package.", userId, packageName);
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await HttpContext.Response.WriteAsJsonAsync(new DeletePackageResponse(false, "You do not have permission to delete this package."), ct);
+            await Send.ResponseAsync(new DeletePackageResponse(false, "You do not have permission to delete this package."), StatusCodes.Status403Forbidden, ct);
             return;
         }
 

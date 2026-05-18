@@ -1,10 +1,12 @@
+using Server.Contracts.ApiDocumentation;
+
 namespace Server.Components.Docs;
 
 public sealed record PackageDocsSymbolRow(
     int? Id,
     string DisplayName,
     string Kind,
-    string Module,
+    string Parent,
     string Visibility,
     string? Location,
     StructuredApiItemDto Item);

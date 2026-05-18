@@ -1,0 +1,72 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@if (Structured is not null && HasAnyStructured(Structured))
+{
+    <FluentStack Orientation="Orientation.Vertical" Gap="12" Class="docs-structured-sections">
+        @if (!string.IsNullOrWhiteSpace(Structured.SummaryMarkdown))
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="6">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Summary</FluentLabel>
+                <DocMarkdownRegion Markdown="@Structured.SummaryMarkdown" />
+            </FluentStack>
+        }
+        @if (Structured.TypeParameters.Count > 0)
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="6">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Type parameters</FluentLabel>
+                @foreach (var p in Structured.TypeParameters)
+                {
+                    <FluentStack Orientation="Orientation.Vertical" Gap="4">
+                        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@p.Name</FluentLabel>
+                        <DocMarkdownRegion Markdown="@p.Markdown" />
+                    </FluentStack>
+                }
+            </FluentStack>
+        }
+        @if (Structured.Arguments.Count > 0)
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="6">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Parameters</FluentLabel>
+                @foreach (var p in Structured.Arguments)
+                {
+                    <FluentStack Orientation="Orientation.Vertical" Gap="4">
+                        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@p.Name</FluentLabel>
+                        <DocMarkdownRegion Markdown="@p.Markdown" />
+                    </FluentStack>
+                }
+            </FluentStack>
+        }
+        @if (!string.IsNullOrWhiteSpace(Structured.ReturnsMarkdown))
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="6">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Returns</FluentLabel>
+                <DocMarkdownRegion Markdown="@Structured.ReturnsMarkdown" />
+            </FluentStack>
+        }
+        @if (Structured.EnumVariants.Count > 0)
+        {
+            <FluentStack Orientation="Orientation.Vertical" Gap="6">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Variants</FluentLabel>
+                @foreach (var p in Structured.EnumVariants)
+                {
+                    <FluentStack Orientation="Orientation.Vertical" Gap="4">
+                        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@p.Name</FluentLabel>
+                        <DocMarkdownRegion Markdown="@p.Markdown" />
+                    </FluentStack>
+                }
+            </FluentStack>
+        }
+    </FluentStack>
+}
+
+@code {
+    [Parameter]
+    public ItemDocStructuredDto? Structured { get; set; }
+
+    private static bool HasAnyStructured(ItemDocStructuredDto d) =>
+        !string.IsNullOrWhiteSpace(d.SummaryMarkdown)
+        || !string.IsNullOrWhiteSpace(d.ReturnsMarkdown)
+        || d.Arguments.Count > 0
+        || d.EnumVariants.Count > 0
+        || d.TypeParameters.Count > 0;
+}

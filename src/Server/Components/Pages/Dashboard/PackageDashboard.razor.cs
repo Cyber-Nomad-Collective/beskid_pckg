@@ -6,7 +6,7 @@ using Server.Features.Packages;
 
 namespace Server.Components.Pages.Dashboard;
 
-public partial class Packages
+public partial class PackageDashboard
 {
     private const long MaxUploadBytes = 64 * 1024 * 1024;
     private readonly List<PackageSummaryResponse> PackageItems = [];
@@ -20,6 +20,13 @@ public partial class Packages
     private string? DeleteFeedbackMessage;
     private bool DeleteFeedbackIsError;
     private readonly MetadataFormModel MetadataForm = new();
+    [Parameter] public string PageTitle { get; set; } = "Packages";
+    [Parameter] public string Title { get; set; } = "Packages";
+    [Parameter] public string Description { get; set; } = string.Empty;
+    [Parameter] public bool ShowUploadButton { get; set; }
+    [Parameter] public string EmptyTitle { get; set; } = "No packages yet";
+    [Parameter] public string EmptyMessage { get; set; } = "No packages found.";
+
     [Inject]
     public IDialogService DialogService { get; set; } = default!;
 

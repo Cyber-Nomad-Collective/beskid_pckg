@@ -33,15 +33,13 @@ public sealed class ReviewActionEndpoint(
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await Send.OkAsync(new ReviewActionResponse(false, "Unauthorized.", null), ct);
+            await Send.ResponseAsync(new ReviewActionResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
 
         if (!AllowedActions.Contains(req.Action ?? string.Empty))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new ReviewActionResponse(false, "Action must be one of: Approve, NeedsChanges, Reject.", null), ct);
+            await Send.ResponseAsync(new ReviewActionResponse(false, "Action must be one of: Approve, NeedsChanges, Reject.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -53,15 +51,13 @@ public sealed class ReviewActionEndpoint(
 
         if (review is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new ReviewActionResponse(false, "Review item not found.", null), ct);
+            await Send.ResponseAsync(new ReviewActionResponse(false, "Review item not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
 
         if (review.Package is null || !await authorization.CanModeratePackageAsync(userId, review.PackageId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await Send.OkAsync(new ReviewActionResponse(false, "You cannot modify this review.", null), ct);
+            await Send.ResponseAsync(new ReviewActionResponse(false, "You cannot modify this review.", null), StatusCodes.Status403Forbidden, ct);
             return;
         }
 

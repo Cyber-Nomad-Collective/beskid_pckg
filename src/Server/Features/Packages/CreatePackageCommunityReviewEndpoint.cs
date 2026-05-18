@@ -32,8 +32,7 @@ public sealed class CreatePackageCommunityReviewEndpoint(
         var name = Route<string>("packageName")?.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Package name is required."), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, "Package name is required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -41,32 +40,28 @@ public sealed class CreatePackageCommunityReviewEndpoint(
             .SingleOrDefaultAsync(x => x.Name == name && x.IsPublic, ct);
         if (package is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Package not found."), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, "Package not found."), StatusCodes.Status404NotFound, ct);
             return;
         }
 
         var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
         if (!await captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.PackageReview, remoteIp, ct))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Robot check failed. Please try again."), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, "Robot check failed. Please try again."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var rawComment = req.Comment?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(rawComment))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Review text is required."), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, "Review text is required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var linkBlock = await linkGuard.GetBlockReasonAsync(rawComment, ct);
         if (linkBlock is not null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, linkBlock), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, linkBlock), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
@@ -74,8 +69,7 @@ public sealed class CreatePackageCommunityReviewEndpoint(
         var sanitized = htmlSanitization.Sanitize(rawComment);
         if (string.IsNullOrWhiteSpace(sanitized))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new CreatePackageCommunityReviewResponse(false, "Review text is empty after sanitization."), ct);
+            await Send.ResponseAsync(new CreatePackageCommunityReviewResponse(false, "Review text is empty after sanitization."), StatusCodes.Status400BadRequest, ct);
             return;
         }
 

@@ -26,6 +26,7 @@ using System.Security.Cryptography.X509Certificates;
 using GoogleCaptchaComponent;
 using GoogleCaptchaComponent.Configuration;
 using Server.Configuration;
+using Server.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -220,12 +221,8 @@ builder.Services.AddScoped<IPasswordHasher<ApiKeyEntity>, PasswordHasher<ApiKeyE
 builder.Services.AddScoped<IApiKeyValidator, ApiKeyValidator>();
 builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
-builder.Services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
-builder.Services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
-builder.Services.AddScoped<IPackageArtifactExplorerService, PackageArtifactExplorerService>();
-builder.Services.AddScoped<IPackageDocsArchiveService, PackageDocsArchiveService>();
-builder.Services.AddScoped<IPackageSourceFileTypeMapper, PackageSourceFileTypeMapper>();
-builder.Services.AddScoped<IPackageSourceArchiveService, PackageSourceArchiveService>();
+builder.Services.AddPackageRegistryServices();
+builder.Services.AddDocumentationServices();
 builder.Services.AddSingleton<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
@@ -245,8 +242,6 @@ builder.Services.AddHttpClient(CaptchaVerificationService.RecaptchaEnterpriseHtt
 builder.Services.AddScoped<ICaptchaVerificationService, CaptchaVerificationService>();
 builder.Services.AddScoped<ILinkContentGuard, LinkContentGuard>();
 builder.Services.AddScoped<Server.Services.IUserRatingService, Server.Services.UserRatingService>();
-builder.Services.AddSingleton<Server.Services.IMarkdownService, Server.Services.MarkdownService>();
-builder.Services.AddSingleton<IHtmlSanitizationService, HtmlSanitizationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 // Prefer Wolverine transport for notifications broadcast
 builder.Services.AddScoped<INotificationBroadcaster, WolverineNotificationBroadcaster>();

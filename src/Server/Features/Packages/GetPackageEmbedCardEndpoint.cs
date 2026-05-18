@@ -1,4 +1,3 @@
-using System.Text;
 using FastEndpoints;
 using Server.Data;
 
@@ -33,16 +32,14 @@ public sealed class GetPackageEmbedCardEndpoint(ApplicationDbContext dbContext) 
 
         HttpContext.Response.Headers.ContentSecurityPolicy = "frame-ancestors *";
         HttpContext.Response.Headers.CacheControl = "public, max-age=120";
-        HttpContext.Response.ContentType = "text/html; charset=utf-8";
         var bytes = PackageEmbedCardHtml.Build(HttpContext.Request, dto);
-        await HttpContext.Response.Body.WriteAsync(bytes, ct);
+        await Send.BytesAsync(bytes, string.Empty, "text/html; charset=utf-8", cancellation: ct);
     }
 
-    private async Task WriteNotFoundAsync(CancellationToken ct)
-    {
-        HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-        HttpContext.Response.ContentType = "text/html; charset=utf-8";
-        const string body = "<!DOCTYPE html><html><body><p>Package not found.</p></body></html>";
-        await HttpContext.Response.WriteAsync(body, Encoding.UTF8, ct);
-    }
+    private Task WriteNotFoundAsync(CancellationToken ct) =>
+        Send.StringAsync(
+            "<!DOCTYPE html><html><body><p>Package not found.</p></body></html>",
+            StatusCodes.Status404NotFound,
+            "text/html; charset=utf-8",
+            ct);
 }

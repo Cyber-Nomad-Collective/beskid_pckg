@@ -23,8 +23,7 @@ public sealed class ListApiKeysEndpoint(IApiKeyManagementService apiKeyManagemen
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await HttpContext.Response.WriteAsJsonAsync(Array.Empty<ApiKeysListResponse>(), ct);
+            await Send.UnauthorizedAsync(ct);
             return;
         }
 

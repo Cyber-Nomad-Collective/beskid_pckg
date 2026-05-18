@@ -1,7 +1,9 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Markdig.Helpers;
 using Microsoft.AspNetCore.Components;
+using Server.Contracts.ApiDocumentation;
 using Server.Features.Packages;
 using Server.Services;
 
@@ -23,23 +25,18 @@ public partial class PackageDocs
 
     [Inject] private HttpClient Http { get; set; } = default!;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     private bool _loading = true;
     private string? _loadError;
     private StructuredApiDocDto? _doc;
+    private Dictionary<int, StructuredApiItemDto> _itemsById = [];
+    private IReadOnlyList<GraphNavNode> _navRoots = [];
     private StructuredApiItemDto? _selected;
     private string? _deepLinkMissMessage;
     private string _symbolQuery = string.Empty;
-    private string _moduleFilter = string.Empty;
+    /// <summary>Root item id for graph scope filter, or empty for all.</summary>
+    private string _scopeRootId = string.Empty;
     private readonly HashSet<string> _kindFilters = new(StringComparer.OrdinalIgnoreCase);
-    private string _groupBy = "module";
-    private bool _showFilterPopover;
+    private bool _showMorePanel;
     private string? _fetchKey;
     private string? _appliedDeepLink;
     private string? _appliedInitialSymbol;
@@ -53,13 +50,8 @@ public partial class PackageDocs
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x, StringComparer.OrdinalIgnoreCase);
 
-    private IEnumerable<string> AvailableModules =>
-        _doc is null
-            ? []
-            : _doc.Items
-                .Select(ModuleName)
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(x => x, StringComparer.Ordinal);
+    private IEnumerable<StructuredApiItemDto> ScopeRootOptions =>
+        _doc is null ? [] : ApiDocNavigationBuilder.ModuleScopeRootCandidates(_doc);
 
     private IEnumerable<StructuredApiItemDto> FilteredItems
     {
@@ -72,7 +64,7 @@ public partial class PackageDocs
 
             var query = _symbolQuery.Trim();
             var selectedKinds = _kindFilters.Count == 0 ? null : _kindFilters;
-            var selectedModule = _moduleFilter.Trim();
+            var scopeId = ParseScopeRootId(_scopeRootId);
             return _doc.Items.Where(x =>
                 {
                     if (!string.IsNullOrWhiteSpace(query))
@@ -88,8 +80,7 @@ public partial class PackageDocs
                         }
                     }
 
-                    if (!string.IsNullOrWhiteSpace(selectedModule)
-                        && !string.Equals(ModuleName(x), selectedModule, StringComparison.Ordinal))
+                    if (scopeId is int rid && !ItemIsUnderScopeRoot(x, rid))
                     {
                         return false;
                     }
@@ -115,13 +106,56 @@ public partial class PackageDocs
                 x.Id,
                 x.QualifiedName ?? x.Name ?? string.Empty,
                 string.IsNullOrWhiteSpace(x.Kind) ? "unknown" : x.Kind!,
-                ModuleName(x),
+                ParentDisplayLabel(x),
                 string.IsNullOrWhiteSpace(x.Visibility) ? "-" : x.Visibility!,
                 x.Location is null ? null : $"{x.Location.File}:{x.Location.StartLine}",
                 x))
             .ToList();
 
     private IReadOnlyList<PackageDocsTocRow> TocRows => BuildTocRows(_selected?.DocMarkdown);
+
+    private bool HasActiveNavFilters =>
+        !string.IsNullOrWhiteSpace(_symbolQuery)
+        || _kindFilters.Count > 0
+        || !string.IsNullOrWhiteSpace(_scopeRootId);
+
+    private IReadOnlyList<GraphNavNode> DisplayNavRoots
+    {
+        get
+        {
+            if (!HasActiveNavFilters)
+            {
+                return _navRoots;
+            }
+
+            var visible = new HashSet<int>();
+            foreach (var item in FilteredItems)
+            {
+                if (item.Id is not int id)
+                {
+                    continue;
+                }
+
+                visible.Add(id);
+                var guard = 0;
+                var cur = item;
+                while (cur.ParentId is int pid && guard++ < 4096)
+                {
+                    if (!visible.Add(pid))
+                    {
+                        break;
+                    }
+
+                    if (!_itemsById.TryGetValue(pid, out cur))
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return ApiDocNavigationBuilder.FilterGraphRoots(_navRoots, visible);
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -160,11 +194,13 @@ public partial class PackageDocs
         _loading = true;
         _loadError = null;
         _doc = null;
+        _itemsById = [];
+        _navRoots = [];
         _selected = null;
         _deepLinkMissMessage = null;
-        _showFilterPopover = false;
+        _showMorePanel = false;
         _kindFilters.Clear();
-        _moduleFilter = string.Empty;
+        _scopeRootId = string.Empty;
         _symbolQuery = string.IsNullOrWhiteSpace(InitialSymbolSearch) ? string.Empty : InitialSymbolSearch.Trim();
         try
         {
@@ -183,17 +219,24 @@ public partial class PackageDocs
             }
 
             var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, JsonOptions);
+            var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, StructuredApiDocJson.Options);
             if (doc is null || doc.Items.Count == 0)
             {
                 _loadError = "Structured documentation is empty.";
                 return;
             }
 
+            if (!ApiDocNavigationBuilder.SupportsStructuredGraph(doc))
+            {
+                _loadError =
+                    "This package ships legacy api.json without graph navigation. Re-publish with a Beskid CLI that emits schemaVersion 3 and navigationModel graph-v1.";
+                return;
+            }
+
             _doc = doc;
-            _selected = doc.Items
-                .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal)
-                .FirstOrDefault();
+            _itemsById = doc.Items.Where(i => i.Id is not null).ToDictionary(i => i.Id!.Value);
+            _navRoots = ApiDocNavigationBuilder.BuildGraphRoots(doc);
+            _selected = doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
             ApplyDeepLinkAndSearchFromParams();
         }
         catch
@@ -228,16 +271,12 @@ public partial class PackageDocs
             else
             {
                 _deepLinkMissMessage = $"No API member matched the qualified name \"{target}\".";
-                _selected ??= _doc.Items
-                    .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal)
-                    .FirstOrDefault();
+                _selected ??= _doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
             }
         }
         else if (_selected is null)
         {
-            _selected = _doc.Items
-                .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal)
-                .FirstOrDefault();
+            _selected = _doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
         }
 
         if (!string.IsNullOrWhiteSpace(InitialSymbolSearch))
@@ -252,28 +291,49 @@ public partial class PackageDocs
         return Task.CompletedTask;
     }
 
-    private Task NavigateToQualifiedNameAsync(string name)
+    private string ParentDisplayLabel(StructuredApiItemDto x)
     {
-        if (_doc is null || string.IsNullOrWhiteSpace(name))
+        if (x.ParentId is not int p || !_itemsById.TryGetValue(p, out var par))
         {
-            return Task.CompletedTask;
+            return "-";
         }
 
-        var match = _doc.Items.FirstOrDefault(x =>
-            string.Equals(x.QualifiedName ?? x.Name, name, StringComparison.Ordinal));
-        if (match is not null)
-        {
-            _selected = match;
-        }
-
-        return Task.CompletedTask;
+        return par.Name ?? par.QualifiedName ?? p.ToString();
     }
 
-    private static string ModuleName(StructuredApiItemDto item)
+    private bool ItemIsUnderScopeRoot(StructuredApiItemDto item, int rootId)
     {
-        var q = item.QualifiedName ?? item.Name ?? string.Empty;
-        var segs = q.Split("::", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        return segs.Length > 0 ? segs[0] : "global";
+        if (item.Id == rootId)
+        {
+            return true;
+        }
+
+        var guard = 0;
+        var cur = item;
+        while (cur.ParentId is int p && guard++ < 4096)
+        {
+            if (p == rootId)
+            {
+                return true;
+            }
+
+            if (!_itemsById.TryGetValue(p, out cur))
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static int? ParseScopeRootId(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return int.TryParse(raw, out var id) ? id : null;
     }
 
     private static IReadOnlyList<PackageDocsTocRow> BuildTocRows(string? markdown)
@@ -320,22 +380,13 @@ public partial class PackageDocs
             return string.Empty;
         }
 
-        var slug = value.Trim().ToLowerInvariant();
-        slug = Regex.Replace(slug, @"[`*_~\[\]\(\)\.,:;!?\\""']", string.Empty);
-        slug = Regex.Replace(slug, @"\s+", "-");
-        slug = Regex.Replace(slug, @"-+", "-");
-        return slug.Trim('-');
+        // Match Markdig `UseAutoIdentifiers(AutoIdentifierOptions.GitHub)` heading ids.
+        return LinkHelper.UrilizeAsGfm(value.Trim());
     }
 
-    private void ToggleFilterPopover()
-    {
-        _showFilterPopover = !_showFilterPopover;
-    }
+    private void ToggleMorePanel() => _showMorePanel = !_showMorePanel;
 
-    private void CloseFilterPopover()
-    {
-        _showFilterPopover = false;
-    }
+    private void CloseMorePanel() => _showMorePanel = false;
 
     private void ToggleKindFilter(string kind)
     {
@@ -360,20 +411,14 @@ public partial class PackageDocs
         return _kindFilters.Contains(kind);
     }
 
-    private void SetModuleFilter(string? module)
+    private void SetScopeRootFilter(string? raw)
     {
-        _moduleFilter = module ?? string.Empty;
+        _scopeRootId = raw ?? string.Empty;
     }
 
     private void ClearFilters()
     {
-        _moduleFilter = string.Empty;
+        _scopeRootId = string.Empty;
         _kindFilters.Clear();
-        _groupBy = "module";
-    }
-
-    private void SetGroupBy(string? value)
-    {
-        _groupBy = string.Equals(value, "kind", StringComparison.OrdinalIgnoreCase) ? "kind" : "module";
     }
 }

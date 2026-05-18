@@ -22,16 +22,14 @@ public sealed class ListPackageVersionsEndpoint(
         var packageName = Route<string>("PackageName")?.Trim();
         if (string.IsNullOrWhiteSpace(packageName))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync([], ct);
+            await Send.ResponseAsync([], StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var package = await dbContext.Packages.AsNoTracking().SingleOrDefaultAsync(x => x.Name == packageName, ct);
         if (package is null)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            await Send.OkAsync([], ct);
+            await Send.ResponseAsync([], StatusCodes.Status404NotFound, ct);
             return;
         }
 
@@ -40,8 +38,7 @@ public sealed class ListPackageVersionsEndpoint(
             var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
             if (string.IsNullOrWhiteSpace(userId) || userId != package.OwnerUserId)
             {
-                HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await Send.OkAsync([], ct);
+                await Send.ResponseAsync([], StatusCodes.Status403Forbidden, ct);
                 return;
             }
         }

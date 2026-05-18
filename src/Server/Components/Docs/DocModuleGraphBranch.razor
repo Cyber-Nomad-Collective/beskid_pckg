@@ -1,0 +1,58 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentStack Orientation="Orientation.Vertical" Gap="2">
+    <FluentButton Appearance="@ButtonAppearance(Node.Item)"
+                  Class="docs-module-member-btn"
+                  Style="@IndentStyle"
+                  Title="@(Node.Item.QualifiedName ?? Node.Item.Name)"
+                  OnClick="@(() => SelectAsync(Node.Item))">
+        @DisplayTitle(Node.Item)
+    </FluentButton>
+    @foreach (var child in Node.Children)
+    {
+        <DocModuleGraphBranch Node="child"
+                              Depth="@(Depth + 1)"
+                              SelectedItemId="SelectedItemId"
+                              SelectedQualifiedName="SelectedQualifiedName"
+                              OnItemSelected="OnItemSelected" />
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public GraphNavNode Node { get; set; } = null!;
+
+    [Parameter]
+    public int Depth { get; set; }
+
+    [Parameter]
+    public int? SelectedItemId { get; set; }
+
+    [Parameter]
+    public string? SelectedQualifiedName { get; set; }
+
+    [Parameter]
+    public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }
+
+    private string IndentStyle => $"padding-left: {(Depth * 12)}px; width: 100%; justify-content: flex-start;";
+
+    private static string DisplayTitle(StructuredApiItemDto m) =>
+        string.IsNullOrWhiteSpace(m.Name) ? (m.QualifiedName ?? "?") : m.Name!;
+
+    private Appearance ButtonAppearance(StructuredApiItemDto m) =>
+        IsSelected(m) ? Appearance.Accent : Appearance.Stealth;
+
+    private bool IsSelected(StructuredApiItemDto m)
+    {
+        if (SelectedItemId is int id && m.Id == id)
+        {
+            return true;
+        }
+
+        var key = m.QualifiedName ?? m.Name;
+        return !string.IsNullOrEmpty(SelectedQualifiedName)
+            && string.Equals(key, SelectedQualifiedName, StringComparison.Ordinal);
+    }
+
+    private Task SelectAsync(StructuredApiItemDto m) => OnItemSelected.InvokeAsync(m);
+}

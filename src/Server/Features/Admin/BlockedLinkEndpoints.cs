@@ -39,23 +39,20 @@ public sealed class AddBlockedLinkEndpoint(ApplicationDbContext db)
         var pattern = req.Pattern?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(pattern))
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AddBlockedLinkResponse(false, "Pattern is required.", null), ct);
+            await Send.ResponseAsync(new AddBlockedLinkResponse(false, "Pattern is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         if (pattern.Length > 512)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await Send.OkAsync(new AddBlockedLinkResponse(false, "Pattern is too long.", null), ct);
+            await Send.ResponseAsync(new AddBlockedLinkResponse(false, "Pattern is too long.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
 
         var exists = await db.BlockedLinkPatterns.AnyAsync(x => x.Pattern == pattern, ct);
         if (exists)
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            await Send.OkAsync(new AddBlockedLinkResponse(false, "That pattern is already blocked.", null), ct);
+            await Send.ResponseAsync(new AddBlockedLinkResponse(false, "That pattern is already blocked.", null), StatusCodes.Status409Conflict, ct);
             return;
         }
 
