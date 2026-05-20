@@ -89,30 +89,22 @@ public sealed class WorkspacePublishService(
             }
         }
 
-        var packageIds = memberContexts.Select(m => m.PackageId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var packages = await dbContext.Packages
-            .Where(p => packageIds.Contains(p.Name))
-            .ToListAsync(cancellationToken);
-
-        var missing = packageIds
-            .Except(packages.Select(p => p.Name), StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (missing.Count > 0)
+        IReadOnlyList<PackageEntity> packages;
+        try
         {
-            return Failure(
-                $"Workspace publish requires existing owned packages: {string.Join(", ", missing)}.",
-                StatusCodes.Status400BadRequest);
+            packages = await WorkspacePackageProvisioning.EnsureOwnedPackagesAsync(
+                dbContext,
+                userId,
+                memberContexts,
+                workspacePackageManifest,
+                cancellationToken);
         }
-
-        var notOwned = packages
-            .Where(p => !string.Equals(p.OwnerUserId, userId, StringComparison.Ordinal))
-            .Select(p => p.Name)
-            .ToList();
-        if (notOwned.Count > 0)
+        catch (InvalidOperationException ex)
         {
-            return Failure(
-                $"You do not own workspace packages: {string.Join(", ", notOwned)}.",
-                StatusCodes.Status403Forbidden);
+            var statusCode = ex.Message.Contains("do not own", StringComparison.OrdinalIgnoreCase)
+                ? StatusCodes.Status403Forbidden
+                : StatusCodes.Status400BadRequest;
+            return Failure(ex.Message, statusCode);
         }
 
         var assignedVersions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);

@@ -6,10 +6,23 @@ namespace Server.Tests.TestUtils;
 
 public static class WorkspaceBundleTestBuilder
 {
-    public static byte[] CreateTwoMemberWorkspaceBundle()
+    public static byte[] CreateTwoMemberWorkspaceBundle(string? uniqueSuffix = null)
     {
+        var suffix = uniqueSuffix ?? Guid.NewGuid().ToString("N")[..12];
+        var foundationPackage = $"Pkg.Foundation.{suffix}";
+        var consumerPackage = $"Pkg.Consumer.{suffix}";
+
         var files = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["workspace.package.json"] = $$"""
+                {
+                  "schema": "beskid.workspace.package.v1",
+                  "members": {
+                    "foundation": { "package": "{{foundationPackage}}" },
+                    "consumer": { "package": "{{consumerPackage}}" }
+                  }
+                }
+                """,
             ["Workspace.proj"] = """
                 workspace {
                   name = "DemoWorkspace"
@@ -24,9 +37,9 @@ public static class WorkspaceBundleTestBuilder
                   path = "consumer"
                 }
                 """,
-            ["foundation/Project.proj"] = """
+            ["foundation/Project.proj"] = $$"""
                 project {
-                  name = "Pkg.Foundation"
+                  name = "{{foundationPackage}}"
                   version = "0.1.0"
                 }
 
@@ -38,13 +51,13 @@ public static class WorkspaceBundleTestBuilder
             ["foundation/src/Prelude.bd"] = "// foundation",
             ["foundation/.beskid/docs/api.json"] = BpkTestArtifactBuilder.MinimalStructuredApiJson,
             ["consumer/.beskid/docs/api.json"] = BpkTestArtifactBuilder.MinimalStructuredApiJson,
-            ["consumer/Project.proj"] = """
+            ["consumer/Project.proj"] = $$"""
                 project {
-                  name = "Pkg.Consumer"
+                  name = "{{consumerPackage}}"
                   version = "0.1.0"
                 }
 
-                dependency "Pkg.Foundation" {
+                dependency "{{foundationPackage}}" {
                   source = "path"
                   path = "../foundation"
                 }

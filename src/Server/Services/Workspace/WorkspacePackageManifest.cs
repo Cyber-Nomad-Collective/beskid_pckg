@@ -6,6 +6,13 @@ namespace Server.Services.Workspace;
 
 public sealed record WorkspacePublishMemberConfig(
     string? PackageId,
+    string? Description,
+    string? Category,
+    string? RepositoryUrl,
+    string? WebsiteUrl,
+    string? IconUrl,
+    bool? IsPublic,
+    IReadOnlyList<string> Tags,
     JsonObject? Configuration,
     IReadOnlyDictionary<string, string> Overrides);
 
@@ -160,6 +167,35 @@ public static class WorkspacePackageManifest
                 ? packageIdElement.GetString()
                 : null;
 
+        var description = element.TryGetProperty("description", out var descriptionElement)
+            && descriptionElement.ValueKind == JsonValueKind.String
+            ? descriptionElement.GetString()
+            : null;
+        var category = element.TryGetProperty("category", out var categoryElement)
+            && categoryElement.ValueKind == JsonValueKind.String
+            ? categoryElement.GetString()
+            : null;
+        var repositoryUrl = element.TryGetProperty("repositoryUrl", out var repositoryUrlElement)
+            && repositoryUrlElement.ValueKind == JsonValueKind.String
+            ? repositoryUrlElement.GetString()
+            : null;
+        var websiteUrl = element.TryGetProperty("websiteUrl", out var websiteUrlElement)
+            && websiteUrlElement.ValueKind == JsonValueKind.String
+            ? websiteUrlElement.GetString()
+            : null;
+        var iconUrl = element.TryGetProperty("iconUrl", out var iconUrlElement)
+            && iconUrlElement.ValueKind == JsonValueKind.String
+            ? iconUrlElement.GetString()
+            : null;
+        bool? isPublic = null;
+        if (element.TryGetProperty("isPublic", out var isPublicElement)
+            && (isPublicElement.ValueKind == JsonValueKind.True || isPublicElement.ValueKind == JsonValueKind.False))
+        {
+            isPublic = isPublicElement.GetBoolean();
+        }
+
+        var tags = ReadStringArray(element, "tags");
+
         JsonObject? configuration = null;
         if (element.TryGetProperty("configuration", out var configurationElement)
             && configurationElement.ValueKind == JsonValueKind.Object)
@@ -168,7 +204,40 @@ public static class WorkspacePackageManifest
         }
 
         var overrides = ReadStringMap(element, "overrides");
-        return new WorkspacePublishMemberConfig(packageId, configuration, overrides);
+        return new WorkspacePublishMemberConfig(
+            packageId,
+            description,
+            category,
+            repositoryUrl,
+            websiteUrl,
+            iconUrl,
+            isPublic,
+            tags,
+            configuration,
+            overrides);
+    }
+
+    private static IReadOnlyList<string> ReadStringArray(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var element) || element.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var values = new List<string>();
+        foreach (var item in element.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                var value = item.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    values.Add(value.Trim());
+                }
+            }
+        }
+
+        return values;
     }
 
     private static IReadOnlyDictionary<string, string> ReadStringMap(JsonElement root, string propertyName)
