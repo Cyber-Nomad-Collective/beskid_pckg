@@ -44,9 +44,9 @@ public sealed class PublishPackageVersionEndpoint(
             ["TraceId"] = HttpContext.TraceIdentifier,
         });
 
-        void Record(string severity, string action, string message, string? userId, string? packageName = null, string? version = null)
+        async Task RecordAsync(string severity, string action, string message, string? userId, string? packageName = null, string? version = null)
         {
-            registryActivity.Append(new RegistryActivityEntry(
+            await registryActivity.AppendAsync(new RegistryActivityEntry(
                 DateTimeOffset.UtcNow,
                 severity,
                 action,
@@ -54,14 +54,14 @@ public sealed class PublishPackageVersionEndpoint(
                 HttpContext.TraceIdentifier,
                 userId,
                 packageName,
-                version));
+                version), ct);
         }
 
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
             logger.LogWarning("Publish rejected: unauthenticated caller.");
-            Record("Warning", "publish", "Unauthorized.", null, Route<string>("PackageName")?.Trim(), null);
+            await RecordAsync("Warning", "publish", "Unauthorized.", null, Route<string>("PackageName")?.Trim(), null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Unauthorized.", null), StatusCodes.Status401Unauthorized, ct);
             return;
         }
@@ -72,7 +72,7 @@ public sealed class PublishPackageVersionEndpoint(
         if (string.IsNullOrWhiteSpace(packageName))
         {
             logger.LogWarning("Publish rejected: missing package name.");
-            Record("Warning", "publish", "Package name is required.", userId, null, null);
+            await RecordAsync("Warning", "publish", "Package name is required.", userId, null, null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Package name is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
@@ -81,7 +81,7 @@ public sealed class PublishPackageVersionEndpoint(
         if (package is null)
         {
             logger.LogWarning("Publish rejected: package {PackageName} not found.", packageName);
-            Record("Warning", "publish", "Package was not found.", userId, packageName, null);
+            await RecordAsync("Warning", "publish", "Package was not found.", userId, packageName, null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Package was not found.", null), StatusCodes.Status404NotFound, ct);
             return;
         }
@@ -92,7 +92,7 @@ public sealed class PublishPackageVersionEndpoint(
                 "Publish rejected: user {UserId} does not own package {PackageName}.",
                 userId,
                 packageName);
-            Record("Warning", "publish", "You do not own this package.", userId, packageName, null);
+            await RecordAsync("Warning", "publish", "You do not own this package.", userId, packageName, null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "You do not own this package.", null), StatusCodes.Status403Forbidden, ct);
             return;
         }
@@ -100,7 +100,7 @@ public sealed class PublishPackageVersionEndpoint(
         if (!HttpContext.Request.HasFormContentType)
         {
             logger.LogWarning("Publish rejected: expected multipart form for {PackageName}.", packageName);
-            Record("Warning", "publish", "Expected multipart form payload.", userId, packageName, null);
+            await RecordAsync("Warning", "publish", "Expected multipart form payload.", userId, packageName, null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Expected multipart form payload.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
@@ -114,7 +114,7 @@ public sealed class PublishPackageVersionEndpoint(
         if (artifact is null)
         {
             logger.LogWarning("Publish rejected: missing artifact for {PackageName}.", packageName);
-            Record("Warning", "publish", "Artifact file is required.", userId, packageName, null);
+            await RecordAsync("Warning", "publish", "Artifact file is required.", userId, packageName, null);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Artifact file is required.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
@@ -140,7 +140,7 @@ public sealed class PublishPackageVersionEndpoint(
         if (!SemVerRegex.IsMatch(version))
         {
             logger.LogWarning("Publish rejected: invalid semver {Version} for {PackageName}.", version, packageName);
-            Record("Warning", "publish", "Version must be a valid semantic version.", userId, packageName, version);
+            await RecordAsync("Warning", "publish", "Version must be a valid semantic version.", userId, packageName, version);
             await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Version must be a valid semantic version.", null), StatusCodes.Status400BadRequest, ct);
             return;
         }
@@ -152,7 +152,7 @@ public sealed class PublishPackageVersionEndpoint(
                 artifact.Length,
                 packageName,
                 version);
-            Record("Warning", "publish", $"Artifact size must be between 1 byte and {MaxArtifactSizeBytes} bytes.", userId, packageName, version);
+            await RecordAsync("Warning", "publish", $"Artifact size must be between 1 byte and {MaxArtifactSizeBytes} bytes.", userId, packageName, version);
             await Send.ResponseAsync(
                 new PublishPackageVersionResponse(false, $"Artifact size must be between 1 byte and {MaxArtifactSizeBytes} bytes.", null),
                 StatusCodes.Status400BadRequest,
@@ -174,7 +174,7 @@ public sealed class PublishPackageVersionEndpoint(
 
         if (!publishResult.Success)
         {
-            Record("Warning", "publish_failed", publishResult.Message, userId, package.Name, version);
+            await RecordAsync("Warning", "publish_failed", publishResult.Message, userId, package.Name, version);
             await Send.ResponseAsync(
                 new PublishPackageVersionResponse(false, publishResult.Message, null),
                 publishResult.StatusCode,
@@ -188,7 +188,7 @@ public sealed class PublishPackageVersionEndpoint(
             publishResult.Version!.Version,
             userId,
             HttpContext.TraceIdentifier);
-        Record(
+        await RecordAsync(
             "Information",
             "publish_success",
             $"Published version {publishResult.Version.Version}.",

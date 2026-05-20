@@ -29,7 +29,7 @@ public partial class PackageDetails
     private int PackageBoardId;
     private bool IsPackageBoardLocked;
     private bool CanModerateBoardUser;
-    private string SelectedTabId = "pkg-tab-versions";
+    private string SelectedTabId = "pkg-tab-readme";
     private PackageHealthStatus? HealthStatus;
     private int DependentsCount;
     private PackageVersionSummaryResponse? LatestVersion;
@@ -75,7 +75,7 @@ public partial class PackageDetails
 
         if (SelectedTabId == "pkg-tab-badges" && (Package is null || !Package.IsPublic))
         {
-            SelectedTabId = "pkg-tab-versions";
+            SelectedTabId = "pkg-tab-readme";
         }
     }
 

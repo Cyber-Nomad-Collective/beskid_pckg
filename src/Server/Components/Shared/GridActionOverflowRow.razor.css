@@ -1,28 +1,13 @@
-/* Match toolbar row height to square action buttons inside table cells. */
-.grid-action-overflow ::deep .fluent-overflow[orientation="horizontal"] {
+.grid-action-overflow {
+    display: inline-flex;
     align-items: center;
     min-height: 40px;
 }
 
-/* Wider "more" slot than Fluent default so 40px grid buttons fit. */
-.grid-action-overflow ::deep .fluent-overflow-more {
-    min-width: 40px;
-    max-width: 40px;
-}
-
-/* Hidden label: supplies innerText for FluentOverflowItem.Text (0-based action index, invariant). */
-.grid-action-overflow-sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-.grid-action-overflow ::deep .fluent-overflow-item {
-    position: relative;
+/* Let FluentMenuProvider menus escape clipped data-grid cells (dashboard + package grids). */
+::deep fluent-data-grid td,
+::deep fluent-data-grid [role="cell"],
+::deep .fluent-data-grid td,
+::deep .fluent-data-grid [role="cell"] {
+    overflow: visible;
 }

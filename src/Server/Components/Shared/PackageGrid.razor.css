@@ -1,8 +1,12 @@
 /* Let anchored overflow menus (via FluentMenuProvider) escape table cell clipping. */
-.package-grid ::deep td {
+.package-grid ::deep td,
+.grid-action-host ::deep td,
+.package-grid-host ::deep td {
     overflow: visible;
 }
 
-.package-grid ::deep [role="cell"] {
+.package-grid ::deep [role="cell"],
+.grid-action-host ::deep [role="cell"],
+.package-grid-host ::deep [role="cell"] {
     overflow: visible;
 }

@@ -50,7 +50,9 @@
                 <aside class="profile-sidebar">
                     <div class="profile-avatar-section">
                         <div class="profile-avatar-upload @(IsSaving || IsUploadingImage ? "is-disabled" : "")">
-                            <UploadDropzone TriggerClass="profile-avatar-upload-trigger"
+                            <UploadDropzone @key="@("profile-avatar-upload")"
+                                            InputElementIdParameter="profile-avatar-file-input"
+                                            TriggerClass="profile-avatar-upload-trigger"
                                             AriaLabel="Upload profile photo"
                                             Accept="image/png,image/jpeg,image/webp,image/gif"
                                             Disabled="@(IsSaving || IsUploadingImage)"

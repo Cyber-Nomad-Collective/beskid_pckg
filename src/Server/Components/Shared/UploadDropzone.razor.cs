@@ -11,9 +11,12 @@ public partial class UploadDropzone
         Invisible
     }
 
+    private string InputElementId { get; set; } = string.Empty;
+
     [Parameter] public string? Class { get; set; }
     [Parameter] public string? TriggerClass { get; set; }
     [Parameter] public string? Label { get; set; }
+    [Parameter] public string? InputElementIdParameter { get; set; }
     [Parameter] public string PrimaryText { get; set; } = "File upload";
     [Parameter] public string? SecondaryText { get; set; }
     [Parameter] public string? HintText { get; set; }
@@ -28,6 +31,13 @@ public partial class UploadDropzone
     [Parameter] public EventCallback<InputFileChangeEventArgs> OnFilesSelected { get; set; }
 
     private string? SelectedFileName { get; set; }
+
+    protected override void OnInitialized()
+    {
+        InputElementId = string.IsNullOrWhiteSpace(InputElementIdParameter)
+            ? $"upload-{Guid.NewGuid():N}"
+            : InputElementIdParameter;
+    }
 
     private string RootClass
         => $"upload-dropzone upload-dropzone-mode-{Mode.ToString().ToLowerInvariant()} {(Disabled ? "is-disabled" : string.Empty)} {Class}".Trim();

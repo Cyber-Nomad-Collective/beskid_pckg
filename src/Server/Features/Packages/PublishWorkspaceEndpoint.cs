@@ -79,7 +79,7 @@ public sealed class PublishWorkspaceEndpoint(
         await using var artifactStream = artifact.OpenReadStream();
         var result = await workspacePublishService.PublishAsync(artifactStream, userId, versionBump, ct);
 
-        registryActivity.Append(new RegistryActivityEntry(
+        await registryActivity.AppendAsync(new RegistryActivityEntry(
             DateTimeOffset.UtcNow,
             result.Success ? "Information" : "Warning",
             result.Success ? "workspace_publish_success" : "workspace_publish_failed",
@@ -87,7 +87,7 @@ public sealed class PublishWorkspaceEndpoint(
             HttpContext.TraceIdentifier,
             userId,
             result.WorkspaceName,
-            null));
+            null), ct);
 
         if (!result.Success)
         {

@@ -223,7 +223,7 @@ builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
 builder.Services.AddPackageRegistryServices();
 builder.Services.AddDocumentationServices();
-builder.Services.AddSingleton<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
+builder.Services.AddScoped<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.Configure<CaptchaOptions>(builder.Configuration.GetSection(CaptchaOptions.SectionName));

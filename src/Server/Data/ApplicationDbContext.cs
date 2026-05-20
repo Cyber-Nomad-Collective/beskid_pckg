@@ -30,6 +30,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<PackageTagEntity> PackageTags => Set<PackageTagEntity>();
     public DbSet<TopicEntity> Topics => Set<TopicEntity>();
     public DbSet<BlockedLinkPatternEntity> BlockedLinkPatterns => Set<BlockedLinkPatternEntity>();
+    public DbSet<RegistryActivityEntity> RegistryActivities => Set<RegistryActivityEntity>();
 
     /// <summary>ASP.NET Core Data Protection keys (antiforgery, auth cookies). Stored in PostgreSQL so Docker restarts and multiple replicas share one key ring.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -302,6 +303,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Pattern).IsRequired().HasMaxLength(512);
             entity.Property(x => x.Note).HasMaxLength(256);
             entity.HasIndex(x => x.Pattern);
+        });
+
+        builder.Entity<RegistryActivityEntity>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Severity).IsRequired().HasMaxLength(32);
+            entity.Property(x => x.Action).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.Message).IsRequired().HasMaxLength(2048);
+            entity.Property(x => x.TraceId).HasMaxLength(128);
+            entity.Property(x => x.UserId).HasMaxLength(450);
+            entity.Property(x => x.PackageName).HasMaxLength(128);
+            entity.Property(x => x.Version).HasMaxLength(64);
+            entity.HasIndex(x => x.TimestampUtc);
         });
     }
 }

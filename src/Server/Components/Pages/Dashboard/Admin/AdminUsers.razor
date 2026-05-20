@@ -36,7 +36,7 @@
                 }
                 else
                 {
-                    <FluentDataGrid Items="@UsersQueryable" ResizableColumns="true" Style="width: 100%; overflow: auto;">
+                    <FluentDataGrid Items="@UsersQueryable" ResizableColumns="true" Class="grid-action-host" Style="width: 100%; overflow: auto;">
                         <PropertyColumn Property="@(u => u.Email)" Title="Email" Sortable="true" />
                         <PropertyColumn Property="@(u => u.DisplayName)" Title="Display name" Sortable="true" />
                         <PropertyColumn Property="@(u => u.Rating)" Title="Rating" Sortable="true" Format="F2" />

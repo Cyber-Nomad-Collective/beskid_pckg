@@ -69,7 +69,7 @@
     justify-content: flex-end;
 }
 
-.package-readme-section {
+.package-readme-tab {
     display: grid;
     gap: 12px;
 }

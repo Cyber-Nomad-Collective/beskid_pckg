@@ -13,7 +13,6 @@
 }
 
 .upload-dropzone-trigger {
-    position: relative;
     display: block;
     cursor: pointer;
 }
@@ -36,7 +35,7 @@
 }
 
 .upload-dropzone-trigger:hover .upload-dropzone-surface,
-.upload-dropzone-trigger:focus-within .upload-dropzone-surface {
+.upload-dropzone-trigger:focus-visible .upload-dropzone-surface {
     border-color: var(--accent-stroke-control-hover);
     background: linear-gradient(
         180deg,
@@ -75,9 +74,20 @@
 
 .upload-dropzone-input {
     position: absolute;
-    inset: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
     opacity: 0;
-    cursor: pointer;
+    pointer-events: none;
+}
+
+.upload-dropzone-mode-invisible .upload-dropzone-trigger {
+    position: relative;
 }
 
 .upload-dropzone-trigger.is-invisible-trigger {

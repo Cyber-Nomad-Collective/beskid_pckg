@@ -1,10 +1,17 @@
 <div class="@RootClass">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
-        <label class="fluent-label upload-dropzone-label">@Label</label>
+        <label class="fluent-label upload-dropzone-label" for="@InputElementId">@Label</label>
     }
 
-    <label class="@TriggerClassValue" aria-label="@AriaLabel">
+    <InputFile id="@InputElementId"
+               class="upload-dropzone-input"
+               OnChange="HandleFilesSelectedAsync"
+               accept="@Accept"
+               disabled="@Disabled"
+               multiple="@AllowMultiple" />
+
+    <label class="@TriggerClassValue" for="@InputElementId" aria-label="@AriaLabel">
         @if (TriggerContent is not null)
         {
             @TriggerContent
@@ -24,16 +31,6 @@
                 </div>
             </div>
         }
-        else
-        {
-            @TriggerContent
-        }
-
-        <InputFile class="upload-dropzone-input"
-                   OnChange="HandleFilesSelectedAsync"
-                   accept="@Accept"
-                   disabled="@Disabled"
-                   multiple="@AllowMultiple" />
     </label>
 
     @if (!HideMeta && (ShowSelectedFileName || !string.IsNullOrWhiteSpace(HintText)))

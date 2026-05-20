@@ -1,62 +1,45 @@
-@using System.Globalization
-@using System.Linq
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 @if (Actions is { Count: > 0 })
 {
-    <FluentOverflow Class="@($"grid-action-overflow {Class}".Trim())"
-                    Style="width: 100%; min-width: 0;"
-                    OnOverflowRaised="@OnOverflowRaisedAsync">
-        <ChildContent>
-            @for (var i = 0; i < Actions.Count; i++)
-            {
-                var action = Actions[i];
-                <FluentOverflowItem @key="@i">
-                    <span class="grid-action-overflow-sr">@i.ToString(CultureInfo.InvariantCulture)</span>
-                    <GridActionButton Icon="@action.Icon"
-                                      Tooltip="@action.Tooltip"
-                                      Appearance="@action.Appearance"
-                                      Disabled="@action.Disabled"
-                                      OnClick="@action.OnClick" />
-                </FluentOverflowItem>
-            }
-        </ChildContent>
-        <MoreButtonTemplate Context="oflow">
-            @if (oflow.ItemsOverflow.Any())
-            {
-                <GridActionButton Id="@oflow.IdMoreButton"
-                                  Appearance="Appearance.Outline"
-                                  Icon="@(new Icons.Regular.Size20.MoreHorizontal())"
-                                  Tooltip="More actions" />
-            }
-        </MoreButtonTemplate>
-        <OverflowTemplate Context="oflow">
-            <FluentMenu Anchor="@oflow.IdMoreButton"
-                        @bind-Open="_menuOpen"
+    <div class="grid-action-overflow @Class">
+        @if (Actions.Count == 1)
+        {
+            var action = Actions[0];
+            <GridActionButton Icon="@action.Icon"
+                              Tooltip="@action.Tooltip"
+                              Appearance="@action.Appearance"
+                              Disabled="@action.Disabled"
+                              OnClick="@action.OnClick" />
+        }
+        else
+        {
+            <FluentMenu @bind-Open="_menuOpen"
+                        Anchor="@_menuButtonId"
                         Anchored="true"
                         UseMenuService="true"
                         Trigger="MouseButton.Left"
                         VerticalPosition="VerticalPosition.Bottom"
                         HorizontalViewportLock="true"
                         VerticalInset="true">
-                @foreach (var overflowItem in oflow.ItemsOverflow)
+                <GridActionButton Id="@_menuButtonId"
+                                  Appearance="Appearance.Outline"
+                                  Icon="@(new Icons.Regular.Size20.MoreHorizontal())"
+                                  Tooltip="More actions"
+                                  StopPropagation="true"
+                                  OnClick="@ToggleMenuAsync" />
+                @foreach (var action in Actions)
                 {
-                    var def = ResolveDefinition(overflowItem);
-                    if (def is null)
-                    {
-                        continue;
-                    }
-
-                    <FluentMenuItem Disabled="@def.Disabled"
-                                    OnClick="@(() => InvokeFromMenuAsync(def))">
+                    <FluentMenuItem Disabled="@action.Disabled"
+                                    OnClick="@(() => InvokeFromMenuAsync(action))">
                         <span slot="start">
-                            <FluentIcon Value="@def.Icon" Color="Color.Neutral" />
+                            <FluentIcon Value="@action.Icon" Color="Color.Neutral" />
                         </span>
-                        @def.Tooltip
+                        @action.Tooltip
                     </FluentMenuItem>
                 }
             </FluentMenu>
-        </OverflowTemplate>
-    </FluentOverflow>
+        }
+    </div>
 }

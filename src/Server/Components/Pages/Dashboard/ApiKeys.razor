@@ -48,7 +48,7 @@
         }
         else
         {
-            <FluentDataGrid TGridItem="ApiKeysListResponse" Items="@ApiKeyItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table">
+            <FluentDataGrid TGridItem="ApiKeysListResponse" Items="@ApiKeyItems.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" Class="grid-action-host">
                 <ChildContent>
                     <TemplateColumn Title="Name" Context="key">@key.Name</TemplateColumn>
                     <TemplateColumn Title="Prefix" Context="key"><code>@key.Prefix</code></TemplateColumn>

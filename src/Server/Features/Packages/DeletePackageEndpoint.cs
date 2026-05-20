@@ -30,9 +30,9 @@ public sealed class DeletePackageEndpoint(
             ["TraceId"] = HttpContext.TraceIdentifier,
         });
 
-        void Record(string severity, string action, string message, string? uid, string? pkg)
+        async Task RecordAsync(string severity, string action, string message, string? uid, string? pkg)
         {
-            registryActivity.Append(new RegistryActivityEntry(
+            await registryActivity.AppendAsync(new RegistryActivityEntry(
                 DateTimeOffset.UtcNow,
                 severity,
                 action,
@@ -40,14 +40,14 @@ public sealed class DeletePackageEndpoint(
                 HttpContext.TraceIdentifier,
                 uid,
                 pkg,
-                null));
+                null), ct);
         }
 
         var userId = await principalResolver.ResolveUserIdAsync(HttpContext, ct);
         if (string.IsNullOrWhiteSpace(userId))
         {
             logger.LogWarning("Delete package rejected: unauthenticated.");
-            Record("Warning", "delete_package", "Unauthorized.", null, null);
+            await RecordAsync("Warning", "delete_package", "Unauthorized.", null, null);
             await Send.ResponseAsync(new DeletePackageResponse(false, "Unauthorized."), StatusCodes.Status401Unauthorized, ct);
             return;
         }
@@ -55,7 +55,7 @@ public sealed class DeletePackageEndpoint(
         var packageName = Route<string>("PackageName")?.Trim();
         if (string.IsNullOrWhiteSpace(packageName))
         {
-            Record("Warning", "delete_package", "Package name is required.", userId, null);
+            await RecordAsync("Warning", "delete_package", "Package name is required.", userId, null);
             await Send.ResponseAsync(new DeletePackageResponse(false, "Package name is required."), StatusCodes.Status400BadRequest, ct);
             return;
         }
@@ -64,7 +64,7 @@ public sealed class DeletePackageEndpoint(
         if (package is null)
         {
             logger.LogWarning("Delete package rejected: {PackageName} not found.", packageName);
-            Record("Warning", "delete_package", "Package was not found.", userId, packageName);
+            await RecordAsync("Warning", "delete_package", "Package was not found.", userId, packageName);
             await Send.ResponseAsync(new DeletePackageResponse(false, "Package was not found."), StatusCodes.Status404NotFound, ct);
             return;
         }
@@ -72,7 +72,7 @@ public sealed class DeletePackageEndpoint(
         if (package.OwnerUserId != userId && !User.IsInRole("SuperAdmin"))
         {
             logger.LogWarning("Delete package rejected: forbidden for user {UserId} on {PackageName}.", userId, packageName);
-            Record("Warning", "delete_package", "You do not have permission to delete this package.", userId, packageName);
+            await RecordAsync("Warning", "delete_package", "You do not have permission to delete this package.", userId, packageName);
             await Send.ResponseAsync(new DeletePackageResponse(false, "You do not have permission to delete this package."), StatusCodes.Status403Forbidden, ct);
             return;
         }
@@ -130,7 +130,7 @@ public sealed class DeletePackageEndpoint(
         }
 
         logger.LogInformation("Deleted package {PackageName} by {UserId}; trace={TraceId}.", packageName, userId, HttpContext.TraceIdentifier);
-        Record("Information", "delete_package_success", "Package deleted.", userId, packageName);
+        await RecordAsync("Information", "delete_package_success", "Package deleted.", userId, packageName);
 
         await Send.OkAsync(new DeletePackageResponse(true, "Package deleted."), ct);
     }

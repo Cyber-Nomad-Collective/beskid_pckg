@@ -1,7 +1,7 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Server.Features.Packages
 
-<FluentDataGrid TGridItem="PackageSummaryResponse" Items="@Packages.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" MultiLine="true" Class="package-grid">
+<FluentDataGrid TGridItem="PackageSummaryResponse" Items="@Packages.AsQueryable()" DisplayMode="DataGridDisplayMode.Table" MultiLine="true" Class="package-grid grid-action-host">
     <ChildContent>
         <TemplateColumn Title="Name" Context="package">
             <div style="display: flex; flex-direction: column; gap: 4px;">

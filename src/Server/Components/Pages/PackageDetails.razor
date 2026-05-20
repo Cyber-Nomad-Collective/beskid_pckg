@@ -44,7 +44,6 @@ else
                 <h1>@Package.Name</h1>
                 <p class="package-description">@Package.Description</p>
                 <p class="package-publisher-line muted">
-                    <span>Publisher</span>
                     <PublisherAttribution OwnerUserId="@_ownerPublisherUserId"
                                           DisplayName="@_ownerPublisherDisplayName"
                                           IsVerified="@_ownerPublisherVerified" />
@@ -73,17 +72,12 @@ else
             <div class="package-hero-actions">
                 @if (Versions.Count > 0)
                 {
-                    <FluentStack Orientation="Orientation.Horizontal"
-                                 VerticalAlignment="VerticalAlignment.Center"
-                                 Gap="8"
-                                 Wrap="true"
-                                 Class="package-header-version">
-                        <FluentLabel Typo="Typography.Body" Class="muted">Version</FluentLabel>
+                    <div class="package-header-version">
                         <PackageVersionSelect Versions="Versions"
                                               @bind-SelectedVersion="ExplorerVersion"
                                               @bind-SelectedVersion:after="OnExplorerVersionChangedAsync"
                                               AriaLabel="Select package version" />
-                    </FluentStack>
+                    </div>
                 }
                 @if (IsAuthenticated)
                 {
@@ -94,47 +88,38 @@ else
             </div>
         </header>
 
-        <section class="package-readme-section" aria-label="Package readme">
-            @if (_explorerReadmeLoading)
-            {
-                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12">
-                    <FluentProgressRing />
-                    <FluentLabel Typo="Typography.Body" Class="muted">Loading README…</FluentLabel>
-                </FluentStack>
-            }
-            else if (!string.IsNullOrWhiteSpace(_explorerReadmeError))
-            {
-                <FluentMessageBar Intent="MessageIntent.Warning">@_explorerReadmeError</FluentMessageBar>
-            }
-            else if (!string.IsNullOrWhiteSpace(_explorerReadmeMarkdown))
-            {
-                <FluentCard Class="package-readme-card">
-                    <DocMarkdownRegion Markdown="@_explorerReadmeMarkdown" />
-                </FluentCard>
-            }
-            else if (Versions.Count > 0)
-            {
-                <p class="muted package-readme-empty">No README published for this version.</p>
-            }
-        </section>
-
         <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
+            <FluentTab Id="pkg-tab-readme" Label="Readme">
+                <div class="content-section package-tab-content package-readme-tab" aria-label="Package readme">
+                    @if (_explorerReadmeLoading)
+                    {
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12">
+                            <FluentProgressRing />
+                            <FluentLabel Typo="Typography.Body" Class="muted">Loading README…</FluentLabel>
+                        </FluentStack>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_explorerReadmeError))
+                    {
+                        <FluentMessageBar Intent="MessageIntent.Warning">@_explorerReadmeError</FluentMessageBar>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_explorerReadmeMarkdown))
+                    {
+                        <FluentCard Class="package-readme-card">
+                            <DocMarkdownRegion Markdown="@_explorerReadmeMarkdown" />
+                        </FluentCard>
+                    }
+                    else if (Versions.Count > 0)
+                    {
+                        <p class="muted package-readme-empty">No README published for this version.</p>
+                    }
+                </div>
+            </FluentTab>
+
             <FluentTab Id="pkg-tab-versions" Label="Versions">
                 <div class="content-section package-tab-content">
                     <div class="content-section-title-row">
                         <h2>Versions</h2>
                     </div>
-                    @if (LatestVersion is not null)
-                    {
-                        <FluentCard Class="reviews-summary-card">
-                            <div class="summary-group-label">Latest artifact provenance</div>
-                            <div class="package-result-metrics">
-                                <span>Checksum: @LatestVersion.ChecksumSha256</span>
-                                <span>Published: @LatestVersion.PublishedAtUtc.ToString("u")</span>
-                                <span>Status: @(LatestVersion.IsYanked ? "Yanked" : "Active")</span>
-                            </div>
-                        </FluentCard>
-                    }
                     @if (Versions.Count == 0)
                     {
                         <p class="muted">No versions published yet.</p>
@@ -173,11 +158,11 @@ else
 
             @if (Package.IsPublic)
             {
-                <FluentTab Id="pkg-tab-badges" Label="@("README & badges")">
+                <FluentTab Id="pkg-tab-badges" Label="Badges">
                     <div class="content-section package-tab-content package-badges-tab">
                         <FluentCard Class="package-embed-card">
                             <div class="package-embed-head">
-                                <h2 class="package-embed-title">README &amp; external sites</h2>
+                                <h2 class="package-embed-title">Badges &amp; external sites</h2>
                                 <p class="muted package-embed-lead">GitHub-friendly badge (SVG) and an optional iframe card. Scoped names such as <code>@@pckg/…</code> use the <code>package=</code> query parameter so paths stay valid everywhere.</p>
                             </div>
                             <FluentStack Orientation="Orientation.Vertical" Gap="12">

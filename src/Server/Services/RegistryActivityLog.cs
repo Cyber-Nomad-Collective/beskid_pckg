@@ -1,4 +1,5 @@
-using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
+using Server.Data;
 
 namespace Server.Services;
 
@@ -14,25 +15,49 @@ public sealed record RegistryActivityEntry(
 
 public interface IPckgRegistryActivityLog
 {
-    void Append(RegistryActivityEntry entry);
+    Task AppendAsync(RegistryActivityEntry entry, CancellationToken cancellationToken = default);
 
     IReadOnlyList<RegistryActivityEntry> GetRecent(int take);
 }
 
 /// <summary>
-/// In-memory ring buffer of registry-related actions for SuperAdmin diagnostics (not a full audit log).
+/// PostgreSQL-backed registry activity log (retains the newest 500 rows) for SuperAdmin diagnostics.
 /// </summary>
-public sealed class PckgRegistryActivityLog : IPckgRegistryActivityLog
+public sealed class PckgRegistryActivityLog(ApplicationDbContext dbContext) : IPckgRegistryActivityLog
 {
     private const int MaxEntries = 500;
-    private readonly ConcurrentQueue<RegistryActivityEntry> _queue = new();
 
-    public void Append(RegistryActivityEntry entry)
+    public async Task AppendAsync(RegistryActivityEntry entry, CancellationToken cancellationToken = default)
     {
-        _queue.Enqueue(entry);
-        while (_queue.Count > MaxEntries && _queue.TryDequeue(out _))
+        dbContext.RegistryActivities.Add(new RegistryActivityEntity
         {
+            TimestampUtc = entry.TimestampUtc,
+            Severity = entry.Severity,
+            Action = entry.Action,
+            Message = entry.Message,
+            TraceId = entry.TraceId,
+            UserId = entry.UserId,
+            PackageName = entry.PackageName,
+            Version = entry.Version,
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var excess = await dbContext.RegistryActivities
+            .OrderByDescending(x => x.TimestampUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip(MaxEntries)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        if (excess.Count == 0)
+        {
+            return;
         }
+
+        await dbContext.RegistryActivities
+            .Where(x => excess.Contains(x.Id))
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     public IReadOnlyList<RegistryActivityEntry> GetRecent(int take)
@@ -42,14 +67,22 @@ public sealed class PckgRegistryActivityLog : IPckgRegistryActivityLog
             return Array.Empty<RegistryActivityEntry>();
         }
 
-        var snapshot = _queue.ToArray();
-        if (snapshot.Length == 0)
-        {
-            return Array.Empty<RegistryActivityEntry>();
-        }
+        take = Math.Min(take, MaxEntries);
 
-        // Newest first
-        var ordered = snapshot.OrderByDescending(e => e.TimestampUtc).Take(take).ToList();
-        return ordered;
+        return dbContext.RegistryActivities
+            .AsNoTracking()
+            .OrderByDescending(x => x.TimestampUtc)
+            .ThenByDescending(x => x.Id)
+            .Take(take)
+            .Select(x => new RegistryActivityEntry(
+                x.TimestampUtc,
+                x.Severity,
+                x.Action,
+                x.Message,
+                x.TraceId,
+                x.UserId,
+                x.PackageName,
+                x.Version))
+            .ToList();
     }
 }
