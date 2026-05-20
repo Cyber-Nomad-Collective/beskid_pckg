@@ -121,7 +121,11 @@
                                      Breadcrumbs="@MemberBreadcrumbs"
                                      MemberPageUrl="@SelectedMemberPageUrl"
                                      OnBreadcrumbSelected="SelectItemAsync" />
-                    <DocApiSignatureSections Item="@_selected" OnTypeRefSelected="SelectItemByIdAsync" />
+                    <DocApiSignatureSections Item="@_selected"
+                                             PackageIdentifier="@PackageIdentifier"
+                                             Version="@Version"
+                                             ItemsById="@_itemsById"
+                                             OnTypeRefSelected="SelectItemByIdAsync" />
                     @if (SelectedMemberChildren.Count > 0)
                     {
                         <DocMemberMembersTable Members="@SelectedMemberChildren"

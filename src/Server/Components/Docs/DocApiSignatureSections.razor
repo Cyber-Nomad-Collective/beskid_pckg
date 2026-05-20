@@ -7,7 +7,11 @@
     {
         <FluentStack Orientation="Orientation.Vertical" Gap="6">
             <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Returns</FluentLabel>
-            <DocTypeLink Annotation="@Item.ReturnType" OnNavigate="OnTypeRefSelected" />
+            <DocTypeLink Annotation="@Item.ReturnType"
+                         PackageIdentifier="@PackageIdentifier"
+                         Version="@Version"
+                         ItemsById="@ItemsById"
+                         OnNavigate="OnTypeRefSelected" />
         </FluentStack>
     }
     @if (Item.Parameters.Count > 0)
@@ -27,7 +31,13 @@
                     {
                         <tr>
                             <td>@param.Name</td>
-                            <td><DocTypeLink Annotation="@param.Ty" OnNavigate="OnTypeRefSelected" /></td>
+                            <td>
+                                <DocTypeLink Annotation="@param.Ty"
+                                             PackageIdentifier="@PackageIdentifier"
+                                             Version="@Version"
+                                             ItemsById="@ItemsById"
+                                             OnNavigate="OnTypeRefSelected" />
+                            </td>
                             <td>@(param.Modifier ?? "-")</td>
                         </tr>
                     }
@@ -46,7 +56,11 @@
     {
         <FluentStack Orientation="Orientation.Vertical" Gap="6">
             <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Type</FluentLabel>
-            <DocTypeLink Annotation="@Item.FieldType" OnNavigate="OnTypeRefSelected" />
+            <DocTypeLink Annotation="@Item.FieldType"
+                         PackageIdentifier="@PackageIdentifier"
+                         Version="@Version"
+                         ItemsById="@ItemsById"
+                         OnNavigate="OnTypeRefSelected" />
         </FluentStack>
     }
 }
@@ -54,6 +68,15 @@
 @code {
     [Parameter]
     public StructuredApiItemDto? Item { get; set; }
+
+    [Parameter]
+    public string PackageIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public IReadOnlyDictionary<int, StructuredApiItemDto>? ItemsById { get; set; }
 
     [Parameter]
     public EventCallback<int> OnTypeRefSelected { get; set; }

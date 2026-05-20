@@ -113,19 +113,31 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
               "generator": "test",
               "items": [
                 {
-                  "id": 1,
+                  "id": 10,
                   "qualifiedName": "Demo",
                   "name": "Demo",
+                  "kind": "module",
+                  "visibility": "public",
+                  "modulePath": ["Demo"],
+                  "parentId": null,
+                  "memberIds": [1],
+                  "location": { "file": "f.bd", "startLine": 1, "startColumn": 1, "endLine": 1, "endColumn": 1 }
+                },
+                {
+                  "id": 1,
+                  "qualifiedName": "Demo::App",
+                  "name": "App",
                   "kind": "type",
                   "visibility": "public",
-                  "parentId": null,
+                  "modulePath": ["Demo"],
+                  "parentId": 10,
                   "memberIds": [2],
                   "location": { "file": "f.bd", "startLine": 1, "startColumn": 1, "endLine": 1, "endColumn": 1 },
                   "doc": { "summaryMarkdown": "Summary.", "arguments": [], "enumVariants": [], "typeParameters": [] }
                 },
                 {
                   "id": 2,
-                  "qualifiedName": "Demo::x",
+                  "qualifiedName": "Demo::App::x",
                   "name": "x",
                   "kind": "field",
                   "visibility": "public",
@@ -167,10 +179,14 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
         var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, StructuredApiDocJson.Options);
         Assert.NotNull(doc);
         Assert.True(ApiDocNavigationBuilder.SupportsStructuredGraph(doc!));
-        var roots = ApiDocNavigationBuilder.BuildGraphRoots(doc!);
+        var roots = ApiDocNavigationBuilder.BuildLibraryTreeRoots(doc!, package.Name);
         Assert.Single(roots);
-        Assert.Single(roots[0].Children);
-        Assert.Equal("Summary.", doc!.Items[0].Doc?.SummaryMarkdown);
+        Assert.Equal("Demo", roots[0].Item?.Name);
+        var typesFolder = roots[0].Children.FirstOrDefault(c => c.Label == "Types");
+        Assert.NotNull(typesFolder);
+        Assert.Contains(typesFolder!.Children, c => c.Item?.Id == 1);
+        var typeItem = doc!.Items.First(i => i.Id == 1);
+        Assert.Equal("Summary.", typeItem.Doc?.SummaryMarkdown);
     }
 
     [Fact]

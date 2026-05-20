@@ -130,6 +130,9 @@ public sealed class StructuredApiItemDto
 
     public ItemDocStructuredDto? Doc { get; set; }
 
+    [JsonPropertyName("declaringPackage")]
+    public string? DeclaringPackage { get; set; }
+
     public JsonElement[]? Controls { get; set; }
 }
 

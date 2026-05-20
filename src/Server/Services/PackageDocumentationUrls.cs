@@ -14,6 +14,10 @@ public static class PackageDocumentationUrls
     public static string DocsStructured(string packageId, string version) =>
         $"/api/packages/{Uri.EscapeDataString(packageId)}/versions/{Uri.EscapeDataString(version)}/docs/structured";
 
+    /// <summary>Blazor docs page deep link for one API member.</summary>
+    public static string DocMemberPage(string packageId, string version, string qualifiedName) =>
+        $"/docs/{Uri.EscapeDataString($"{packageId}@{version}")}/api/{Uri.EscapeDataString(qualifiedName)}";
+
     public static string SourceTree(string packageId, string version) =>
         $"/api/packages/{Uri.EscapeDataString(packageId)}/versions/{Uri.EscapeDataString(version)}/source/tree";
 

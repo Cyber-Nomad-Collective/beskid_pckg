@@ -1,13 +1,24 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Server.Contracts.ApiDocumentation
+@using Server.Services
+@inject NavigationManager Navigation
 
 @if (Annotation is not null)
 {
-    if (Annotation.RefItemId is int refId && OnNavigate.HasDelegate)
+    @if (TryResolveHref(out var href, out var useNavigate) && href is not null)
     {
-        <FluentAnchor Href="#" Appearance="Appearance.Hypertext" OnClick="@(() => OnNavigate.InvokeAsync(refId))">
-            @Annotation.Display
-        </FluentAnchor>
+        @if (useNavigate && OnNavigate.HasDelegate)
+        {
+            <FluentAnchor Href="#" Appearance="Appearance.Hypertext" OnClick="@(() => OnNavigate.InvokeAsync(Annotation.RefItemId!.Value))">
+                @Annotation.Display
+            </FluentAnchor>
+        }
+        else
+        {
+            <FluentAnchor Href="@href" Appearance="Appearance.Hypertext">
+                @Annotation.Display
+            </FluentAnchor>
+        }
     }
     else
     {
@@ -20,5 +31,60 @@
     public ApiTypeAnnotationDto? Annotation { get; set; }
 
     [Parameter]
+    public string PackageIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public IReadOnlyDictionary<int, StructuredApiItemDto>? ItemsById { get; set; }
+
+    [Parameter]
     public EventCallback<int> OnNavigate { get; set; }
+
+    private bool TryResolveHref(out string? href, out bool useNavigate)
+    {
+        href = null;
+        useNavigate = false;
+        if (Annotation?.RefItemId is not int refId)
+        {
+            return false;
+        }
+
+        if (ItemsById is null || !ItemsById.TryGetValue(refId, out var target))
+        {
+            useNavigate = OnNavigate.HasDelegate;
+            return useNavigate;
+        }
+
+        var qn = target.QualifiedName ?? target.Name ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(qn))
+        {
+            return false;
+        }
+
+        var external = !string.IsNullOrWhiteSpace(target.DeclaringPackage)
+            && !string.Equals(
+                target.DeclaringPackage.Trim(),
+                PackageIdentifier.Trim(),
+                StringComparison.OrdinalIgnoreCase);
+
+        if (external)
+        {
+            href = PackageDocumentationUrls.DocMemberPage(
+                target.DeclaringPackage!.Trim(),
+                Version.Trim(),
+                qn);
+            return true;
+        }
+
+        if (OnNavigate.HasDelegate)
+        {
+            useNavigate = true;
+            return true;
+        }
+
+        href = PackageDocumentationUrls.DocMemberPage(PackageIdentifier.Trim(), Version.Trim(), qn);
+        return true;
+    }
 }

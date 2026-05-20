@@ -61,7 +61,7 @@ public class PackageArtifactValidatorTests
     {
         var extra = new Dictionary<string, string>
         {
-            [".beskid/docs/api.json"] = """{"schemaVersion":1,"items":[]}""",
+            [".beskid/docs/api.json"] = BpkTestArtifactBuilder.MinimalStructuredApiJson,
         };
         var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.2.3", extra);
         await using var stream = new MemoryStream(bytes);
@@ -196,6 +196,21 @@ public class PackageArtifactValidatorTests
     {
         using var sha = SHA256.Create();
         return Convert.ToHexString(sha.ComputeHash(bytes)).ToLowerInvariant();
+    }
+
+    [Fact]
+    public void StructuredApiDocValidator_Rejects_Flat_Graph_With_Too_Many_Roots()
+    {
+        var items = Enumerable.Range(1, 200)
+            .Select(i => $"{{\"id\":{i},\"qualifiedName\":\"S{i}\",\"name\":\"S{i}\",\"kind\":\"type\",\"parentId\":null}}");
+        var json = "{\"schemaVersion\":4,\"navigationModel\":\"graph-v1\",\"items\":["
+            + string.Join(',', items)
+            + "]}";
+
+        var (isValid, message) = StructuredApiDocValidator.ValidateJson(json);
+
+        Assert.False(isValid);
+        Assert.Contains("graph roots", message, StringComparison.OrdinalIgnoreCase);
     }
 
     private static byte[] CreateZip(IReadOnlyDictionary<string, byte[]> entries)

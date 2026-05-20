@@ -19,12 +19,23 @@ public static class BpkTestArtifactBuilder
           "generator": "test",
           "items": [
             {
-              "id": 1,
+              "id": 10,
               "qualifiedName": "Demo",
               "name": "Demo",
+              "kind": "module",
+              "visibility": "public",
+              "modulePath": ["Demo"],
+              "parentId": null,
+              "memberIds": [1]
+            },
+            {
+              "id": 1,
+              "qualifiedName": "Demo::App",
+              "name": "App",
               "kind": "type",
               "visibility": "public",
-              "parentId": null,
+              "modulePath": ["Demo"],
+              "parentId": 10,
               "memberIds": []
             }
           ]

@@ -150,6 +150,16 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
                 }
             }
 
+            if (fileEntries.TryGetValue(PackageDocsPaths.StructuredApiDocRelativePath, out var apiJsonEntry))
+            {
+                var apiJsonText = await ReadEntryTextAsync(apiJsonEntry, cancellationToken);
+                var apiValidation = StructuredApiDocValidator.ValidateJson(apiJsonText);
+                if (!apiValidation.IsValid)
+                {
+                    return new(false, apiValidation.Message);
+                }
+            }
+
             return new(true, "Artifact validated.", archiveDigest, packageJsonText);
         }
     }

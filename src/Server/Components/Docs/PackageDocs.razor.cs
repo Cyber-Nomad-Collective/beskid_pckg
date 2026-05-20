@@ -311,17 +311,14 @@ public partial class PackageDocs
 
             _doc = doc;
             _itemsById = doc.Items.Where(i => i.Id is not null).ToDictionary(i => i.Id!.Value);
-            _navRoots = ApiDocNavigationBuilder.BuildGraphRoots(doc);
+            _navRoots = ApiDocNavigationBuilder.BuildLibraryTreeRoots(doc, PackageIdentifier.Trim());
             _expandedNavIds.Clear();
             foreach (var root in _navRoots)
             {
-                if (root.Item.Id is int rootId)
-                {
-                    _expandedNavIds.Add(rootId);
-                }
+                _expandedNavIds.Add(root.ExpansionKey);
             }
 
-            _selected = doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
+            _selected = FindDefaultSelection(doc) ?? doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
             ApplyDeepLinkAndSearchFromParams();
             EnsureExpandedForItem(_selected);
         }
@@ -413,21 +410,97 @@ public partial class PackageDocs
             return;
         }
 
-        var guard = 0;
-        var cur = item;
-        while (cur.ParentId is int pid && guard++ < 4096)
+        ExpandNavPathToItem(item.Id);
+    }
+
+    private void ExpandNavPathToItem(int? itemId)
+    {
+        if (itemId is null || !TryFindNavPath(_navRoots, itemId.Value, out var path))
         {
-            _expandedNavIds.Add(pid);
-            if (!_itemsById.TryGetValue(pid, out cur))
+            if (itemId is int id)
             {
-                break;
+                var guard = 0;
+                var curId = (int?)id;
+                while (curId is int pid && guard++ < 4096)
+                {
+                    _expandedNavIds.Add(pid);
+                    if (!_itemsById.TryGetValue(pid, out var parent))
+                    {
+                        break;
+                    }
+
+                    curId = parent.ParentId;
+                }
+
+                _expandedNavIds.Add(id);
+            }
+
+            return;
+        }
+
+        foreach (var key in path)
+        {
+            _expandedNavIds.Add(key);
+        }
+    }
+
+    private static bool TryFindNavPath(
+        IReadOnlyList<GraphNavNode> nodes,
+        int targetItemId,
+        out List<int> expansionKeys)
+    {
+        foreach (var node in nodes)
+        {
+            if (TryFindNavPathCore(node, targetItemId, [], out expansionKeys))
+            {
+                return true;
             }
         }
 
-        if (item.Id is int selfId)
+        expansionKeys = [];
+        return false;
+    }
+
+    private static bool TryFindNavPathCore(
+        GraphNavNode node,
+        int targetItemId,
+        List<int> prefix,
+        out List<int> expansionKeys)
+    {
+        prefix.Add(node.ExpansionKey);
+        if (node.Item?.Id == targetItemId)
         {
-            _expandedNavIds.Add(selfId);
+            expansionKeys = prefix;
+            return true;
         }
+
+        foreach (var child in node.Children)
+        {
+            if (TryFindNavPathCore(child, targetItemId, [..prefix], out expansionKeys))
+            {
+                return true;
+            }
+        }
+
+        expansionKeys = [];
+        return false;
+    }
+
+    private static StructuredApiItemDto? FindDefaultSelection(StructuredApiDocDto doc)
+    {
+        var module = doc.Items.FirstOrDefault(i =>
+            string.Equals(i.Kind, "module", StringComparison.OrdinalIgnoreCase)
+            && i.ParentId is null);
+        if (module is not null)
+        {
+            return module;
+        }
+
+        return doc.Items.FirstOrDefault(i =>
+            i.ParentId is null
+            && (string.Equals(i.Kind, "type", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(i.Kind, "enum", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(i.Kind, "contract", StringComparison.OrdinalIgnoreCase)));
     }
 
     private void SyncBrowserLocationForSelection(StructuredApiItemDto item)
