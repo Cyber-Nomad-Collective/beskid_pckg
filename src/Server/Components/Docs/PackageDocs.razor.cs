@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Markdig.Helpers;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using Server.Contracts.ApiDocumentation;
 using Server.Features.Packages;
 using Server.Services;
@@ -24,6 +26,8 @@ public partial class PackageDocs
     [Parameter] public PackageDocsVariant Variant { get; set; } = PackageDocsVariant.Embedded;
 
     [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
 
     private bool _loading = true;
     private string? _loadError;
@@ -40,6 +44,7 @@ public partial class PackageDocs
     private string? _fetchKey;
     private string? _appliedDeepLink;
     private string? _appliedInitialSymbol;
+    private readonly HashSet<int> _expandedNavIds = [];
 
     private IEnumerable<string> AvailableKinds =>
         _doc is null
@@ -65,19 +70,11 @@ public partial class PackageDocs
             var query = _symbolQuery.Trim();
             var selectedKinds = _kindFilters.Count == 0 ? null : _kindFilters;
             var scopeId = ParseScopeRootId(_scopeRootId);
-            return _doc.Items.Where(x =>
+            var ranked = _doc.Items.Where(x =>
                 {
-                    if (!string.IsNullOrWhiteSpace(query))
+                    if (!string.IsNullOrWhiteSpace(query) && !ApiDocSymbolSearch.Matches(x, query))
                     {
-                        var qn = x.QualifiedName ?? string.Empty;
-                        var name = x.Name ?? string.Empty;
-                        var kind = x.Kind ?? string.Empty;
-                        if (!qn.Contains(query, StringComparison.OrdinalIgnoreCase)
-                            && !name.Contains(query, StringComparison.OrdinalIgnoreCase)
-                            && !kind.Contains(query, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return false;
-                        }
+                        return false;
                     }
 
                     if (scopeId is int rid && !ItemIsUnderScopeRoot(x, rid))
@@ -96,7 +93,36 @@ public partial class PackageDocs
 
                     return true;
                 })
-                .OrderBy(x => x.QualifiedName ?? x.Name, StringComparer.Ordinal);
+                .Select(x => (Item: x, Score: string.IsNullOrWhiteSpace(query) ? 0 : ApiDocSymbolSearch.Score(x, query)))
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.Item.QualifiedName ?? x.Item.Name, StringComparer.Ordinal)
+                .Select(x => x.Item);
+            return ranked;
+        }
+    }
+
+    private IReadOnlyList<PackageDocsBreadcrumb> MemberBreadcrumbs => BuildMemberBreadcrumbs(_selected);
+
+    private string? SelectedMemberPageUrl
+    {
+        get
+        {
+            if (_selected is null)
+            {
+                return null;
+            }
+
+            var qn = _selected.QualifiedName ?? _selected.Name;
+            if (string.IsNullOrWhiteSpace(qn))
+            {
+                return null;
+            }
+
+            var relative = AppDocumentationRoutes.AppDocsApiMember(
+                PackageIdentifier.Trim(),
+                Version.Trim(),
+                qn);
+            return Navigation.ToAbsoluteUri(relative).AbsoluteUri;
         }
     }
 
@@ -286,8 +312,18 @@ public partial class PackageDocs
             _doc = doc;
             _itemsById = doc.Items.Where(i => i.Id is not null).ToDictionary(i => i.Id!.Value);
             _navRoots = ApiDocNavigationBuilder.BuildGraphRoots(doc);
+            _expandedNavIds.Clear();
+            foreach (var root in _navRoots)
+            {
+                if (root.Item.Id is int rootId)
+                {
+                    _expandedNavIds.Add(rootId);
+                }
+            }
+
             _selected = doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
             ApplyDeepLinkAndSearchFromParams();
+            EnsureExpandedForItem(_selected);
         }
         catch
         {
@@ -317,16 +353,19 @@ public partial class PackageDocs
             if (match is not null)
             {
                 _selected = match;
+                EnsureExpandedForItem(match);
             }
             else
             {
                 _deepLinkMissMessage = $"No API member matched the qualified name \"{target}\".";
                 _selected ??= _doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
+                EnsureExpandedForItem(_selected);
             }
         }
         else if (_selected is null)
         {
             _selected = _doc.Items.Where(i => i.Id is not null).OrderBy(i => i.Id).FirstOrDefault();
+            EnsureExpandedForItem(_selected);
         }
 
         if (!string.IsNullOrWhiteSpace(InitialSymbolSearch))
@@ -348,7 +387,101 @@ public partial class PackageDocs
     private Task SelectItemAsync(StructuredApiItemDto item)
     {
         _selected = item;
+        EnsureExpandedForItem(item);
+        SyncBrowserLocationForSelection(item);
         return Task.CompletedTask;
+    }
+
+    private Task ToggleNavExpandAsync(int itemId)
+    {
+        if (_expandedNavIds.Contains(itemId))
+        {
+            _expandedNavIds.Remove(itemId);
+        }
+        else
+        {
+            _expandedNavIds.Add(itemId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void EnsureExpandedForItem(StructuredApiItemDto? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var guard = 0;
+        var cur = item;
+        while (cur.ParentId is int pid && guard++ < 4096)
+        {
+            _expandedNavIds.Add(pid);
+            if (!_itemsById.TryGetValue(pid, out cur))
+            {
+                break;
+            }
+        }
+
+        if (item.Id is int selfId)
+        {
+            _expandedNavIds.Add(selfId);
+        }
+    }
+
+    private void SyncBrowserLocationForSelection(StructuredApiItemDto item)
+    {
+        if (Variant != PackageDocsVariant.FullPage)
+        {
+            return;
+        }
+
+        var qn = item.QualifiedName ?? item.Name;
+        if (string.IsNullOrWhiteSpace(qn))
+        {
+            return;
+        }
+
+        var target = AppDocumentationRoutes.AppDocsApiMember(
+            PackageIdentifier.Trim(),
+            Version.Trim(),
+            qn);
+        var current = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (string.Equals(current, target.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        Navigation.NavigateTo(target, replace: true);
+    }
+
+    private IReadOnlyList<PackageDocsBreadcrumb> BuildMemberBreadcrumbs(StructuredApiItemDto? item)
+    {
+        if (item is null)
+        {
+            return [];
+        }
+
+        var chain = new List<StructuredApiItemDto>();
+        var guard = 0;
+        var cur = item;
+        chain.Add(cur);
+        while (cur.ParentId is int pid && guard++ < 4096 && _itemsById.TryGetValue(pid, out var parent))
+        {
+            chain.Add(parent);
+            cur = parent;
+        }
+
+        chain.Reverse();
+        return chain
+            .Select((node, index) =>
+            {
+                var label = node.Name ?? node.QualifiedName ?? "?";
+                var isLast = index == chain.Count - 1;
+                return new PackageDocsBreadcrumb(label, node, Selectable: !isLast);
+            })
+            .ToList();
     }
 
     private string ParentDisplayLabel(StructuredApiItemDto x)
@@ -480,5 +613,25 @@ public partial class PackageDocs
     {
         _scopeRootId = string.Empty;
         _kindFilters.Clear();
+    }
+
+    private async Task HandleDocsKeyDown(KeyboardEventArgs e)
+    {
+        if (!string.Equals(e.Key, "/", StringComparison.Ordinal)
+            || e.CtrlKey
+            || e.MetaKey
+            || e.AltKey)
+        {
+            return;
+        }
+
+        try
+        {
+            await Js.InvokeVoidAsync("pckgDocs.focusSymbolSearch");
+        }
+        catch
+        {
+            // Ignore when JS interop is unavailable during prerender.
+        }
     }
 }

@@ -288,14 +288,17 @@ public sealed class WorkspacePublishService(
                     published,
                     workspaceOverrides);
 
+                var memberEntries = bundle.CollectMemberPackEntries(member.MemberRelativePath);
+                PackagePublishDocumentation.EnsureStructuredApiDoc(memberEntries, member.PackageId);
+
                 var packageJson = WorkspacePackageManifest.MergePublishedPackageJson(
                     existingPackageJson,
                     member.PackageId,
                     member.AssignedVersion,
                     registryDependencies,
-                    member.PackagePckg);
+                    member.PackagePckg,
+                    PackagePublishDocumentation.HasStructuredApiDoc(memberEntries));
 
-                var memberEntries = bundle.CollectMemberPackEntries(member.MemberRelativePath);
                 var artifactBytes = WorkspaceMemberArtifactBuilder.BuildArtifact(
                     memberEntries,
                     packageJson,

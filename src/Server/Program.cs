@@ -233,7 +233,7 @@ builder.Services.AddScoped<IPasswordHasher<ApiKeyEntity>, PasswordHasher<ApiKeyE
 builder.Services.AddScoped<IApiKeyValidator, ApiKeyValidator>();
 builder.Services.AddScoped<IApiKeyManagementService, ApiKeyManagementService>();
 builder.Services.AddScoped<IApiPrincipalResolver, ApiPrincipalResolver>();
-builder.Services.AddPackageRegistryServices();
+builder.Services.AddPackageRegistryServices(builder.Configuration);
 builder.Services.AddDocumentationServices();
 builder.Services.AddScoped<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();

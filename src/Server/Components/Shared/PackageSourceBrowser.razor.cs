@@ -82,7 +82,17 @@ public partial class PackageSourceBrowser
             var response = await Http.GetAsync(PackageDocumentationUrls.SourceTree(PackageIdentifier, Version));
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                _treeError = "Source tree was not found for this package version.";
+                _treeError =
+                    "Source tree was not found for this package version. "
+                    + "The version may not exist, you may lack access, or the published artifact file may be missing from registry storage.";
+                return;
+            }
+
+            if (response.StatusCode == HttpStatusCode.InternalServerError)
+            {
+                _treeError =
+                    "The published artifact for this version could not be read from storage (checksum or archive error). "
+                    + "Republish the package or check the registry artifact volume on the server.";
                 return;
             }
 

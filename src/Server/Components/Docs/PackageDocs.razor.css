@@ -50,6 +50,34 @@
     border-bottom: 1px solid var(--neutral-stroke-divider-rest);
 }
 
+.package-docs-breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacingHorizontalXXS, 2px);
+    font-size: 0.875rem;
+}
+
+.package-docs-breadcrumb-sep {
+    margin: 0 var(--spacingHorizontalXXS, 2px);
+}
+
+.package-docs-breadcrumb-link {
+    min-height: auto;
+    padding: 0 var(--spacingHorizontalXS, 4px);
+}
+
+.docs-module-tree-toggle {
+    flex: 0 0 auto;
+    min-width: 1.75rem;
+}
+
+.docs-module-tree-toggle-spacer {
+    display: inline-block;
+    width: 1.75rem;
+    flex: 0 0 auto;
+}
+
 .package-docs-member-title {
     word-break: break-word;
 }

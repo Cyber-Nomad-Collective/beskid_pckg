@@ -1,7 +1,8 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
-<div class="@($"docs-browser-root {(Variant == PackageDocsVariant.FullPage ? "docs-browser-root--full" : "docs-browser-root--embedded")} package-docs-shell")">
+<div class="@($"docs-browser-root {(Variant == PackageDocsVariant.FullPage ? "docs-browser-root--full" : "docs-browser-root--embedded")} package-docs-shell")"
+     @onkeydown="HandleDocsKeyDown">
     @if (_loading)
     {
         <div class="docs-state-inline" role="status">
@@ -48,6 +49,7 @@
 
         <div class="package-docs-top-toolbar">
             <FluentSearch @bind-Value="_symbolQuery"
+                          Id="package-docs-symbol-search"
                           Placeholder="Search API symbols…"
                           AriaLabel="Search API symbols"
                           Class="package-docs-fluent-search" />
@@ -106,13 +108,19 @@
                                     ShowPackageSummary="@(Variant == PackageDocsVariant.FullPage)"
                                     SelectedItemId="@_selected?.Id"
                                     SelectedQualifiedName="@(_selected?.QualifiedName ?? _selected?.Name)"
+                                    ExpandedIds="@_expandedNavIds"
+                                    ForceExpandAll="@HasActiveNavFilters"
+                                    OnToggleExpand="ToggleNavExpandAsync"
                                     OnItemSelected="SelectItemAsync" />
             </div>
 
             <article class="package-docs-article-col">
                 @if (_selected is not null)
                 {
-                    <DocMemberHeader Item="@_selected" />
+                    <DocMemberHeader Item="@_selected"
+                                     Breadcrumbs="@MemberBreadcrumbs"
+                                     MemberPageUrl="@SelectedMemberPageUrl"
+                                     OnBreadcrumbSelected="SelectItemAsync" />
                     <DocApiSignatureSections Item="@_selected" OnTypeRefSelected="SelectItemByIdAsync" />
                     @if (SelectedMemberChildren.Count > 0)
                     {

@@ -16,6 +16,9 @@
                                       Depth="0"
                                       SelectedItemId="SelectedItemId"
                                       SelectedQualifiedName="SelectedQualifiedName"
+                                      ExpandedIds="ExpandedIds"
+                                      ForceExpandAll="ForceExpandAll"
+                                      OnToggleExpand="OnToggleExpand"
                                       OnItemSelected="OnItemSelected" />
             }
         </FluentStack>
@@ -37,6 +40,15 @@
 
     [Parameter]
     public string? SelectedQualifiedName { get; set; }
+
+    [Parameter]
+    public IReadOnlySet<int> ExpandedIds { get; set; } = new HashSet<int>();
+
+    [Parameter]
+    public bool ForceExpandAll { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnToggleExpand { get; set; }
 
     [Parameter]
     public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }

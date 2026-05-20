@@ -93,6 +93,7 @@ public class PackageSourceIntegrationTests : IClassFixture<TestApplicationFactor
                 ["Project.proj"] = Encoding.UTF8.GetBytes($"project {{\n  name = \"{package.Name}\"\n}}\n"),
                 ["src/entry.bd"] = Encoding.UTF8.GetBytes("fn Main() {}\n"),
                 ["assets/logo.png"] = pngBytes,
+                [".beskid/docs/api.json"] = Encoding.UTF8.GetBytes(BpkTestArtifactBuilder.MinimalStructuredApiJson),
                 ["package.json"] = Encoding.UTF8.GetBytes($$"""{"schema":"beskid.package.v1","id":"{{package.Name}}","version":"1.0.0"}"""),
             };
 

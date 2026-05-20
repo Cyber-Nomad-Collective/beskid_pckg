@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Server.Tests.TestUtils;
 
@@ -9,6 +10,27 @@ namespace Server.Tests.TestUtils;
 /// </summary>
 public static class BpkTestArtifactBuilder
 {
+    /// <summary>Minimal graph-v1 payload accepted by pack validation and pckg structured docs.</summary>
+    public const string MinimalStructuredApiJson = """
+        {
+          "schemaVersion": 3,
+          "navigationModel": "graph-v1",
+          "source": "test",
+          "generator": "test",
+          "items": [
+            {
+              "id": 1,
+              "qualifiedName": "Demo",
+              "name": "Demo",
+              "kind": "type",
+              "visibility": "public",
+              "parentId": null,
+              "memberIds": []
+            }
+          ]
+        }
+        """;
+
     public static string ArtifactSha256(byte[] artifactBytes)
         => Convert.ToHexString(SHA256.HashData(artifactBytes)).ToLowerInvariant();
 
@@ -22,6 +44,7 @@ public static class BpkTestArtifactBuilder
         var projectProj = $"name = \"{packageName}\"\n";
         files["Project.proj"] = Encoding.UTF8.GetBytes(projectProj);
         files["src/entry.bsk"] = Encoding.UTF8.GetBytes("// test entry");
+        files[".beskid/docs/api.json"] = Encoding.UTF8.GetBytes(MinimalStructuredApiJson);
 
         var packageJson = $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
         files["package.json"] = Encoding.UTF8.GetBytes(packageJson);
@@ -61,13 +84,18 @@ public static class BpkTestArtifactBuilder
         string packageName,
         string version,
         IReadOnlyDictionary<string, string>? additionalTextFiles = null,
-        string? packageJsonOverride = null)
+        string? packageJsonOverride = null,
+        bool includeStructuredApiDoc = true)
     {
         var files = new OrderedDictionary();
 
         var projectProj = $"name = \"{packageName}\"\n";
         files["Project.proj"] = Encoding.UTF8.GetBytes(projectProj);
         files["src/entry.bsk"] = Encoding.UTF8.GetBytes("// test entry");
+        if (includeStructuredApiDoc)
+        {
+            files[".beskid/docs/api.json"] = Encoding.UTF8.GetBytes(MinimalStructuredApiJson);
+        }
 
         if (additionalTextFiles is not null)
         {
@@ -79,7 +107,15 @@ public static class BpkTestArtifactBuilder
         }
 
         var packageJson = packageJsonOverride
-            ?? $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
+            ?? JsonSerializer.Serialize(new
+            {
+                schema = "beskid.package.v1",
+                id = packageName,
+                version,
+                documentation = includeStructuredApiDoc
+                    ? new { apiJson = ".beskid/docs/api.json", schemaVersion = 4 }
+                    : null,
+            });
         files["package.json"] = Encoding.UTF8.GetBytes(packageJson);
 
         var checksumLines = new List<string>();

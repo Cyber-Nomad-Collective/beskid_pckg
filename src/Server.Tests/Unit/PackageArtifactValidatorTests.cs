@@ -9,7 +9,11 @@ namespace Server.Tests.Unit;
 
 public class PackageArtifactValidatorTests
 {
-    private readonly PackageArtifactValidator _validator = new();
+    private readonly PackageArtifactValidator _validator = new(
+        Microsoft.Extensions.Options.Options.Create(new PackagePublishOptions
+        {
+            RequireStructuredApiDoc = true,
+        }));
 
     [Fact]
     public async Task ValidateAsync_Accepts_Compliant_Artifact()
@@ -86,6 +90,7 @@ public class PackageArtifactValidatorTests
             ["package.json"] = Encoding.UTF8.GetBytes(packageJson),
             ["Project.proj"] = Encoding.UTF8.GetBytes("name = \"Demo\"\n"),
             ["src/Main.bd"] = Encoding.UTF8.GetBytes("// demo"),
+            [".beskid/docs/api.json"] = Encoding.UTF8.GetBytes(BpkTestArtifactBuilder.MinimalStructuredApiJson),
         };
         var checksumLines = entries
             .OrderBy(kv => kv.Key, StringComparer.Ordinal)
@@ -97,6 +102,21 @@ public class PackageArtifactValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains("must not use source 'path'", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Rejects_Missing_Structured_Api_Doc()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.0.0");
+        var entries = ReadZipEntries(bytes);
+        entries.Remove(".beskid/docs/api.json");
+        entries["checksums.sha256"] = RecalculateChecksums(entries);
+
+        await using var stream = new MemoryStream(CreateZip(entries));
+        var result = await _validator.ValidateAsync(stream, "Demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("api.json", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -125,6 +145,7 @@ public class PackageArtifactValidatorTests
             ["package.json"] = Encoding.UTF8.GetBytes(packageJson),
             ["Project.proj"] = Encoding.UTF8.GetBytes("project {\n  name = \"Demo\"\n}\n"),
             ["src/Main.bd"] = Encoding.UTF8.GetBytes("fn Main() {}\n"),
+            [".beskid/docs/api.json"] = Encoding.UTF8.GetBytes(BpkTestArtifactBuilder.MinimalStructuredApiJson),
             [".beskid/pckg/repositories.json"] = Encoding.UTF8.GetBytes("{\"repositories\":{}}"),
         };
 
@@ -139,6 +160,36 @@ public class PackageArtifactValidatorTests
         Assert.False(result.IsValid);
         Assert.Contains("forbidden entry", result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(".beskid", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Dictionary<string, byte[]> ReadZipEntries(byte[] zipBytes)
+    {
+        var entries = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        using var input = new MemoryStream(zipBytes);
+        using var zip = new ZipArchive(input, ZipArchiveMode.Read);
+        foreach (var entry in zip.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name))
+            {
+                continue;
+            }
+
+            using var stream = entry.Open();
+            using var memory = new MemoryStream();
+            stream.CopyTo(memory);
+            entries[entry.FullName.Replace('\\', '/')] = memory.ToArray();
+        }
+
+        return entries;
+    }
+
+    private static byte[] RecalculateChecksums(IReadOnlyDictionary<string, byte[]> entries)
+    {
+        var checksumLines = entries
+            .Where(kv => !string.Equals(kv.Key, "checksums.sha256", StringComparison.Ordinal))
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => $"{Sha256(kv.Value)}  {kv.Key}");
+        return Encoding.UTF8.GetBytes(string.Join('\n', checksumLines) + "\n");
     }
 
     private static string Sha256(byte[] bytes)

@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace Server.Services;
 
@@ -21,8 +22,10 @@ public sealed record PackageArtifactValidationResult(
     string? ArtifactChecksumSha256 = null,
     string? ManifestJson = null);
 
-public sealed class PackageArtifactValidator : IPackageArtifactValidator
+public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> publishOptions) : IPackageArtifactValidator
 {
+    private readonly PackagePublishOptions _publishOptions = publishOptions.Value;
+
     private static readonly HashSet<string> RequiredEntries =
     [
         "package.json",
@@ -86,6 +89,15 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
             if (!fileEntries.Keys.Any(path => path.StartsWith("src/", StringComparison.Ordinal)))
             {
                 return new(false, "Artifact must include at least one file under src/.");
+            }
+
+            if (_publishOptions.RequireStructuredApiDoc
+                && !fileEntries.ContainsKey(PackageDocsPaths.StructuredApiDocRelativePath))
+            {
+                return new(
+                    false,
+                    $"Artifact must include '{PackageDocsPaths.StructuredApiDocRelativePath}'. "
+                    + "Run `beskid pckg pack` or `beskid doc --project Project.proj --out .beskid/docs` before publishing.");
             }
 
             var packageJsonText = await ReadEntryTextAsync(fileEntries["package.json"], cancellationToken);

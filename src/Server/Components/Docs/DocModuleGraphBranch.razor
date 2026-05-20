@@ -1,20 +1,47 @@
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 <FluentStack Orientation="Orientation.Vertical" Gap="2">
-    <FluentButton Appearance="@ButtonAppearance(Node.Item)"
-                  Class="docs-module-member-btn"
-                  Style="@IndentStyle"
-                  Title="@(Node.Item.QualifiedName ?? Node.Item.Name)"
-                  OnClick="@(() => SelectAsync(Node.Item))">
-        @DisplayTitle(Node.Item)
-    </FluentButton>
-    @foreach (var child in Node.Children)
+    <FluentStack Orientation="Orientation.Horizontal"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Gap="2"
+                 Style="width: 100%; min-width: 0;">
+        @if (Node.Children.Count > 0)
+        {
+            <FluentButton Appearance="Appearance.Stealth"
+                          Class="docs-module-tree-toggle"
+                          IconStart="@(IsExpanded ? new Icons.Regular.Size16.ChevronDown() : new Icons.Regular.Size16.ChevronRight())"
+                          Title="@(IsExpanded ? "Collapse" : "Expand")"
+                          AriaLabel="@(IsExpanded ? "Collapse" : "Expand")"
+                          OnClick="ToggleExpandAsync" />
+        }
+        else
+        {
+            <span class="docs-module-tree-toggle-spacer" aria-hidden="true"></span>
+        }
+        <FluentButton Appearance="@ButtonAppearance(Node.Item)"
+                      Class="docs-module-member-btn"
+                      Style="flex: 1 1 auto; min-width: 0;"
+                      Title="@(Node.Item.QualifiedName ?? Node.Item.Name)"
+                      OnClick="@(() => SelectAsync(Node.Item))">
+            @DisplayTitle(Node.Item)
+        </FluentButton>
+    </FluentStack>
+    @if (IsExpanded)
     {
-        <DocModuleGraphBranch Node="child"
-                              Depth="@(Depth + 1)"
-                              SelectedItemId="SelectedItemId"
-                              SelectedQualifiedName="SelectedQualifiedName"
-                              OnItemSelected="OnItemSelected" />
+        <FluentStack Orientation="Orientation.Vertical" Gap="2" Style="@ChildIndentStyle">
+            @foreach (var child in Node.Children)
+            {
+                <DocModuleGraphBranch Node="child"
+                                      Depth="@(Depth + 1)"
+                                      SelectedItemId="SelectedItemId"
+                                      SelectedQualifiedName="SelectedQualifiedName"
+                                      ExpandedIds="ExpandedIds"
+                                      ForceExpandAll="ForceExpandAll"
+                                      OnToggleExpand="OnToggleExpand"
+                                      OnItemSelected="OnItemSelected" />
+            }
+        </FluentStack>
     }
 </FluentStack>
 
@@ -32,9 +59,23 @@
     public string? SelectedQualifiedName { get; set; }
 
     [Parameter]
+    public IReadOnlySet<int> ExpandedIds { get; set; } = new HashSet<int>();
+
+    [Parameter]
+    public bool ForceExpandAll { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnToggleExpand { get; set; }
+
+    [Parameter]
     public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }
 
-    private string IndentStyle => $"padding-left: {(Depth * 12)}px; width: 100%; justify-content: flex-start;";
+    private bool IsExpanded =>
+        ForceExpandAll
+        || Node.Children.Count == 0
+        || (Node.Item.Id is int id && ExpandedIds.Contains(id));
+
+    private string ChildIndentStyle => $"padding-left: {(Depth + 1) * 4}px;";
 
     private static string DisplayTitle(StructuredApiItemDto m) =>
         string.IsNullOrWhiteSpace(m.Name) ? (m.QualifiedName ?? "?") : m.Name!;
@@ -52,6 +93,16 @@
         var key = m.QualifiedName ?? m.Name;
         return !string.IsNullOrEmpty(SelectedQualifiedName)
             && string.Equals(key, SelectedQualifiedName, StringComparison.Ordinal);
+    }
+
+    private Task ToggleExpandAsync()
+    {
+        if (Node.Item.Id is int id)
+        {
+            return OnToggleExpand.InvokeAsync(id);
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task SelectAsync(StructuredApiItemDto m) => OnItemSelected.InvokeAsync(m);

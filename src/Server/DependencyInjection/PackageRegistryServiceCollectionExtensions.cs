@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Server.Features.Packages;
 using Server.Services;
 using Server.Services.Artifacts;
@@ -7,8 +8,11 @@ namespace Server.DependencyInjection;
 
 public static class PackageRegistryServiceCollectionExtensions
 {
-    public static IServiceCollection AddPackageRegistryServices(this IServiceCollection services)
+    public static IServiceCollection AddPackageRegistryServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
+        services.Configure<PackagePublishOptions>(configuration.GetSection(PackagePublishOptions.SectionName));
         services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
         services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
         services.AddScoped<IPackagePublishService, PackagePublishService>();

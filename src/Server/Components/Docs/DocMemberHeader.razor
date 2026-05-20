@@ -1,12 +1,54 @@
+@using Microsoft.AspNetCore.Components
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 @using Server.Contracts.ApiDocumentation
 
 @if (Item is not null)
 {
     <FluentStack Orientation="Orientation.Vertical" Gap="8" Class="package-docs-member-header">
-        <FluentLabel Typo="Typography.H5" Class="package-docs-member-title">
-            @(Item.QualifiedName ?? Item.DisplayName ?? Item.Name ?? "Member")
-        </FluentLabel>
+        @if (Breadcrumbs.Count > 0)
+        {
+            <nav class="package-docs-breadcrumbs" aria-label="Breadcrumb">
+                @for (var i = 0; i < Breadcrumbs.Count; i++)
+                {
+                    var crumb = Breadcrumbs[i];
+                    @if (i > 0)
+                    {
+                        <span class="package-docs-breadcrumb-sep muted" aria-hidden="true">›</span>
+                    }
+                    @if (crumb.Selectable && OnBreadcrumbSelected.HasDelegate)
+                    {
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Class="package-docs-breadcrumb-link"
+                                      OnClick="@(() => OnBreadcrumbSelected.InvokeAsync(crumb.Item!))">
+                            @crumb.Label
+                        </FluentButton>
+                    }
+                    else
+                    {
+                        <span class="package-docs-breadcrumb-label muted">@crumb.Label</span>
+                    }
+                }
+            </nav>
+        }
+        <FluentStack Orientation="Orientation.Horizontal"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="8"
+                     Class="package-docs-member-title-row">
+            <FluentLabel Typo="Typography.H5" Class="package-docs-member-title">
+                @(Item.QualifiedName ?? Item.DisplayName ?? Item.Name ?? "Member")
+            </FluentLabel>
+            @if (!string.IsNullOrWhiteSpace(MemberPageUrl))
+            {
+                <FluentButton Appearance="Appearance.Outline"
+                              IconStart="@(new Icons.Regular.Size20.Link())"
+                              Title="Copy link to this member"
+                              OnClick="CopyMemberLinkAsync">
+                    Copy link
+                </FluentButton>
+            }
+        </FluentStack>
         @if (!string.IsNullOrWhiteSpace(Item.Signature))
         {
             <code class="package-docs-signature">@Item.Signature</code>
@@ -31,4 +73,33 @@
 @code {
     [Parameter]
     public StructuredApiItemDto? Item { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<PackageDocsBreadcrumb> Breadcrumbs { get; set; } = Array.Empty<PackageDocsBreadcrumb>();
+
+    [Parameter]
+    public string? MemberPageUrl { get; set; }
+
+    [Parameter]
+    public EventCallback<StructuredApiItemDto> OnBreadcrumbSelected { get; set; }
+
+    [Inject]
+    private IJSRuntime Js { get; set; } = default!;
+
+    private async Task CopyMemberLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(MemberPageUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", MemberPageUrl);
+        }
+        catch
+        {
+            // Clipboard may be unavailable outside a secure context.
+        }
+    }
 }

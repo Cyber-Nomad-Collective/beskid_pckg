@@ -36,6 +36,8 @@ public static class WorkspaceBundleTestBuilder
                 }
                 """,
             ["foundation/src/Prelude.bd"] = "// foundation",
+            ["foundation/.beskid/docs/api.json"] = BpkTestArtifactBuilder.MinimalStructuredApiJson,
+            ["consumer/.beskid/docs/api.json"] = BpkTestArtifactBuilder.MinimalStructuredApiJson,
             ["consumer/Project.proj"] = """
                 project {
                   name = "Pkg.Consumer"

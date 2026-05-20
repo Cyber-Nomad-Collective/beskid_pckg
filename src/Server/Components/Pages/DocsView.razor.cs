@@ -31,6 +31,7 @@ public partial class DocsView
     private string? _deepLinkQualifiedName;
     private string? _initialSymbolSearch;
     private bool _apiOrSearchWithoutStructured;
+    private IReadOnlyList<string> _publishedVersions = [];
     private string PageHeading => _parseError ? "Documentation" : $"Docs · {_packageLabel}";
 
     protected override async Task OnParametersSetAsync()
@@ -61,19 +62,32 @@ public partial class DocsView
         }
 
         _packageLabel = _packageSegment;
+        _publishedVersions = [];
+        PackageEntity? packageRow = null;
         if (Guid.TryParse(_packageSegment, out var packageId))
         {
-            var row = await DbContext.Packages.AsNoTracking()
+            packageRow = await DbContext.Packages.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Id == packageId);
-            if (row is not null)
+            if (packageRow is not null)
             {
-                _packageLabel = row.Name;
-                _packagesHref = $"/packages/{Uri.EscapeDataString(row.Name)}";
+                _packageLabel = packageRow.Name;
+                _packagesHref = $"/packages/{Uri.EscapeDataString(packageRow.Name)}";
             }
         }
         else
         {
             _packagesHref = $"/packages/{Uri.EscapeDataString(_packageSegment)}";
+            packageRow = await DbContext.Packages.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Name == _packageSegment);
+        }
+
+        if (packageRow is not null)
+        {
+            _publishedVersions = await DbContext.PackageVersions.AsNoTracking()
+                .Where(x => x.PackageId == packageRow.Id)
+                .OrderByDescending(x => x.PublishedAtUtc)
+                .Select(x => x.Version)
+                .ToListAsync();
         }
 
         await LoadDocsIndexForViewAsync();
@@ -109,5 +123,29 @@ public partial class DocsView
         {
             _docsIndexLoading = false;
         }
+    }
+
+    private Task OnDocsVersionChangedAsync(string? newVersion)
+    {
+        if (string.IsNullOrWhiteSpace(newVersion)
+            || string.Equals(newVersion, _versionSegment, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.CompletedTask;
+        }
+
+        var target = !string.IsNullOrWhiteSpace(QualifiedName)
+            ? AppDocumentationRoutes.AppDocsApiMember(
+                _packageSegment,
+                newVersion,
+                Uri.UnescapeDataString(QualifiedName))
+            : !string.IsNullOrWhiteSpace(Symbol)
+                ? AppDocumentationRoutes.AppDocsSymbolSearch(
+                    _packageSegment,
+                    newVersion,
+                    Uri.UnescapeDataString(Symbol))
+                : AppDocumentationRoutes.AppDocsBase(_packageSegment, newVersion);
+
+        Navigation.NavigateTo(target);
+        return Task.CompletedTask;
     }
 }

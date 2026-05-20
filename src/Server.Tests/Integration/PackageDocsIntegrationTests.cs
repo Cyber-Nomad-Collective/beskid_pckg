@@ -205,11 +205,15 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
     }
 
     [Fact]
-    public async Task DocsStructured_Missing_Returns_NotFound()
+    public async Task Publish_Rejects_Artifact_Without_Structured_Api_Doc()
     {
         var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.Structured404", isPublic: true);
         var extras = new Dictionary<string, string> { ["docs/only.md"] = "# hi" };
-        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0", extras);
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(
+            package.Name,
+            "1.0.0",
+            extras,
+            includeStructuredApiDoc: false);
         var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
 
         var client = _factory.CreateClient();
@@ -222,7 +226,10 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
             { new ByteArrayContent(artifact), "artifact", "no-api.bpk" },
         };
 
-        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        var publish = await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        Assert.Equal(HttpStatusCode.BadRequest, publish.StatusCode);
+        var message = await publish.Content.ReadAsStringAsync();
+        Assert.Contains("api.json", message, StringComparison.OrdinalIgnoreCase);
         client.DefaultRequestHeaders.Remove("X-API-Key");
 
         var structured = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/docs/structured");

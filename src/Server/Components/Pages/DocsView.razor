@@ -44,7 +44,23 @@
                 <FluentStack Orientation="Orientation.Vertical" Gap="8" Style="flex: 1; min-width: 0;">
                     <FluentLabel Typo="Typography.H3" Class="docs-view-title">@_packageLabel</FluentLabel>
                     <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8" Class="docs-view-badges">
-                        <FluentBadge Appearance="Appearance.Accent">@_versionSegment</FluentBadge>
+                        @if (_publishedVersions.Count > 0)
+                        {
+                            <FluentSelect TOption="string"
+                                          Value="@_versionSegment"
+                                          ValueChanged="OnDocsVersionChangedAsync"
+                                          AriaLabel="Package version">
+                                <FluentOption TOption="string" Value="latest">latest</FluentOption>
+                                @foreach (var ver in _publishedVersions)
+                                {
+                                    <FluentOption TOption="string" Value="@ver">@ver</FluentOption>
+                                }
+                            </FluentSelect>
+                        }
+                        else
+                        {
+                            <FluentBadge Appearance="Appearance.Accent">@_versionSegment</FluentBadge>
+                        }
                         @if (!string.Equals(_packageSegment, _packageLabel, StringComparison.Ordinal))
                         {
                             <FluentBadge Appearance="Appearance.Neutral" Title="Package id">id</FluentBadge>

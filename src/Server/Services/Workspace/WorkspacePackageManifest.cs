@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Server.Services;
 
 namespace Server.Services.Workspace;
 
@@ -87,7 +88,8 @@ public static class WorkspacePackageManifest
         string packageId,
         string publishVersion,
         IReadOnlyDictionary<string, PublishedRegistryDependency> registryDependencies,
-        PackagePckgSection pckgSection)
+        PackagePckgSection pckgSection,
+        bool hasStructuredApiDoc = false)
     {
         var root = string.IsNullOrWhiteSpace(existingPackageJson)
             ? new JsonObject()
@@ -108,6 +110,15 @@ public static class WorkspacePackageManifest
         }
 
         root["dependencies"] = dependenciesNode;
+
+        if (hasStructuredApiDoc)
+        {
+            root["documentation"] = new JsonObject
+            {
+                ["apiJson"] = PackageDocsPaths.StructuredApiDocRelativePath,
+                ["schemaVersion"] = PackagePublishDocumentation.DefaultApiJsonSchemaVersion,
+            };
+        }
 
         if (pckgSection.Configuration is not null || pckgSection.Overrides.Count > 0 || pckgSection.PackageId is not null)
         {
