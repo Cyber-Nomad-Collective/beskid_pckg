@@ -1,13 +1,13 @@
 @using Server.Features.Packages
 @using Microsoft.FluentUI.AspNetCore.Components
 
-<FluentStack Orientation="Orientation.Vertical" Gap="12" Class="package-source-browser-root">
+<div class="package-source-browser-root">
     @if (_isLoadingTree)
     {
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="10">
+        <div class="source-browser-state" role="status">
             <FluentProgressRing />
             <FluentLabel Typo="Typography.Body">Loading source tree…</FluentLabel>
-        </FluentStack>
+        </div>
     }
     else if (!string.IsNullOrWhiteSpace(_treeError))
     {
@@ -17,73 +17,84 @@
     {
         <div class="source-browser-layout">
             <FluentCard Class="source-tree-panel">
-                <FluentStack Orientation="Orientation.Vertical" Gap="8">
-                    <FluentTextField @bind-Value="_search"
-                                     Placeholder="Filter files…"
-                                     AriaLabel="Filter source files"
-                                     IconStart="@(new Icons.Regular.Size16.Search())" />
-                    <div class="source-tree-list">
-                        @foreach (var row in FilteredRows())
-                        {
-                            var isDirectory = row.Node.IsDirectory;
-                            var isActive = !isDirectory && string.Equals(_selectedPath, row.Node.Path, StringComparison.Ordinal);
-                            <button type="button"
-                                    class="source-tree-row @(isActive ? "source-tree-row--active" : null)"
-                                    style="padding-left:@(row.Depth * 16 + 10)px"
-                                    disabled="@isDirectory"
-                                    title="@row.Node.Path"
-                                    @onclick="@(() => SelectFileAsync(row.Node))">
-                                <span class="source-tree-icon" aria-hidden="true">
-                                    <FluentIcon Value="@PackageFileKindIcons.ForTree(row.Node.IconKey, row.Node.IsDirectory)"
-                                                Color="Color.Neutral"
-                                                Title="@row.Node.FileType" />
-                                </span>
-                                <span class="source-tree-name">@row.Node.Name</span>
-                                @if (!row.Node.IsDirectory && row.Node.SizeBytes is long size)
-                                {
-                                    <span class="source-tree-size">@FormatSize(size)</span>
-                                }
-                            </button>
-                        }
-                    </div>
-                </FluentStack>
+                <FluentTextField @bind-Value="_search"
+                                 Placeholder="Filter files…"
+                                 AriaLabel="Filter source files"
+                                 IconStart="@(new Icons.Regular.Size16.Search())" />
+                <div class="source-tree-list">
+                    @foreach (var row in FilteredRows())
+                    {
+                        var isDirectory = row.Node.IsDirectory;
+                        var isActive = !isDirectory && string.Equals(_selectedPath, row.Node.Path, StringComparison.Ordinal);
+                        <button type="button"
+                                class="source-tree-row @(isActive ? "source-tree-row--active" : null)"
+                                style="padding-left:@(row.Depth * 16 + 10)px"
+                                disabled="@isDirectory"
+                                title="@row.Node.Path"
+                                @onclick="@(() => SelectFileAsync(row.Node))">
+                            <span class="source-tree-icon" aria-hidden="true">
+                                <FluentIcon Value="@PackageFileKindIcons.ForTree(row.Node.IconKey, row.Node.IsDirectory)"
+                                            Color="Color.Neutral"
+                                            Title="@row.Node.FileType" />
+                            </span>
+                            <span class="source-tree-name">@row.Node.Name</span>
+                            @if (!row.Node.IsDirectory && row.Node.SizeBytes is long size)
+                            {
+                                <span class="source-tree-size">@FormatSize(size)</span>
+                            }
+                        </button>
+                    }
+                </div>
             </FluentCard>
 
-            <FluentCard Class="source-preview-panel">
+            <FluentCard Class="@PreviewPanelClass">
                 @if (_selectedNode is null)
                 {
                     <FluentMessageBar Intent="MessageIntent.Info">Select a file from the source tree.</FluentMessageBar>
                 }
                 else
                 {
-                    <FluentStack Orientation="Orientation.Vertical" Gap="10" Class="source-preview-inner">
-                        <div class="source-preview-header" role="group" aria-label="Selected file">
-                            <FluentIcon Value="@PackageFileKindIcons.ForPreview(_selectedNode.IconKey)"
-                                        Color="Color.Neutral"
-                                        Title="@_selectedNode.FileType" />
-                            <FluentBadge Appearance="Appearance.Neutral"
-                                         Class="source-preview-kind-chip">
-                                @KindDisplayLabel(_selectedNode)
-                            </FluentBadge>
-                            <span class="source-preview-path"
-                                  title="@_selectedNode.Path">
-                                @_selectedNode.Path
-                            </span>
-                        </div>
+                    <header class="source-preview-header">
+                        <FluentIcon Value="@PackageFileKindIcons.ForPreview(_selectedNode.IconKey)"
+                                    Color="Color.Neutral"
+                                    Title="@_selectedNode.FileType" />
+                        <FluentBadge Appearance="Appearance.Neutral" Class="source-preview-kind-chip">
+                            @KindDisplayLabel(_selectedNode)
+                        </FluentBadge>
+                        <span class="source-preview-path" title="@_selectedNode.Path">@_selectedNode.Path</span>
+                    </header>
 
-                        <div class="source-preview-host">
-                            <PackageSourcePreview IsLoading="@_isLoadingPreview"
-                                                  Error="@_previewError"
-                                                  PreviewKind="@_previewKind"
-                                                  TextContent="@_textContent"
-                                                  MonacoLanguage="@_monacoLanguage"
-                                                  ImageUrl="@_imageUrl"
-                                                  SelectedPath="@_selectedNode.Path"
-                                                  LayoutGeneration="@_layoutGeneration" />
-                        </div>
-                    </FluentStack>
+                    <div class="source-preview-host">
+                        @if (_isLoadingPreview)
+                        {
+                            <div class="source-browser-state" role="status">
+                                <FluentProgressRing />
+                                <FluentLabel Typo="Typography.Body">Loading preview…</FluentLabel>
+                            </div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(_previewError))
+                        {
+                            <FluentMessageBar Intent="MessageIntent.Warning">@_previewError</FluentMessageBar>
+                        }
+                        else if (_previewKind == "image" && !string.IsNullOrWhiteSpace(_imageUrl))
+                        {
+                            <img class="source-image-preview" src="@_imageUrl" alt="@_selectedNode.Path" />
+                        }
+                        else if (_previewKind == "text")
+                        {
+                            <PackageReadonlyCodeEditor Value="@_textContent"
+                                                       Language="@_monacoLanguage"
+                                                       LayoutGeneration="@_layoutGeneration" />
+                        }
+                        else
+                        {
+                            <FluentMessageBar Intent="MessageIntent.Info">
+                                Binary file preview is not available. Download or inspect this file locally.
+                            </FluentMessageBar>
+                        }
+                    </div>
                 }
             </FluentCard>
         </div>
     }
-</FluentStack>
+</div>

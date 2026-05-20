@@ -112,7 +112,50 @@ public partial class PackageDocs
                 x))
             .ToList();
 
-    private IReadOnlyList<PackageDocsTocRow> TocRows => BuildTocRows(_selected?.DocMarkdown);
+    private IReadOnlyList<PackageDocsTocRow> TocRows => BuildTocRows(NarrativeDocMarkdown);
+
+    private IReadOnlyList<StructuredApiItemDto> SelectedMemberChildren
+    {
+        get
+        {
+            if (_selected?.MemberIds is not { Count: > 0 } ids)
+            {
+                return [];
+            }
+
+            var list = new List<StructuredApiItemDto>();
+            foreach (var id in ids)
+            {
+                if (_itemsById.TryGetValue(id, out var child))
+                {
+                    list.Add(child);
+                }
+            }
+
+            return list;
+        }
+    }
+
+    /// <summary>Markdown body when structured summary duplicates the full doc block.</summary>
+    private string? NarrativeDocMarkdown
+    {
+        get
+        {
+            if (_selected is null)
+            {
+                return null;
+            }
+
+            var full = _selected.DocMarkdown?.Trim();
+            var summary = _selected.Doc?.SummaryMarkdown?.Trim();
+            if (full is null || summary is null || !string.Equals(full, summary, StringComparison.Ordinal))
+            {
+                return _selected.DocMarkdown;
+            }
+
+            return null;
+        }
+    }
 
     private bool HasActiveNavFilters =>
         !string.IsNullOrWhiteSpace(_symbolQuery)
@@ -229,7 +272,7 @@ public partial class PackageDocs
             if (!ApiDocNavigationBuilder.SupportsStructuredGraph(doc))
             {
                 _loadError =
-                    "This package ships legacy api.json without graph navigation. Re-publish with a Beskid CLI that emits schemaVersion 3 and navigationModel graph-v1.";
+                    "This package ships legacy api.json without graph navigation. Re-publish with a Beskid CLI that emits schemaVersion 4 (or 3) and navigationModel graph-v1.";
                 return;
             }
 
@@ -283,6 +326,16 @@ public partial class PackageDocs
         {
             _symbolQuery = InitialSymbolSearch.Trim();
         }
+    }
+
+    private Task SelectItemByIdAsync(int itemId)
+    {
+        if (_itemsById.TryGetValue(itemId, out var item))
+        {
+            return SelectItemAsync(item);
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task SelectItemAsync(StructuredApiItemDto item)

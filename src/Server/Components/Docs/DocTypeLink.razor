@@ -1,0 +1,24 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Server.Contracts.ApiDocumentation
+
+@if (Annotation is not null)
+{
+    if (Annotation.RefItemId is int refId && OnNavigate.HasDelegate)
+    {
+        <FluentAnchor Href="#" Appearance="Appearance.Hypertext" OnClick="@(() => OnNavigate.InvokeAsync(refId))">
+            @Annotation.Display
+        </FluentAnchor>
+    }
+    else
+    {
+        <span class="docs-type-text">@Annotation.Display</span>
+    }
+}
+
+@code {
+    [Parameter]
+    public ApiTypeAnnotationDto? Annotation { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNavigate { get; set; }
+}

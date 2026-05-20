@@ -1,10 +1,10 @@
 @using BlazorMonaco.Editor
 @using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<div class="source-editor-shell">
+<div class="source-editor-shell" @ref="_shellRef">
     <StandaloneCodeEditor @key="_editorKey"
-                          @ref="_editor"
                           Id="@EditorId"
                           ConstructionOptions="BuildOptions" />
 </div>
@@ -17,8 +17,9 @@
     [Parameter] public int LayoutGeneration { get; set; }
 
     private string _editorKey = string.Empty;
-    private StandaloneCodeEditor? _editor;
-    private int _appliedLayoutGeneration = -1;
+    private ElementReference _shellRef;
+    private IJSObjectReference? _layoutModule;
+    private int _attachedLayoutGeneration = -1;
 
     private StandaloneEditorConstructionOptions BuildOptions(StandaloneCodeEditor _)
         => new()
@@ -40,24 +41,46 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (LayoutGeneration == _appliedLayoutGeneration)
+        if (!firstRender && LayoutGeneration == _attachedLayoutGeneration)
         {
             return;
         }
 
-        _appliedLayoutGeneration = LayoutGeneration;
-        if (_editor is null)
-        {
-            return;
-        }
+        _attachedLayoutGeneration = LayoutGeneration;
+        _layoutModule ??= await JS.InvokeAsync<IJSObjectReference>(
+            "import",
+            "./package-readonly-editor.js");
 
         try
         {
-            await JS.InvokeVoidAsync("blazorMonaco.editor.layout", EditorId, null, false);
+            await _layoutModule.InvokeVoidAsync("attach", _shellRef, EditorId);
+            // Monaco mounts asynchronously after Blazor render; relayout once it is ready.
+            await Task.Delay(50);
+            await _layoutModule.InvokeVoidAsync("layoutNow", _shellRef, EditorId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit gone during navigation.
         }
         catch (JSException)
         {
-            // Editor may not be mounted yet; AutomaticLayout will recover on resize.
+            // Host not measurable yet; ResizeObserver will retry.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_layoutModule is not null)
+        {
+            try
+            {
+                await _layoutModule.InvokeVoidAsync("dispose", _shellRef);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+
+            await _layoutModule.DisposeAsync();
         }
     }
 

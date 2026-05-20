@@ -49,6 +49,36 @@ public sealed class ItemDocStructuredDto
     public List<ItemDocArgumentDto> TypeParameters { get; set; } = [];
 }
 
+public sealed class ApiTypeAnnotationDto
+{
+    [JsonPropertyName("display")]
+    public string Display { get; set; } = string.Empty;
+
+    [JsonPropertyName("refItemId")]
+    public int? RefItemId { get; set; }
+}
+
+public sealed class ApiParameterDocDto
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public ApiTypeAnnotationDto Ty { get; set; } = new();
+
+    [JsonPropertyName("modifier")]
+    public string? Modifier { get; set; }
+
+    [JsonPropertyName("docMarkdown")]
+    public string? DocMarkdown { get; set; }
+}
+
+public sealed class ApiGenericParameterDocDto
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
 public sealed class StructuredApiItemDto
 {
     public int? Id { get; set; }
@@ -57,6 +87,9 @@ public sealed class StructuredApiItemDto
     public string? QualifiedName { get; set; }
 
     public string? Name { get; set; }
+
+    [JsonPropertyName("displayName")]
+    public string? DisplayName { get; set; }
 
     public string? Kind { get; set; }
 
@@ -68,10 +101,32 @@ public sealed class StructuredApiItemDto
     [JsonPropertyName("memberIds")]
     public List<int> MemberIds { get; set; } = [];
 
+    [JsonPropertyName("modulePath")]
+    public List<string> ModulePath { get; set; } = [];
+
+    public string? Signature { get; set; }
+
+    [JsonPropertyName("fieldType")]
+    public ApiTypeAnnotationDto? FieldType { get; set; }
+
+    [JsonPropertyName("returnType")]
+    public ApiTypeAnnotationDto? ReturnType { get; set; }
+
+    public List<ApiParameterDocDto> Parameters { get; set; } = [];
+
+    [JsonPropertyName("genericParameters")]
+    public List<ApiGenericParameterDocDto> GenericParameters { get; set; } = [];
+
     public StructuredLocationDto? Location { get; set; }
 
-    [JsonPropertyName("doc_markdown")]
+    [JsonPropertyName("docMarkdown")]
     public string? DocMarkdown { get; set; }
+
+    [JsonPropertyName("doc_markdown")]
+    public string? DocMarkdownLegacy
+    {
+        set => DocMarkdown ??= value;
+    }
 
     public ItemDocStructuredDto? Doc { get; set; }
 

@@ -4,10 +4,10 @@
 <div class="@($"docs-browser-root {(Variant == PackageDocsVariant.FullPage ? "docs-browser-root--full" : "docs-browser-root--embedded")} package-docs-shell")">
     @if (_loading)
     {
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12" Wrap="true" Class="docs-state-inline">
+        <div class="docs-state-inline" role="status">
             <FluentProgressRing />
             <FluentLabel Typo="Typography.Body">Loading API documentation…</FluentLabel>
-        </FluentStack>
+        </div>
     }
     else if (_loadError is not null)
     {
@@ -15,135 +15,123 @@
     }
     else if (_doc is not null)
     {
-        <div class="package-docs-content">
-            @if (!string.IsNullOrWhiteSpace(_deepLinkMissMessage))
-            {
-                <FluentMessageBar Intent="MessageIntent.Warning">@_deepLinkMissMessage</FluentMessageBar>
-            }
+        @if (!string.IsNullOrWhiteSpace(_deepLinkMissMessage))
+        {
+            <FluentMessageBar Intent="MessageIntent.Warning">@_deepLinkMissMessage</FluentMessageBar>
+        }
 
-            @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
-            {
-                <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="6" Class="muted package-docs-meta-row">
-                    @if (_doc.SchemaVersion > 0)
-                    {
-                        <FluentBadge Appearance="Appearance.Neutral">schema @(_doc.SchemaVersion)</FluentBadge>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_doc.NavigationModel))
-                    {
-                        <FluentBadge Appearance="Appearance.Lightweight">@_doc.NavigationModel</FluentBadge>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(_doc.Source))
-                    {
-                        <FluentLabel Typo="Typography.Body" Class="muted">@_doc.Source</FluentLabel>
-                    }
-                </FluentStack>
-            }
-
-            @if (Variant == PackageDocsVariant.Embedded)
-            {
-                <FluentStack Orientation="Orientation.Horizontal"
-                             VerticalAlignment="VerticalAlignment.Center"
-                             Gap="8"
-                             Wrap="true"
-                             Class="package-docs-embedded-context">
-                    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@PackageIdentifier</FluentLabel>
-                    <FluentLabel Typo="Typography.Body" Class="muted">@Version</FluentLabel>
-                </FluentStack>
-            }
-
-            <FluentStack Orientation="Orientation.Horizontal"
-                         VerticalAlignment="VerticalAlignment.Center"
-                         Gap="10"
-                         Wrap="true"
-                         Class="package-docs-top-toolbar">
-                <FluentSearch @bind-Value="_symbolQuery"
-                              Placeholder="Search API symbols…"
-                              AriaLabel="Search API symbols"
-                              Class="package-docs-fluent-search" />
-                <div class="package-docs-more-anchor">
-                    <FluentButton Id="package-docs-more-button"
-                                  Appearance="Appearance.Outline"
-                                  IconStart="@(new Icons.Regular.Size20.MoreHorizontal())"
-                                  Title="Filters and symbol table"
-                                  OnClick="ToggleMorePanel" />
-                    @if (_showMorePanel)
-                    {
-                        <FluentCard Class="package-docs-more-panel">
-                            <FluentStack Orientation="Orientation.Vertical" Gap="10">
-                                <FluentStack Orientation="Orientation.Horizontal"
-                                             VerticalAlignment="VerticalAlignment.Center"
-                                             HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                                             Gap="8">
-                                    <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Filters and symbols</FluentLabel>
-                                    <FluentButton Appearance="Appearance.Stealth" OnClick="CloseMorePanel">Close</FluentButton>
-                                </FluentStack>
-                                @if (ScopeRootOptions.Any())
-                                {
-                                    <FluentSelect TOption="string"
-                                                  Value="@_scopeRootId"
-                                                  ValueChanged="SetScopeRootFilter"
-                                                  AriaLabel="Limit to subtree under module root">
-                                        <FluentOption TOption="string" Value="">All roots</FluentOption>
-                                        @foreach (var m in ScopeRootOptions)
-                                        {
-                                            <FluentOption TOption="string" Value="@(m.Id?.ToString() ?? "")">@(m.Name ?? m.QualifiedName)</FluentOption>
-                                        }
-                                    </FluentSelect>
-                                }
-                                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Kinds</FluentLabel>
-                                <div class="package-docs-kind-grid">
-                                    @foreach (var kind in AvailableKinds)
-                                    {
-                                        <label class="package-docs-kind-item">
-                                            <input type="checkbox"
-                                                   checked="@IsKindSelected(kind)"
-                                                   @onchange="@(() => ToggleKindFilter(kind))" />
-                                            <span>@kind</span>
-                                        </label>
-                                    }
-                                </div>
-                                <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
-                                <div class="package-docs-symbol-scroll package-docs-symbol-scroll--panel">
-                                    <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
-                                </div>
-                            </FluentStack>
-                        </FluentCard>
-                    }
-                </div>
-            </FluentStack>
-
-            <div class="package-docs-main-grid">
-                <div class="package-docs-nav-col">
-                    <DocModuleGraphTree Roots="@DisplayNavRoots"
-                                        PackageName="@PackageIdentifier"
-                                        Version="@Version"
-                                        ShowPackageSummary="@(Variant == PackageDocsVariant.FullPage)"
-                                        SelectedItemId="@_selected?.Id"
-                                        SelectedQualifiedName="@(_selected?.QualifiedName ?? _selected?.Name)"
-                                        OnItemSelected="SelectItemAsync" />
-                </div>
-
-                <div class="package-docs-article-col">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12">
-                        @if (_selected is not null)
-                        {
-                            <DocMemberHeader Item="@_selected" />
-                            <DocStructuredSections Structured="@_selected.Doc" />
-                            <DocMarkdownRegion Markdown="@_selected.DocMarkdown" />
-                        }
-                        else
-                        {
-                            <FluentLabel Typo="Typography.Body" Class="muted">Select a member from the tree.</FluentLabel>
-                        }
-                    </FluentStack>
-                </div>
-
-                <aside class="package-docs-right-rail" aria-label="Outline">
-                    <div class="package-docs-toc-col">
-                        <TableOfContents Rows="@TocRows" Heading="Table of contents" />
-                    </div>
-                </aside>
+        @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
+        {
+            <div class="package-docs-meta-row muted">
+                @if (_doc.SchemaVersion > 0)
+                {
+                    <FluentBadge Appearance="Appearance.Neutral">schema @(_doc.SchemaVersion)</FluentBadge>
+                }
+                @if (!string.IsNullOrWhiteSpace(_doc.NavigationModel))
+                {
+                    <FluentBadge Appearance="Appearance.Lightweight">@_doc.NavigationModel</FluentBadge>
+                }
+                @if (!string.IsNullOrWhiteSpace(_doc.Source))
+                {
+                    <FluentLabel Typo="Typography.Body" Class="muted">@_doc.Source</FluentLabel>
+                }
             </div>
+        }
+
+        @if (Variant == PackageDocsVariant.Embedded)
+        {
+            <p class="package-docs-embedded-context muted">
+                <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@PackageIdentifier</FluentLabel>
+                <FluentLabel Typo="Typography.Body" Class="muted">@Version</FluentLabel>
+            </p>
+        }
+
+        <div class="package-docs-top-toolbar">
+            <FluentSearch @bind-Value="_symbolQuery"
+                          Placeholder="Search API symbols…"
+                          AriaLabel="Search API symbols"
+                          Class="package-docs-fluent-search" />
+            <div class="package-docs-more-anchor">
+                <FluentButton Id="package-docs-more-button"
+                              Appearance="Appearance.Outline"
+                              IconStart="@(new Icons.Regular.Size20.MoreHorizontal())"
+                              Title="Filters and symbol table"
+                              OnClick="ToggleMorePanel" />
+                @if (_showMorePanel)
+                {
+                    <FluentCard Class="package-docs-more-panel">
+                        <div class="package-docs-more-panel-head">
+                            <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Filters and symbols</FluentLabel>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="CloseMorePanel">Close</FluentButton>
+                        </div>
+                        @if (ScopeRootOptions.Any())
+                        {
+                            <FluentSelect TOption="string"
+                                          Value="@_scopeRootId"
+                                          ValueChanged="SetScopeRootFilter"
+                                          AriaLabel="Limit to subtree under module root">
+                                <FluentOption TOption="string" Value="">All roots</FluentOption>
+                                @foreach (var m in ScopeRootOptions)
+                                {
+                                    <FluentOption TOption="string" Value="@(m.Id?.ToString() ?? "")">@(m.Name ?? m.QualifiedName)</FluentOption>
+                                }
+                            </FluentSelect>
+                        }
+                        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Kinds</FluentLabel>
+                        <div class="package-docs-kind-grid">
+                            @foreach (var kind in AvailableKinds)
+                            {
+                                <label class="package-docs-kind-item">
+                                    <input type="checkbox"
+                                           checked="@IsKindSelected(kind)"
+                                           @onchange="@(() => ToggleKindFilter(kind))" />
+                                    <span>@kind</span>
+                                </label>
+                            }
+                        </div>
+                        <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
+                        <div class="package-docs-symbol-scroll package-docs-symbol-scroll--panel">
+                            <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
+                        </div>
+                    </FluentCard>
+                }
+            </div>
+        </div>
+
+        <div class="package-docs-main-grid">
+            <div class="package-docs-nav-col">
+                <DocModuleGraphTree Roots="@DisplayNavRoots"
+                                    PackageName="@PackageIdentifier"
+                                    Version="@Version"
+                                    ShowPackageSummary="@(Variant == PackageDocsVariant.FullPage)"
+                                    SelectedItemId="@_selected?.Id"
+                                    SelectedQualifiedName="@(_selected?.QualifiedName ?? _selected?.Name)"
+                                    OnItemSelected="SelectItemAsync" />
+            </div>
+
+            <article class="package-docs-article-col">
+                @if (_selected is not null)
+                {
+                    <DocMemberHeader Item="@_selected" />
+                    <DocApiSignatureSections Item="@_selected" OnTypeRefSelected="SelectItemByIdAsync" />
+                    @if (SelectedMemberChildren.Count > 0)
+                    {
+                        <DocMemberMembersTable Members="@SelectedMemberChildren"
+                                               OnMemberSelected="SelectItemAsync"
+                                               OnTypeRefSelected="SelectItemByIdAsync" />
+                    }
+                    <DocStructuredSections Structured="@_selected.Doc" />
+                    <DocMarkdownRegion Markdown="@NarrativeDocMarkdown" />
+                }
+                else
+                {
+                    <FluentLabel Typo="Typography.Body" Class="muted">Select a member from the tree.</FluentLabel>
+                }
+            </article>
+
+            <aside class="package-docs-right-rail" aria-label="Outline">
+                <TableOfContents Rows="@TocRows" Heading="Table of contents" />
+            </aside>
         </div>
     }
 </div>

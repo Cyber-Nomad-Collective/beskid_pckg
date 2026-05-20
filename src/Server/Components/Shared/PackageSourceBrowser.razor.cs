@@ -36,6 +36,9 @@ public partial class PackageSourceBrowser
     private int _layoutGeneration;
     private bool _wasTabActive;
 
+    private string PreviewPanelClass =>
+        _selectedNode is null ? "source-preview-panel source-preview-panel--empty" : "source-preview-panel";
+
     protected override async Task OnParametersSetAsync()
     {
         var pkg = PackageIdentifier.Trim();

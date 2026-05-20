@@ -1,11 +1,16 @@
 @using Microsoft.FluentUI.AspNetCore.Components
+@using Server.Contracts.ApiDocumentation
 
 @if (Item is not null)
 {
     <FluentStack Orientation="Orientation.Vertical" Gap="8" Class="package-docs-member-header">
         <FluentLabel Typo="Typography.H5" Class="package-docs-member-title">
-            @(Item.QualifiedName ?? Item.Name ?? "Member")
+            @(Item.QualifiedName ?? Item.DisplayName ?? Item.Name ?? "Member")
         </FluentLabel>
+        @if (!string.IsNullOrWhiteSpace(Item.Signature))
+        {
+            <code class="package-docs-signature">@Item.Signature</code>
+        }
         <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="6" VerticalAlignment="VerticalAlignment.Center">
             @if (!string.IsNullOrWhiteSpace(Item.Kind))
             {

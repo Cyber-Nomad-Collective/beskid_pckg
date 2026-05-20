@@ -1,0 +1,52 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Server.Contracts.ApiDocumentation
+
+@if (Members.Count > 0)
+{
+    <FluentStack Orientation="Orientation.Vertical" Gap="6" Class="docs-members-table">
+        <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Members</FluentLabel>
+        <table class="package-docs-grid">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Kind</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Members)
+                {
+                    <tr>
+                        <td>
+                            <FluentAnchor Href="#" Appearance="Appearance.Hypertext" OnClick="@(() => OnMemberSelected.InvokeAsync(row))">
+                                @(row.DisplayName ?? row.Name)
+                            </FluentAnchor>
+                        </td>
+                        <td>
+                            @if (row.FieldType is not null)
+                            {
+                                <DocTypeLink Annotation="@row.FieldType" OnNavigate="OnTypeRefSelected" />
+                            }
+                            else if (!string.IsNullOrWhiteSpace(row.Signature))
+                            {
+                                <span class="muted docs-type-text">@row.Signature</span>
+                            }
+                        </td>
+                        <td>@row.Kind</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </FluentStack>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<StructuredApiItemDto> Members { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<StructuredApiItemDto> OnMemberSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnTypeRefSelected { get; set; }
+}

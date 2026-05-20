@@ -225,43 +225,28 @@ else
             </FluentTab>
 
             <FluentTab Id="pkg-tab-docs" Label="Documentation">
-                <div class="content-section package-tab-content package-tab-fill">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12" Class="package-tab-inner-stack">
-                        <FluentStack Orientation="Orientation.Horizontal"
-                                     VerticalAlignment="VerticalAlignment.Center"
-                                     Wrap="true"
-                                     Gap="12"
-                                     Class="content-section-title-row">
-                            <h2 style="margin: 0;">Documentation</h2>
-                            <FluentButton Appearance="Appearance.Accent"
-                                          IconStart="@(new Icons.Regular.Size20.Window())"
-                                          OnClick="OpenDocsFullPage">
-                                Open full page
-                            </FluentButton>
-                        </FluentStack>
-                        <PackageDocs PackageIdentifier="@Package.Name"
-                                     Version="@ExplorerVersion"
-                                     Variant="PackageDocs.PackageDocsVariant.Embedded" />
-                    </FluentStack>
-                </div>
+                <section class="package-tab-fill package-explorer-tab" aria-label="Package documentation">
+                    <header class="package-tab-header">
+                        <h2>Documentation</h2>
+                        <FluentButton Appearance="Appearance.Accent"
+                                      IconStart="@(new Icons.Regular.Size20.Window())"
+                                      OnClick="OpenDocsFullPage">
+                            Open full page
+                        </FluentButton>
+                    </header>
+                    <PackageDocs PackageIdentifier="@Package.Name"
+                                 Version="@ExplorerVersion"
+                                 Variant="PackageDocs.PackageDocsVariant.Embedded" />
+                </section>
             </FluentTab>
 
             <FluentTab Id="pkg-tab-source" Label="Source">
-                <div class="content-section package-tab-content package-tab-fill">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12" Class="package-tab-inner-stack">
-                        <FluentStack Orientation="Orientation.Horizontal"
-                                     VerticalAlignment="VerticalAlignment.Center"
-                                     Wrap="true"
-                                     Gap="12"
-                                     Class="content-section-title-row">
-                            <h2 style="margin: 0;">Source</h2>
-                        </FluentStack>
-
-                        <PackageSourceBrowser PackageIdentifier="@Package.Name"
-                                             Version="@ExplorerVersion"
-                                             TabActive="@(SelectedTabId == "pkg-tab-source")" />
-                    </FluentStack>
-                </div>
+                <section class="package-tab-fill package-explorer-tab" aria-label="Package source">
+                    <h2 class="package-tab-header package-tab-header--title-only">Source</h2>
+                    <PackageSourceBrowser PackageIdentifier="@Package.Name"
+                                         Version="@ExplorerVersion"
+                                         TabActive="@(SelectedTabId == "pkg-tab-source")" />
+                </section>
             </FluentTab>
 
             <FluentTab Id="pkg-tab-ratings" Label="Ratings">

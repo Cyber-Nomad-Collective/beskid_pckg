@@ -7,6 +7,59 @@ public class StructuredApiDocDtoDeserializationTests
 {
 
     [Fact]
+    public void Deserializes_v4_signatures_and_docMarkdown_camelCase()
+    {
+        const string json = """
+            {
+              "schemaVersion": 4,
+              "navigationModel": "graph-v1",
+              "source": "t.bd",
+              "items": [
+                {
+                  "id": 1,
+                  "qualifiedName": "Inner",
+                  "name": "Inner",
+                  "displayName": "Inner",
+                  "kind": "type",
+                  "signature": "type Inner",
+                  "location": { "file": "t.bd", "startLine": 1, "startColumn": 1, "endLine": 2, "endColumn": 1 },
+                  "memberIds": [2],
+                  "parentId": null
+                },
+                {
+                  "id": 2,
+                  "qualifiedName": "Inner::inner",
+                  "name": "Inner::inner",
+                  "displayName": "inner",
+                  "kind": "field",
+                  "parentId": 1,
+                  "memberIds": [],
+                  "fieldType": { "display": "Outer", "refItemId": 3 },
+                  "signature": "Outer inner",
+                  "location": { "file": "t.bd", "startLine": 2, "startColumn": 1, "endLine": 2, "endColumn": 1 },
+                  "docMarkdown": "Field prose."
+                },
+                {
+                  "id": 3,
+                  "qualifiedName": "Outer",
+                  "name": "Outer",
+                  "kind": "type",
+                  "location": { "file": "t.bd", "startLine": 3, "startColumn": 1, "endLine": 4, "endColumn": 1 }
+                }
+              ]
+            }
+            """;
+
+        var doc = JsonSerializer.Deserialize<StructuredApiDocDto>(json, StructuredApiDocJson.Options);
+        Assert.NotNull(doc);
+        Assert.Equal(4, doc!.SchemaVersion);
+        var field = doc.Items[1];
+        Assert.Equal("Field prose.", field.DocMarkdown);
+        Assert.NotNull(field.FieldType);
+        Assert.Equal(3, field.FieldType!.RefItemId);
+    }
+
+    [Fact]
     public void Deserializes_graph_nav_and_structured_doc_payload()
     {
         const string json = """
