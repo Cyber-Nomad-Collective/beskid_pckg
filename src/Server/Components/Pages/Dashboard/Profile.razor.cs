@@ -31,6 +31,9 @@ public partial class Profile
     [Inject]
     public IDialogService DialogService { get; set; } = default!;
 
+    [Inject]
+    public ILogger<Profile> Logger { get; set; } = default!;
+
     private bool IsSuperAdmin => HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true;
 
     protected override async Task OnInitializedAsync()
@@ -193,6 +196,11 @@ public partial class Profile
         catch (IOException)
         {
             SetFeedback("Selected image exceeds the 10 MB limit.", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Profile image upload failed for user {UserId}", UserId);
+            SetFeedback("Profile photo upload failed. Try a smaller image or retry in a moment.", true);
         }
         finally
         {

@@ -18,11 +18,16 @@
                 </FluentButton>
             </FluentStack>
 
+            @if (!string.IsNullOrWhiteSpace(RegistryActivityError))
+            {
+                <FluentMessageBar Intent="MessageIntent.Warning">@RegistryActivityError</FluentMessageBar>
+            }
+
             @if (IsLoadingRegistryActivity && RegistryActivity.Count == 0)
             {
                 <FluentLabel Typo="Typography.Body" Class="muted">Loading…</FluentLabel>
             }
-            else if (RegistryActivity.Count == 0)
+            else if (RegistryActivity.Count == 0 && string.IsNullOrWhiteSpace(RegistryActivityError))
             {
                 <FluentLabel Typo="Typography.Body" Class="muted">No activity recorded yet.</FluentLabel>
             }

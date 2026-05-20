@@ -3,6 +3,9 @@ using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server;
+using Microsoft.AspNetCore.Components.Server.Circuits;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +46,16 @@ if (string.IsNullOrWhiteSpace(internalApiBaseAddress))
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.Configure<CircuitOptions>(options =>
+{
+    options.DetailedErrors = builder.Environment.IsDevelopment();
+});
+builder.Services.AddSignalR(options =>
+{
+    // Profile photo upload (up to 10 MB) crosses the circuit; default 32 KB limit drops the connection.
+    options.MaximumReceiveMessageSize = 12 * 1024 * 1024;
+});
+builder.Services.AddSingleton<CircuitHandler, BlazorCircuitFailureLogger>();
 builder.Services.AddFluentUIComponents();
 builder.Services.AddScoped(sp =>
 {
@@ -91,7 +104,6 @@ builder.Services.SwaggerDocument(o =>
 });
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddSignalR();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
