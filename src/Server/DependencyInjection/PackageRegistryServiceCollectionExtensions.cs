@@ -1,6 +1,7 @@
 using Server.Features.Packages;
 using Server.Services;
 using Server.Services.Artifacts;
+using Server.Services.Workspace;
 
 namespace Server.DependencyInjection;
 
@@ -10,6 +11,9 @@ public static class PackageRegistryServiceCollectionExtensions
     {
         services.AddSingleton<IPackageArtifactStore, PackageArtifactStore>();
         services.AddSingleton<IPackageArtifactValidator, PackageArtifactValidator>();
+        services.AddScoped<IPackagePublishService, PackagePublishService>();
+        services.AddScoped<IWorkspacePublishService, WorkspacePublishService>();
+        services.AddSingleton<IPackageArtifactPublishMetadataExtractor, PackageArtifactPublishMetadataExtractor>();
         services.AddScoped<IPackageAccessService, PackageAccessService>();
         services.AddScoped<IPackageVersionLifecycleService, PackageVersionLifecycleService>();
         services.AddScoped<IPackageArtifactExplorerService, PackageArtifactExplorerService>();

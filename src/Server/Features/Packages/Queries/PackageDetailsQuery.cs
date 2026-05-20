@@ -75,7 +75,9 @@ public sealed class PackageDetailsQuery(
 
         var health = PackageHealthScoring.Calculate(package, avgDownloads, averageRating, reviewCount);
 
-        var latestManifest = packageVersions.FirstOrDefault()?.ManifestJson;
+        var latestPublished = packageVersions.FirstOrDefault();
+        var latestActive = packageVersions.FirstOrDefault(x => !x.IsYanked) ?? latestPublished;
+        var latestManifest = latestPublished?.ManifestJson;
         var parsedManifest = PackageManifestMetadataReader.Read(latestManifest);
         var dependencies = parsedManifest.Dependencies
             .Select(d => new PackageDependencyResponse(d.Name, d.Version, d.Source, d.Registry))
@@ -129,10 +131,12 @@ public sealed class PackageDetailsQuery(
                 .ToList(),
             dependencies,
             dependentsCount,
-            parsedManifest.Readme,
+            latestActive?.ReadmeMarkdown,
             PackageResponseMapper.ToHealthSnapshot(health),
             firstPublishedAtUtc,
             lastPublishedAtUtc,
-            latestVersion);
+            latestVersion,
+            latestActive?.ConfigurationJson,
+            latestActive?.OverridesJson);
     }
 }

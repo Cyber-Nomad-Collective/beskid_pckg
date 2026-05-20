@@ -29,12 +29,28 @@ public sealed record PackageVersionSummaryResponse(
     string ChecksumSha256,
     long SizeBytes,
     DateTimeOffset PublishedAtUtc,
-    DateTimeOffset? YankedAtUtc);
+    DateTimeOffset? YankedAtUtc,
+    [property: JsonPropertyName("hasReadme")] bool HasReadme = false,
+    [property: JsonPropertyName("configuration")] string? ConfigurationJson = null,
+    [property: JsonPropertyName("overrides")] string? OverridesJson = null);
 
 public sealed record PublishPackageVersionResponse(
     bool Success,
     string Message,
     PackageVersionSummaryResponse? Version);
+
+public sealed record PublishWorkspaceMemberResponse(
+    string MemberId,
+    string PackageName,
+    string Version,
+    string ChecksumSha256,
+    long SizeBytes);
+
+public sealed record PublishWorkspaceResponse(
+    bool Success,
+    string Message,
+    string? WorkspaceName,
+    IReadOnlyList<PublishWorkspaceMemberResponse> Packages);
 
 public sealed record PackageVersionLifecycleResponse(
     bool Success,
@@ -130,4 +146,6 @@ public sealed record PackageDetailsResponse(
     PackageHealthSnapshotResponse Health,
     [property: JsonPropertyName("firstPublishedAtUtc")] DateTimeOffset? FirstPublishedAtUtc = null,
     [property: JsonPropertyName("lastPublishedAtUtc")] DateTimeOffset? LastPublishedAtUtc = null,
-    [property: JsonPropertyName("latestVersion")] string? LatestVersion = null);
+    [property: JsonPropertyName("latestVersion")] string? LatestVersion = null,
+    [property: JsonPropertyName("configuration")] string? ConfigurationJson = null,
+    [property: JsonPropertyName("overrides")] string? OverridesJson = null);

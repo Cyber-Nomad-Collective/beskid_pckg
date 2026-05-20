@@ -7,6 +7,7 @@ using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 using Server.Data;
 using Server.Features.Packages;
+using Server.Features.Packages.Mapping;
 using Server.Services;
 
 namespace Server.Components.Pages;
@@ -23,6 +24,7 @@ public partial class PackageDetails
     [Inject] private HttpClient Http { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IHtmlSanitizationService HtmlSanitization { get; set; } = default!;
+    [Inject] private IPackageDocsArchiveService DocsArchive { get; set; } = default!;
     private bool IsFollowing;
     private int PackageBoardId;
     private bool IsPackageBoardLocked;
@@ -30,9 +32,13 @@ public partial class PackageDetails
     private string SelectedTabId = "pkg-tab-versions";
     private PackageHealthStatus? HealthStatus;
     private int DependentsCount;
-    private string? LatestReadme;
     private PackageVersionSummaryResponse? LatestVersion;
     private string ExplorerVersion = "latest";
+    private readonly Dictionary<string, string?> _manifestReadmePathByVersion = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string?> _readmeMarkdownByVersion = new(StringComparer.OrdinalIgnoreCase);
+    private string? _explorerReadmeMarkdown;
+    private string? _explorerReadmeError;
+    private bool _explorerReadmeLoading;
     private DateTimeOffset? _firstPublishedAtUtc;
     private DateTimeOffset? _lastPublishedAtUtc;
     private string? _heroLatestVersion;
@@ -140,8 +146,12 @@ public partial class PackageDetails
         Versions.Clear();
         Dependencies.Clear();
         DependentsCount = 0;
-        LatestReadme = null;
         LatestVersion = null;
+        _manifestReadmePathByVersion.Clear();
+        _readmeMarkdownByVersion.Clear();
+        _explorerReadmeMarkdown = null;
+        _explorerReadmeError = null;
+        _explorerReadmeLoading = false;
         HealthStatus = null;
         _firstPublishedAtUtc = null;
         _lastPublishedAtUtc = null;
@@ -196,16 +206,13 @@ public partial class PackageDetails
             .OrderByDescending(x => x.PublishedAtUtc)
             .ToList();
 
-        Versions.AddRange(orderedVersionRows.Select(x => new PackageVersionSummaryResponse(
-            x.Id,
-            x.PackageId,
-            Package.Name,
-            x.Version,
-            x.IsYanked,
-            x.ChecksumSha256,
-            x.SizeBytes,
-            x.PublishedAtUtc,
-            x.YankedAtUtc)));
+        Versions.AddRange(orderedVersionRows.Select(x =>
+        {
+            var versionManifest = PackageManifestMetadataReader.Read(x.ManifestJson);
+            _manifestReadmePathByVersion[x.Version] = versionManifest.ReadmePath;
+            _readmeMarkdownByVersion[x.Version] = x.ReadmeMarkdown;
+            return PackageResponseMapper.ToVersionSummary(x, Package.Name);
+        }));
 
         if (versionRows.Count > 0)
         {
@@ -221,7 +228,6 @@ public partial class PackageDetails
         LatestVersion = Versions.FirstOrDefault();
         ExplorerVersion = LatestVersion?.Version ?? "latest";
         var manifest = PackageManifestMetadataReader.Read(orderedVersionRows.FirstOrDefault()?.ManifestJson);
-        LatestReadme = manifest.Readme;
         Dependencies.AddRange(manifest.Dependencies.Select(d => new PackageDependencyResponse(
             d.Name,
             d.Version,
@@ -245,6 +251,74 @@ public partial class PackageDetails
         DependentsCount = otherLatestManifests.Count(item =>
             PackageManifestMetadataReader.Read(item).Dependencies.Any(d =>
                 string.Equals(d.Name, Package.Name, StringComparison.OrdinalIgnoreCase)));
+
+        await LoadExplorerReadmeAsync();
+    }
+
+    private Task OnExplorerVersionChangedAsync() => LoadExplorerReadmeAsync();
+
+    private async Task LoadExplorerReadmeAsync()
+    {
+        _explorerReadmeMarkdown = null;
+        _explorerReadmeError = null;
+
+        if (Package is null || Versions.Count == 0 || string.IsNullOrWhiteSpace(ExplorerVersion))
+        {
+            _explorerReadmeLoading = false;
+            return;
+        }
+
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is null)
+        {
+            _explorerReadmeError = "Unable to load README.";
+            return;
+        }
+
+        if (_readmeMarkdownByVersion.TryGetValue(ExplorerVersion, out var storedReadme)
+            && !string.IsNullOrWhiteSpace(storedReadme))
+        {
+            _explorerReadmeMarkdown = storedReadme;
+            return;
+        }
+
+        _manifestReadmePathByVersion.TryGetValue(ExplorerVersion, out var manifestReadmePath);
+        _explorerReadmeLoading = true;
+
+        try
+        {
+            var result = await DocsArchive.ReadReadmeAsync(
+                httpContext,
+                Package.Name,
+                ExplorerVersion,
+                manifestReadmePath);
+
+            if (result.StatusCode == StatusCodes.Status200OK && !string.IsNullOrWhiteSpace(result.Markdown))
+            {
+                _explorerReadmeMarkdown = result.Markdown;
+                return;
+            }
+
+            if (result.StatusCode == StatusCodes.Status404NotFound)
+            {
+                return;
+            }
+
+            _explorerReadmeError = result.StatusCode switch
+            {
+                StatusCodes.Status403Forbidden => "You do not have access to this package version.",
+                StatusCodes.Status413PayloadTooLarge => "README exceeds the maximum allowed size.",
+                _ => "Unable to load README for this version.",
+            };
+        }
+        catch
+        {
+            _explorerReadmeError = "Unable to load README for this version.";
+        }
+        finally
+        {
+            _explorerReadmeLoading = false;
+        }
     }
 
     private async Task OpenReviewDialogAsync()

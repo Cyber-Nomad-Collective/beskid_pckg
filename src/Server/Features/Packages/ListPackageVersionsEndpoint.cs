@@ -1,6 +1,7 @@
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
+using Server.Features.Packages.Mapping;
 using Server.Services;
 
 namespace Server.Features.Packages;
@@ -50,16 +51,7 @@ public sealed class ListPackageVersionsEndpoint(
 
         var versions = versionEntities
             .OrderByDescending(x => x.PublishedAtUtc)
-            .Select(x => new PackageVersionSummaryResponse(
-                x.Id,
-                x.PackageId,
-                package.Name,
-                x.Version,
-                x.IsYanked,
-                x.ChecksumSha256,
-                x.SizeBytes,
-                x.PublishedAtUtc,
-                x.YankedAtUtc))
+            .Select(x => PackageResponseMapper.ToVersionSummary(x, package.Name))
             .ToList();
 
         await Send.OkAsync(versions, ct);

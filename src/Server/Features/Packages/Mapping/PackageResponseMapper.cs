@@ -15,7 +15,10 @@ public static class PackageResponseMapper
             entity.ChecksumSha256,
             entity.SizeBytes,
             entity.PublishedAtUtc,
-            entity.YankedAtUtc);
+            entity.YankedAtUtc,
+            !string.IsNullOrWhiteSpace(entity.ReadmeMarkdown),
+            entity.ConfigurationJson,
+            entity.OverridesJson);
 
     public static PackageSummaryResponse ToSummary(
         PackageEntity package,

@@ -6,6 +6,9 @@ public sealed class PackageVersionEntity
     public Guid PackageId { get; set; }
     public string Version { get; set; } = string.Empty;
     public string ManifestJson { get; set; } = string.Empty;
+    public string? ReadmeMarkdown { get; set; }
+    public string? ConfigurationJson { get; set; }
+    public string? OverridesJson { get; set; }
     public string ChecksumSha256 { get; set; } = string.Empty;
     public string StorageKey { get; set; } = string.Empty;
     public string ContentType { get; set; } = "application/zip";

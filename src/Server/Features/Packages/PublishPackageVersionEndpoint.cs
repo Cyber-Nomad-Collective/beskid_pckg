@@ -10,9 +10,7 @@ namespace Server.Features.Packages;
 public sealed class PublishPackageVersionEndpoint(
     ApplicationDbContext dbContext,
     IApiPrincipalResolver principalResolver,
-    IPackageArtifactStore artifactStore,
-    IPackageArtifactValidator artifactValidator,
-    Server.Services.Notifications.INotificationService notifications,
+    IPackagePublishService packagePublishService,
     IPckgRegistryActivityLog registryActivity,
     ILogger<PublishPackageVersionEndpoint> logger)
     : EndpointWithoutRequest<PublishPackageVersionResponse>
@@ -111,7 +109,6 @@ public sealed class PublishPackageVersionEndpoint(
         var versionRaw = form["version"].FirstOrDefault()?.Trim();
         var versionBumpRaw = form["versionBump"].FirstOrDefault()?.Trim();
         var expectedChecksum = form["checksumSha256"].FirstOrDefault()?.Trim().ToLowerInvariant();
-        var inlineManifestJson = form["manifestJson"].FirstOrDefault();
         var artifact = form.Files.GetFile("artifact");
 
         if (artifact is null)
@@ -163,164 +160,44 @@ public sealed class PublishPackageVersionEndpoint(
             return;
         }
 
-        var existing = await dbContext.PackageVersions
-            .AsNoTracking()
-            .SingleOrDefaultAsync(x => x.PackageId == package.Id && x.Version == version, ct);
-        if (existing is not null)
-        {
-            if (!string.IsNullOrWhiteSpace(expectedChecksum)
-                && string.Equals(existing.ChecksumSha256, expectedChecksum, StringComparison.OrdinalIgnoreCase))
-            {
-                logger.LogInformation(
-                    "Idempotent publish accepted for package {PackageName} version {Version} (trace {TraceId}).",
-                    package.Name,
-                    version,
-                    HttpContext.TraceIdentifier);
-                Record("Information", "publish_idempotent", "Package version already exists with matching checksum.", userId, package.Name, version);
-                await Send.OkAsync(
-                    new PublishPackageVersionResponse(
-                        true,
-                        "Package version already exists with matching checksum.",
-                        new PackageVersionSummaryResponse(
-                            existing.Id,
-                            existing.PackageId,
-                            package.Name,
-                            existing.Version,
-                            existing.IsYanked,
-                            existing.ChecksumSha256,
-                            existing.SizeBytes,
-                            existing.PublishedAtUtc,
-                            existing.YankedAtUtc)),
-                    ct);
-                return;
-            }
-
-            logger.LogWarning("Publish rejected: immutable version conflict for {PackageName} {Version}.", package.Name, version);
-            Record("Warning", "publish_conflict", "Version already exists and is immutable.", userId, package.Name, version);
-            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Version already exists and is immutable.", null), StatusCodes.Status409Conflict, ct);
-            return;
-        }
-
         await using var artifactStream = artifact.OpenReadStream();
-        var validation = await artifactValidator.ValidateAsync(artifactStream, package.Name, version, relaxPackageJsonVersion, ct);
-        if (!validation.IsValid)
-        {
-            logger.LogWarning(
-                "Publish rejected: artifact validation failed for {PackageName} {Version}: {ValidationMessage}",
-                package.Name,
+        var publishResult = await packagePublishService.PublishAsync(
+            new PackagePublishRequest(
+                package,
                 version,
-                validation.Message);
-            Record("Warning", "publish_validation_failed", validation.Message, userId, package.Name, version);
-            await Send.ResponseAsync(new PublishPackageVersionResponse(false, validation.Message, null), StatusCodes.Status400BadRequest, ct);
+                artifactStream,
+                relaxPackageJsonVersion,
+                expectedChecksum,
+                artifact.ContentType ?? "application/zip",
+                userId),
+            ct);
+
+        if (!publishResult.Success)
+        {
+            Record("Warning", "publish_failed", publishResult.Message, userId, package.Name, version);
+            await Send.ResponseAsync(
+                new PublishPackageVersionResponse(false, publishResult.Message, null),
+                publishResult.StatusCode,
+                ct);
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(expectedChecksum)
-            && !string.Equals(expectedChecksum, validation.ArtifactChecksumSha256, StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogWarning("Publish rejected: checksum mismatch for {PackageName} {Version}.", package.Name, version);
-            Record("Warning", "publish_checksum_mismatch", "Checksum mismatch for uploaded artifact.", userId, package.Name, version);
-            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Checksum mismatch for uploaded artifact.", null), StatusCodes.Status400BadRequest, ct);
-            return;
-        }
-
-        artifactStream.Position = 0;
-        var (storageKey, computedChecksum, sizeBytes) = await artifactStore.SaveAsync(package.Name, version, artifactStream, ct);
-
-        if (!string.IsNullOrWhiteSpace(inlineManifestJson))
-        {
-            logger.LogDebug(
-                "Publish payload included optional manifestJson for {PackageName} {Version}; server persisted manifest from artifact.",
-                package.Name,
-                version);
-        }
-
-        if (!string.Equals(computedChecksum, validation.ArtifactChecksumSha256, StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogError(
-                "Publish failed after persistence: checksum verification for {PackageName} {Version}.",
-                package.Name,
-                version);
-            Record("Error", "publish_persist_checksum", "Artifact checksum could not be verified after persistence.", userId, package.Name, version);
-            await Send.ResponseAsync(new PublishPackageVersionResponse(false, "Artifact checksum could not be verified after persistence.", null), StatusCodes.Status500InternalServerError, ct);
-            return;
-        }
-
-        var entity = new PackageVersionEntity
-        {
-            Id = Guid.NewGuid(),
-            PackageId = package.Id,
-            Version = version,
-            ManifestJson = validation.ManifestJson ?? "{}",
-            ChecksumSha256 = computedChecksum,
-            StorageKey = storageKey,
-            ContentType = string.IsNullOrWhiteSpace(artifact.ContentType) ? "application/zip" : artifact.ContentType,
-            SizeBytes = sizeBytes,
-            PublishedAtUtc = DateTimeOffset.UtcNow,
-        };
-
-        dbContext.PackageVersions.Add(entity);
-        package.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        await dbContext.SaveChangesAsync(ct);
         logger.LogInformation(
-            "Published package {PackageName} version {Version} by user {UserId}; sizeBytes={SizeBytes}; trace={TraceId}.",
+            "Published package {PackageName} version {Version} by user {UserId}; trace={TraceId}.",
             package.Name,
-            entity.Version,
+            publishResult.Version!.Version,
             userId,
-            sizeBytes,
             HttpContext.TraceIdentifier);
         Record(
             "Information",
             "publish_success",
-            $"Published version {entity.Version} ({sizeBytes} bytes).",
+            $"Published version {publishResult.Version.Version}.",
             userId,
             package.Name,
-            entity.Version);
+            publishResult.Version.Version);
 
-        await notifications.PublishAsync(userId, NotificationType.PackagePublished,
-            $"{package.Name} {entity.Version} published",
-            $"Your package {package.Name} has been published with version {entity.Version}.", ct: ct);
-
-        var pId = package.Id.ToString();
-        var packageFollowerIds = await dbContext.PackageFollows
-            .AsNoTracking()
-            .Where(f => f.PackageId == pId)
-            .Select(f => f.UserId)
-            .ToListAsync(ct);
-
-        var publisherFollowerIds = await dbContext.PublisherFollows
-            .AsNoTracking()
-            .Where(f => f.PublisherUserId == package.OwnerUserId)
-            .Select(f => f.UserId)
-            .ToListAsync(ct);
-
-        var targetFollowerIds = packageFollowerIds
-            .Concat(publisherFollowerIds)
-            .Where(uid => uid != userId)
-            .Distinct()
-            .ToList();
-
-        foreach (var fid in targetFollowerIds)
-        {
-            await notifications.PublishAsync(fid, NotificationType.PackagePublished,
-                $"{package.Name} {entity.Version} published",
-                $"{package.Name} has a new version {entity.Version}.",
-                preferenceScope: NotificationPreferenceScope.Package,
-                preferenceScopeId: package.Id.ToString(),
-                ct: ct);
-        }
-
-        var response = new PackageVersionSummaryResponse(
-            entity.Id,
-            entity.PackageId,
-            package.Name,
-            entity.Version,
-            entity.IsYanked,
-            entity.ChecksumSha256,
-            entity.SizeBytes,
-            entity.PublishedAtUtc,
-            entity.YankedAtUtc);
-
-        await Send.OkAsync(new PublishPackageVersionResponse(true, "Package version published.", response), ct);
+        await Send.OkAsync(
+            new PublishPackageVersionResponse(true, publishResult.Message, publishResult.Version),
+            ct);
     }
 }

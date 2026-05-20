@@ -161,6 +161,54 @@ public class PackageEndpointsIntegrationTests : IClassFixture<TestApplicationFac
     }
 
     [Fact]
+    public async Task Publish_Persists_Readme_And_Manifest_Metadata_In_Package_Details()
+    {
+        const string version = "1.0.0";
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Ingest.Readme", isPublic: true);
+        var packageJson = $$"""
+            {
+              "schema": "beskid.package.v1",
+              "id": "{{package.Name}}",
+              "version": "{{version}}",
+              "documentation": { "readme": "README.md" },
+              "configuration": { "profile": "release" },
+              "overrides": { "strict": true }
+            }
+            """;
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(
+            package.Name,
+            version,
+            new Dictionary<string, string> { ["README.md"] = "# Hello from artifact README" },
+            packageJson);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent(version), "version" },
+            { new ByteArrayContent(artifact), "artifact", "readme-ingest.bpk" },
+        };
+        var publish = await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
+
+        var persisted = await _factory.GetPackageVersionAsync(package.Name, version);
+        Assert.NotNull(persisted);
+        Assert.Equal("# Hello from artifact README", persisted!.ReadmeMarkdown);
+        Assert.Contains("profile", persisted.ConfigurationJson, StringComparison.Ordinal);
+        Assert.Contains("strict", persisted.OverridesJson, StringComparison.Ordinal);
+
+        var details = await client.GetFromJsonAsync<JsonElement>($"/api/packages/{package.Name}");
+        Assert.Equal("# Hello from artifact README", details.GetProperty("readme").GetString());
+        Assert.Contains("profile", details.GetProperty("configuration").GetRawText(), StringComparison.Ordinal);
+        Assert.Contains("strict", details.GetProperty("overrides").GetRawText(), StringComparison.Ordinal);
+
+        var versions = details.GetProperty("versions").EnumerateArray().ToList();
+        Assert.Single(versions);
+        Assert.True(versions[0].GetProperty("hasReadme").GetBoolean());
+    }
+
+    [Fact]
     public async Task Yank_And_Unyank_Controls_Download_Availability()
     {
         var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Yank.Demo", isPublic: true);

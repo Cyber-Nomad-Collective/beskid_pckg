@@ -70,25 +70,53 @@ else
                     }
                 </div>
             </div>
-            @if (IsAuthenticated)
-            {
-                <div class="package-hero-actions">
+            <div class="package-hero-actions">
+                @if (Versions.Count > 0)
+                {
+                    <FluentStack Orientation="Orientation.Horizontal"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 Gap="8"
+                                 Wrap="true"
+                                 Class="package-header-version">
+                        <FluentLabel Typo="Typography.Body" Class="muted">Version</FluentLabel>
+                        <PackageVersionSelect Versions="Versions"
+                                              @bind-SelectedVersion="ExplorerVersion"
+                                              @bind-SelectedVersion:after="OnExplorerVersionChangedAsync"
+                                              AriaLabel="Select package version" />
+                    </FluentStack>
+                }
+                @if (IsAuthenticated)
+                {
                     <FluentButton Appearance="@(IsFollowing ? Appearance.Accent : Appearance.Outline)" OnClick="ToggleFollowAsync">
                         @(IsFollowing ? "Following" : "Follow")
                     </FluentButton>
-                </div>
-            }
+                }
+            </div>
         </header>
 
-        @if (Versions.Count > 0)
-        {
-            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12" Class="toolbar-row">
-                <FluentLabel Typo="Typography.Body">Version for docs and source</FluentLabel>
-                <PackageVersionSelect Versions="Versions"
-                                      @bind-SelectedVersion="ExplorerVersion"
-                                      AriaLabel="Select version for documentation and source" />
-            </FluentStack>
-        }
+        <section class="package-readme-section" aria-label="Package readme">
+            @if (_explorerReadmeLoading)
+            {
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12">
+                    <FluentProgressRing />
+                    <FluentLabel Typo="Typography.Body" Class="muted">Loading README…</FluentLabel>
+                </FluentStack>
+            }
+            else if (!string.IsNullOrWhiteSpace(_explorerReadmeError))
+            {
+                <FluentMessageBar Intent="MessageIntent.Warning">@_explorerReadmeError</FluentMessageBar>
+            }
+            else if (!string.IsNullOrWhiteSpace(_explorerReadmeMarkdown))
+            {
+                <FluentCard Class="package-readme-card">
+                    <DocMarkdownRegion Markdown="@_explorerReadmeMarkdown" />
+                </FluentCard>
+            }
+            else if (Versions.Count > 0)
+            {
+                <p class="muted package-readme-empty">No README published for this version.</p>
+            }
+        </section>
 
         <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
             <FluentTab Id="pkg-tab-versions" Label="Versions">
@@ -105,10 +133,6 @@ else
                                 <span>Published: @LatestVersion.PublishedAtUtc.ToString("u")</span>
                                 <span>Status: @(LatestVersion.IsYanked ? "Yanked" : "Active")</span>
                             </div>
-                            @if (!string.IsNullOrWhiteSpace(LatestReadme))
-                            {
-                                <p class="muted">Readme: @LatestReadme</p>
-                            }
                         </FluentCard>
                     }
                     @if (Versions.Count == 0)

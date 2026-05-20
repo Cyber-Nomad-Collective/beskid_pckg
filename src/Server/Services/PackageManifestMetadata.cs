@@ -12,7 +12,10 @@ public sealed record PackageManifestMetadata(
     string? Schema,
     string? PackageId,
     string? Version,
-    string? Readme,
+    string? ReadmePath,
+    string? IconUrl,
+    string? ConfigurationJson,
+    string? OverridesJson,
     IReadOnlyList<PackageDependencyDescriptor> Dependencies);
 
 public static class PackageManifestMetadataReader
@@ -31,9 +34,20 @@ public static class PackageManifestMetadataReader
             var schema = ReadString(root, "schema");
             var id = ReadString(root, "id");
             var version = ReadString(root, "version");
-            var readme = ReadString(root, "readme");
+            var readmePath = ResolveReadmePath(root);
+            var iconUrl = ReadString(root, "iconUrl");
+            var configurationJson = SerializeObjectProperty(root, "configuration");
+            var overridesJson = SerializeObjectProperty(root, "overrides");
             var dependencies = ReadDependencies(root);
-            return new PackageManifestMetadata(schema, id, version, readme, dependencies);
+            return new PackageManifestMetadata(
+                schema,
+                id,
+                version,
+                readmePath,
+                iconUrl,
+                configurationJson,
+                overridesJson,
+                dependencies);
         }
         catch (JsonException)
         {
@@ -42,12 +56,45 @@ public static class PackageManifestMetadataReader
     }
 
     private static PackageManifestMetadata Empty()
-        => new(null, null, null, null, []);
+        => new(null, null, null, null, null, null, null, []);
 
     private static string? ReadString(JsonElement root, string property)
         => root.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    private static string? ResolveReadmePath(JsonElement root)
+    {
+        if (root.TryGetProperty("documentation", out var documentation)
+            && documentation.ValueKind == JsonValueKind.Object
+            && documentation.TryGetProperty("readme", out var docReadme)
+            && docReadme.ValueKind == JsonValueKind.String)
+        {
+            var path = docReadme.GetString()?.Trim();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                return path;
+            }
+        }
+
+        var topLevel = ReadString(root, "readme")?.Trim();
+        return string.IsNullOrWhiteSpace(topLevel) ? null : topLevel;
+    }
+
+    private static string? SerializeObjectProperty(JsonElement root, string property)
+    {
+        if (!root.TryGetProperty(property, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.Object or JsonValueKind.Array => value.GetRawText(),
+            _ => null,
+        };
+    }
 
     private static IReadOnlyList<PackageDependencyDescriptor> ReadDependencies(JsonElement root)
     {

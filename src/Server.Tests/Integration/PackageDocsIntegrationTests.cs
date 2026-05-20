@@ -198,6 +198,34 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
     }
 
     [Fact]
+    public async Task ReadmeEndpoint_Returns_Root_Readme_From_Artifact()
+    {
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Readme.Endpoint", isPublic: true);
+        var body = "# Package README\n\nPublished overview.";
+        var extras = new Dictionary<string, string> { ["README.md"] = body };
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0", extras);
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "readme.bpk" },
+        };
+
+        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+
+        var readme = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/readme");
+        Assert.Equal(HttpStatusCode.OK, readme.StatusCode);
+        var text = await readme.Content.ReadAsStringAsync();
+        Assert.Contains("Published overview.", text);
+    }
+
+    [Fact]
     public async Task DocsFile_Returns_Markdown_Content()
     {
         var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.File", isPublic: true);

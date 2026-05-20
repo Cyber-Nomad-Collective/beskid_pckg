@@ -60,7 +60,8 @@ public static class BpkTestArtifactBuilder
     public static byte[] CreateValidArtifact(
         string packageName,
         string version,
-        IReadOnlyDictionary<string, string>? additionalTextFiles = null)
+        IReadOnlyDictionary<string, string>? additionalTextFiles = null,
+        string? packageJsonOverride = null)
     {
         var files = new OrderedDictionary();
 
@@ -77,7 +78,8 @@ public static class BpkTestArtifactBuilder
             }
         }
 
-        var packageJson = $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
+        var packageJson = packageJsonOverride
+            ?? $$"""{"schema":"beskid.package.v1","id":"{{packageName}}","version":"{{version}}"}""";
         files["package.json"] = Encoding.UTF8.GetBytes(packageJson);
 
         var checksumLines = new List<string>();

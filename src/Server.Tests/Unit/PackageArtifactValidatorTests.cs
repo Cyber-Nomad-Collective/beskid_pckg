@@ -68,6 +68,38 @@ public class PackageArtifactValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_Rejects_Path_Dependencies_In_PackageJson()
+    {
+        var packageJson = JsonSerializer.Serialize(new
+        {
+            schema = "beskid.package.v1",
+            id = "Demo",
+            version = "1.0.0",
+            dependencies = new Dictionary<string, object>
+            {
+                ["Other"] = new { source = "path", path = "../Other" },
+            },
+        });
+
+        var entries = new Dictionary<string, byte[]>
+        {
+            ["package.json"] = Encoding.UTF8.GetBytes(packageJson),
+            ["Project.proj"] = Encoding.UTF8.GetBytes("name = \"Demo\"\n"),
+            ["src/Main.bd"] = Encoding.UTF8.GetBytes("// demo"),
+        };
+        var checksumLines = entries
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => $"{Sha256(kv.Value)}  {kv.Key}");
+        entries["checksums.sha256"] = Encoding.UTF8.GetBytes(string.Join('\n', checksumLines) + "\n");
+
+        await using var stream = new MemoryStream(CreateZip(entries));
+        var result = await _validator.ValidateAsync(stream, "Demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("must not use source 'path'", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ValidateAsync_WhenRelaxPackageJsonVersion_Skips_Version_Equality()
     {
         var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.0.0");

@@ -181,8 +181,42 @@ public sealed class PackageArtifactValidator : IPackageArtifactValidator
                 return new(false, "package.json version does not match publish version.");
             }
 
+            var dependencyValidation = ValidateConsumerDependencies(packageJsonText);
+            if (!dependencyValidation.IsValid)
+            {
+                return dependencyValidation;
+            }
+
             return new(true, "package.json validated.");
         }
+    }
+
+    private static PackageArtifactValidationResult ValidateConsumerDependencies(string packageJsonText)
+    {
+        var metadata = PackageManifestMetadataReader.Read(packageJsonText);
+        foreach (var dependency in metadata.Dependencies)
+        {
+            if (string.Equals(dependency.Source, "registry", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(dependency.Source, "pckg", StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrWhiteSpace(dependency.Version))
+                {
+                    return new(false, $"package.json dependency '{dependency.Name}' must include a version for registry consumers.");
+                }
+
+                continue;
+            }
+
+            if (string.Equals(dependency.Source, "path", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(dependency.Source, "workspace", StringComparison.OrdinalIgnoreCase))
+            {
+                return new(false, $"package.json dependency '{dependency.Name}' must not use source '{dependency.Source}' in published artifacts.");
+            }
+
+            return new(false, $"package.json dependency '{dependency.Name}' must use registry source for published artifacts.");
+        }
+
+        return new(true, "package.json dependencies validated.");
     }
 
     private static bool ProjectManifestContainsPackageName(string projectManifest, string packageName)

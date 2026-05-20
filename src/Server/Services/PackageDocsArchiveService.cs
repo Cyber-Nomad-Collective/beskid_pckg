@@ -25,6 +25,13 @@ public interface IPackageDocsArchiveService
         string idOrName,
         string versionOrLatest,
         CancellationToken cancellationToken = default);
+
+    Task<PackageDocsFileResult> ReadReadmeAsync(
+        HttpContext httpContext,
+        string idOrName,
+        string versionOrLatest,
+        string? manifestReadmePath,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class PackageDocsListResult(int statusCode, IReadOnlyList<PackageDocFileEntry>? files = null, bool hasStructuredApiDoc = false, string? structuredDocRelativePath = null)
@@ -122,6 +129,30 @@ public sealed class PackageDocsArchiveService(IPackageArtifactZipReader zipReade
         {
             return new PackageDocsFileResult(StatusCodes.Status413PayloadTooLarge);
         }
+    }
+
+    public async Task<PackageDocsFileResult> ReadReadmeAsync(
+        HttpContext httpContext,
+        string idOrName,
+        string versionOrLatest,
+        string? manifestReadmePath,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var path in PackageReadmeResolver.CandidatePaths(manifestReadmePath))
+        {
+            var result = await ReadDocAsync(httpContext, idOrName, versionOrLatest, path, cancellationToken);
+            if (result.StatusCode == StatusCodes.Status200OK && !string.IsNullOrWhiteSpace(result.Markdown))
+            {
+                return result;
+            }
+
+            if (result.StatusCode is not StatusCodes.Status404NotFound)
+            {
+                return result;
+            }
+        }
+
+        return new PackageDocsFileResult(StatusCodes.Status404NotFound);
     }
 
     public async Task<PackageDocsStructuredResult> ReadStructuredDocAsync(
