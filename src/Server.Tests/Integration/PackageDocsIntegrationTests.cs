@@ -4,6 +4,7 @@ using System.Text.Json;
 using Server.Components.Docs;
 using Server.Contracts.ApiDocumentation;
 using Server.Features.Packages;
+using Server.Services;
 using Server.Tests.TestUtils;
 
 namespace Server.Tests.Integration;
@@ -170,6 +171,37 @@ public class PackageDocsIntegrationTests : IClassFixture<TestApplicationFactory>
         Assert.Single(roots);
         Assert.Single(roots[0].Children);
         Assert.Equal("Summary.", doc!.Items[0].Doc?.SummaryMarkdown);
+    }
+
+    [Fact]
+    public async Task DocsStructured_ApiJson_Above_MarkdownCap_Below_StructuredCap_Returns_Ok()
+    {
+        var oversizedJson = "{\"schemaVersion\":3,\"navigationModel\":\"graph-v1\",\"items\":[]"
+                            + new string(' ', PackageDocsArchiveService.MaxDocFileBytes + 64_000)
+                            + "}";
+
+        var (_, apiKey, package) = await _factory.SeedOwnerWithPackageAsync("Docs.StructuredLarge", isPublic: true);
+        var extras = new Dictionary<string, string> { [".beskid/docs/api.json"] = oversizedJson };
+        var artifact = BpkTestArtifactBuilder.CreateValidArtifact(package.Name, "1.0.0", extras);
+        var digest = BpkTestArtifactBuilder.ArtifactSha256(artifact);
+
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+
+        using var publishForm = new MultipartFormDataContent
+        {
+            { new StringContent("1.0.0"), "version" },
+            { new StringContent(digest), "checksumSha256" },
+            { new ByteArrayContent(artifact), "artifact", "large-api.bpk" },
+        };
+
+        await client.PostAsync($"/api/packages/{package.Name}/publish", publishForm);
+        client.DefaultRequestHeaders.Remove("X-API-Key");
+
+        var structured = await client.GetAsync($"/api/packages/{package.Name}/versions/1.0.0/docs/structured");
+        Assert.Equal(HttpStatusCode.OK, structured.StatusCode);
+        var json = await structured.Content.ReadAsStringAsync();
+        Assert.True(json.Length > PackageDocsArchiveService.MaxDocFileBytes);
     }
 
     [Fact]

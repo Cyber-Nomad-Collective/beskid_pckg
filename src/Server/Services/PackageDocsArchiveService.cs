@@ -59,7 +59,10 @@ public sealed class PackageDocsStructuredResult(int statusCode, string? json = n
 public sealed class PackageDocsArchiveService(IPackageArtifactZipReader zipReader) : IPackageDocsArchiveService
 {
     public const int MaxListedFiles = 500;
+    /// <summary>Markdown and legacy doc files served inline.</summary>
     public const int MaxDocFileBytes = 512 * 1024;
+    /// <summary>Structured <c>api.json</c> from Beskid CLI pack (corelib-scale trees exceed markdown cap).</summary>
+    public const int MaxStructuredApiDocBytes = 16 * 1024 * 1024;
 
     public async Task<PackageDocsListResult> ListDocsAsync(
         HttpContext httpContext,
@@ -280,7 +283,7 @@ public sealed class PackageDocsArchiveService(IPackageArtifactZipReader zipReade
             return null;
         }
 
-        if (entry.Length > MaxDocFileBytes)
+        if (entry.Length > MaxStructuredApiDocBytes)
         {
             throw new PackageArtifactPayloadTooLargeException();
         }
@@ -288,7 +291,7 @@ public sealed class PackageDocsArchiveService(IPackageArtifactZipReader zipReade
         await using var entryStream = entry.Open();
         using var reader = new StreamReader(entryStream, Encoding.UTF8);
         var text = await reader.ReadToEndAsync(cancellationToken);
-        if (Encoding.UTF8.GetByteCount(text) > MaxDocFileBytes)
+        if (Encoding.UTF8.GetByteCount(text) > MaxStructuredApiDocBytes)
         {
             throw new PackageArtifactPayloadTooLargeException();
         }

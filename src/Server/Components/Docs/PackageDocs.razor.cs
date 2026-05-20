@@ -255,6 +255,13 @@ public partial class PackageDocs
                 return;
             }
 
+            if (response.StatusCode == HttpStatusCode.RequestEntityTooLarge)
+            {
+                _loadError =
+                    "Structured API documentation exceeds the registry size limit. Re-publish with a smaller api.json or contact the registry operator.";
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 _loadError = "Could not load structured documentation.";
