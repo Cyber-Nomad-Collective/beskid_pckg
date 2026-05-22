@@ -8,10 +8,14 @@ public sealed record PackageDependencyDescriptor(
     string Source,
     string? Registry);
 
+public sealed record PackageTemplateSummary(string? ShortName, string? TagType);
+
 public sealed record PackageManifestMetadata(
     string? Schema,
     string? PackageId,
     string? Version,
+    string PackageKind,
+    PackageTemplateSummary? Template,
     string? ReadmePath,
     string? IconUrl,
     string? ConfigurationJson,
@@ -34,6 +38,8 @@ public static class PackageManifestMetadataReader
             var schema = ReadString(root, "schema");
             var id = ReadString(root, "id");
             var version = ReadString(root, "version");
+            var packageKind = PackageKinds.NormalizeOrDefault(ReadString(root, "packageKind"));
+            var template = ReadTemplateSummary(root);
             var readmePath = ResolveReadmePath(root);
             var iconUrl = ReadString(root, "iconUrl");
             var configurationJson = SerializeObjectProperty(root, "configuration");
@@ -43,6 +49,8 @@ public static class PackageManifestMetadataReader
                 schema,
                 id,
                 version,
+                packageKind,
+                template,
                 readmePath,
                 iconUrl,
                 configurationJson,
@@ -56,7 +64,29 @@ public static class PackageManifestMetadataReader
     }
 
     private static PackageManifestMetadata Empty()
-        => new(null, null, null, null, null, null, null, []);
+        => new(null, null, null, PackageKinds.Library, null, null, null, null, null, []);
+
+    private static PackageTemplateSummary? ReadTemplateSummary(JsonElement root)
+    {
+        if (!root.TryGetProperty("template", out var template) || template.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var shortName = ReadString(template, "shortName");
+        string? tagType = null;
+        if (template.TryGetProperty("tags", out var tags) && tags.ValueKind == JsonValueKind.Object)
+        {
+            tagType = ReadString(tags, "type");
+        }
+
+        if (string.IsNullOrWhiteSpace(shortName) && string.IsNullOrWhiteSpace(tagType))
+        {
+            return null;
+        }
+
+        return new PackageTemplateSummary(shortName, tagType);
+    }
 
     private static string? ReadString(JsonElement root, string property)
         => root.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String

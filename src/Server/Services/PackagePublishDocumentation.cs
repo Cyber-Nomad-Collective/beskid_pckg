@@ -11,10 +11,35 @@ public static class PackagePublishDocumentation
         => memberEntries.Keys.Any(key =>
             string.Equals(key, PackageDocsPaths.StructuredApiDocRelativePath, StringComparison.OrdinalIgnoreCase));
 
+    public static bool RequiresStructuredApiDoc(
+        IReadOnlyDictionary<string, byte[]> memberEntries,
+        string? packageJsonText = null)
+    {
+        if (memberEntries.Keys.Any(key =>
+                string.Equals(key, PackageTemplatePaths.TemplateJsonRelativePath, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(packageJsonText)
+            && PackageKinds.IsTemplate(PackageManifestMetadataReader.Read(packageJsonText).PackageKind))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     public static void EnsureStructuredApiDoc(
         IReadOnlyDictionary<string, byte[]> memberEntries,
-        string packageId)
+        string packageId,
+        string? packageJsonText = null)
     {
+        if (!RequiresStructuredApiDoc(memberEntries, packageJsonText))
+        {
+            return;
+        }
+
         if (HasStructuredApiDoc(memberEntries))
         {
             return;

@@ -281,7 +281,10 @@ public sealed class WorkspacePublishService(
                     workspaceOverrides);
 
                 var memberEntries = bundle.CollectMemberPackEntries(member.MemberRelativePath);
-                PackagePublishDocumentation.EnsureStructuredApiDoc(memberEntries, member.PackageId);
+                PackagePublishDocumentation.EnsureStructuredApiDoc(
+                    memberEntries,
+                    member.PackageId,
+                    existingPackageJson);
 
                 var packageJson = WorkspacePackageManifest.MergePublishedPackageJson(
                     existingPackageJson,

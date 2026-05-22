@@ -49,6 +49,10 @@ else
                                           IsVerified="@_ownerPublisherVerified" />
                 </p>
                 <div class="package-meta-badges">
+                    @if (_isTemplatePackage)
+                    {
+                        <FluentBadge Appearance="Appearance.Accent">Template</FluentBadge>
+                    }
                     <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
                     <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
                     @if (HealthStatus is not null)
@@ -87,6 +91,41 @@ else
                 }
             </div>
         </header>
+
+        @if (_isTemplatePackage)
+        {
+            <FluentCard Class="package-template-card">
+                <div class="package-template-head">
+                    <h2>Template package</h2>
+                    <p class="muted package-template-lead">
+                        Install from the registry, then scaffold with <code>beskid new</code>.
+                    </p>
+                </div>
+                <FluentStack Orientation="Orientation.Horizontal" Gap="8" Wrap="true">
+                    @if (!string.IsNullOrWhiteSpace(_explorerTemplateShortName))
+                    {
+                        <FluentBadge Appearance="Appearance.Lightweight" Title="CLI short name">
+                            shortName: @_explorerTemplateShortName
+                        </FluentBadge>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_explorerTemplateTagType))
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral" Title="Template tags.type">
+                            type: @_explorerTemplateTagType
+                        </FluentBadge>
+                    }
+                </FluentStack>
+                <div class="package-template-install">
+                    <div class="package-embed-label">Install from registry</div>
+                    <pre class="package-embed-snippet" tabindex="0">beskid new install @Package.Name</pre>
+                    @if (!string.IsNullOrWhiteSpace(_explorerTemplateShortName))
+                    {
+                        <div class="package-embed-label">Scaffold by short name</div>
+                        <pre class="package-embed-snippet" tabindex="0">beskid new @_explorerTemplateShortName</pre>
+                    }
+                </div>
+            </FluentCard>
+        }
 
         <FluentTabs Class="package-tabs" @bind-ActiveTabId="SelectedTabId">
             <FluentTab Id="pkg-tab-readme" Label="Readme">
@@ -224,30 +263,33 @@ else
                 </div>
             </FluentTab>
 
-            <FluentTab Id="pkg-tab-docs" Label="Documentation">
-                <section class="package-tab-fill package-explorer-tab" aria-label="Package documentation">
-                    <header class="package-tab-header">
-                        <h2>Documentation</h2>
-                        <FluentButton Appearance="Appearance.Accent"
-                                      IconStart="@(new Icons.Regular.Size20.Window())"
-                                      OnClick="OpenDocsFullPage">
-                            Open full page
-                        </FluentButton>
-                    </header>
-                    <PackageDocs PackageIdentifier="@Package.Name"
-                                 Version="@ExplorerVersion"
-                                 Variant="PackageDocs.PackageDocsVariant.Embedded" />
-                </section>
-            </FluentTab>
+            @if (!_isTemplatePackage)
+            {
+                <FluentTab Id="pkg-tab-docs" Label="Documentation">
+                    <section class="package-tab-fill package-explorer-tab" aria-label="Package documentation">
+                        <header class="package-tab-header">
+                            <h2>Documentation</h2>
+                            <FluentButton Appearance="Appearance.Accent"
+                                          IconStart="@(new Icons.Regular.Size20.Window())"
+                                          OnClick="OpenDocsFullPage">
+                                Open full page
+                            </FluentButton>
+                        </header>
+                        <PackageDocs PackageIdentifier="@Package.Name"
+                                     Version="@ExplorerVersion"
+                                     Variant="PackageDocs.PackageDocsVariant.Embedded" />
+                    </section>
+                </FluentTab>
 
-            <FluentTab Id="pkg-tab-source" Label="Source">
-                <section class="package-tab-fill package-explorer-tab" aria-label="Package source">
-                    <h2 class="package-tab-header package-tab-header--title-only">Source</h2>
-                    <PackageSourceBrowser PackageIdentifier="@Package.Name"
-                                         Version="@ExplorerVersion"
-                                         TabActive="@(SelectedTabId == "pkg-tab-source")" />
-                </section>
-            </FluentTab>
+                <FluentTab Id="pkg-tab-source" Label="Source">
+                    <section class="package-tab-fill package-explorer-tab" aria-label="Package source">
+                        <h2 class="package-tab-header package-tab-header--title-only">Source</h2>
+                        <PackageSourceBrowser PackageIdentifier="@Package.Name"
+                                             Version="@ExplorerVersion"
+                                             TabActive="@(SelectedTabId == "pkg-tab-source")" />
+                    </section>
+                </FluentTab>
+            }
 
             <FluentTab Id="pkg-tab-ratings" Label="Ratings">
                 <div class="content-section package-tab-content">

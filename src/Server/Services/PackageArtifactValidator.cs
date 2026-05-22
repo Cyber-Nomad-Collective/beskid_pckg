@@ -91,7 +91,18 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
                 return new(false, "Artifact must include at least one file under src/.");
             }
 
+            var packageJsonText = await ReadEntryTextAsync(fileEntries["package.json"], cancellationToken);
+            var manifestMetadata = PackageManifestMetadataReader.Read(packageJsonText);
+            var packageKind = manifestMetadata.PackageKind;
+            var isTemplatePackage = PackageKinds.IsTemplate(packageKind);
+
+            if (!PackageKinds.IsSupported(packageKind))
+            {
+                return new(false, $"package.json packageKind '{packageKind}' is not supported.");
+            }
+
             if (_publishOptions.RequireStructuredApiDoc
+                && !isTemplatePackage
                 && !fileEntries.ContainsKey(PackageDocsPaths.StructuredApiDocRelativePath))
             {
                 return new(
@@ -100,14 +111,54 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
                     + "Run `beskid pckg pack` or `beskid doc --project Project.proj --out .beskid/docs` before publishing.");
             }
 
-            var packageJsonText = await ReadEntryTextAsync(fileEntries["package.json"], cancellationToken);
+            if (isTemplatePackage)
+            {
+                if (!fileEntries.ContainsKey(PackageTemplatePaths.TemplateJsonRelativePath))
+                {
+                    return new(
+                        false,
+                        $"Template packages must include '{PackageTemplatePaths.TemplateJsonRelativePath}'.");
+                }
+
+                if (fileEntries.ContainsKey(PackageDocsPaths.StructuredApiDocRelativePath))
+                {
+                    return new(
+                        false,
+                        $"Template packages must not include '{PackageDocsPaths.StructuredApiDocRelativePath}'.");
+                }
+            }
+            else if (fileEntries.ContainsKey(PackageTemplatePaths.TemplateJsonRelativePath))
+            {
+                return new(
+                    false,
+                    $"Only template packages may include '{PackageTemplatePaths.TemplateJsonRelativePath}' "
+                    + "(set packageKind to 'template' in package.json).");
+            }
+
             var projectManifestText = await ReadEntryTextAsync(fileEntries["Project.proj"], cancellationToken);
             var checksumsText = await ReadEntryTextAsync(fileEntries["checksums.sha256"], cancellationToken);
 
-            var packageJsonValidation = ValidatePackageJson(packageJsonText, expectedPackageName, expectedVersion, relaxPackageJsonVersion);
+            var packageJsonValidation = ValidatePackageJson(
+                packageJsonText,
+                expectedPackageName,
+                expectedVersion,
+                relaxPackageJsonVersion,
+                packageKind);
             if (!packageJsonValidation.IsValid)
             {
                 return packageJsonValidation;
+            }
+
+            if (isTemplatePackage)
+            {
+                var templateJsonText = await ReadEntryTextAsync(
+                    fileEntries[PackageTemplatePaths.TemplateJsonRelativePath],
+                    cancellationToken);
+                var templateValidation = TemplateManifestValidator.ValidateJson(templateJsonText);
+                if (!templateValidation.IsValid)
+                {
+                    return new(false, templateValidation.Message);
+                }
             }
 
             if (!ProjectManifestContainsPackageName(projectManifestText, expectedPackageName))
@@ -168,7 +219,8 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
         string packageJsonText,
         string expectedPackageName,
         string expectedVersion,
-        bool relaxPackageJsonVersion)
+        bool relaxPackageJsonVersion,
+        string packageKind)
     {
         JsonDocument document;
         try
@@ -190,6 +242,21 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
             if (!string.Equals(schema, "beskid.package.v1", StringComparison.Ordinal))
             {
                 return new(false, "package.json schema must be 'beskid.package.v1'.");
+            }
+
+            if (!PackageKinds.IsSupported(packageKind))
+            {
+                return new(false, $"package.json packageKind '{packageKind}' is not supported.");
+            }
+
+            if (PackageKinds.IsTemplate(packageKind)
+                && root.TryGetProperty("documentation", out var documentation)
+                && documentation.ValueKind == JsonValueKind.Object
+                && documentation.TryGetProperty("apiJson", out var apiJson)
+                && apiJson.ValueKind == JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(apiJson.GetString()))
+            {
+                return new(false, "package.json must not include documentation.apiJson for packageKind template.");
             }
 
             if (!string.Equals(id, expectedPackageName, StringComparison.OrdinalIgnoreCase))
@@ -305,6 +372,11 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
     {
         // Allow Beskid CLI generated package docs under .beskid/docs/ (markdown + api.json).
         if (path.StartsWith(".beskid/docs/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.Equals(path, PackageTemplatePaths.TemplateJsonRelativePath, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }

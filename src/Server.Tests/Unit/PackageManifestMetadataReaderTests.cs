@@ -26,4 +26,39 @@ public sealed class PackageManifestMetadataReaderTests
         Assert.Contains("\"b\"", metadata.OverridesJson, StringComparison.Ordinal);
         Assert.Equal("https://example.com/icon.svg", metadata.IconUrl);
     }
+
+    [Fact]
+    public void Read_resolves_packageKind_and_template_summary()
+    {
+        const string json = """
+            {
+              "schema": "beskid.package.v1",
+              "id": "beskid.templates.console",
+              "version": "1.0.0",
+              "packageKind": "template",
+              "template": {
+                "shortName": "console",
+                "tags": { "type": "project" }
+              }
+            }
+            """;
+
+        var metadata = PackageManifestMetadataReader.Read(json);
+
+        Assert.Equal("template", metadata.PackageKind);
+        Assert.NotNull(metadata.Template);
+        Assert.Equal("console", metadata.Template!.ShortName);
+        Assert.Equal("project", metadata.Template.TagType);
+    }
+
+    [Fact]
+    public void Read_defaults_packageKind_to_library()
+    {
+        const string json = """{"schema":"beskid.package.v1","id":"demo","version":"1.0.0"}""";
+
+        var metadata = PackageManifestMetadataReader.Read(json);
+
+        Assert.Equal("library", metadata.PackageKind);
+        Assert.Null(metadata.Template);
+    }
 }

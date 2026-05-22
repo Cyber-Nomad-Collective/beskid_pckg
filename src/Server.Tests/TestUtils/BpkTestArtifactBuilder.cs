@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Server.Services;
 
 namespace Server.Tests.TestUtils;
 
@@ -89,6 +90,62 @@ public static class BpkTestArtifactBuilder
         }
 
         return memory.ToArray();
+    }
+
+    public const string MinimalTemplateJson = """
+        {
+          "schema": "beskid.template.v1",
+          "identity": "test.templates.demo::1.0.0",
+          "name": "Demo Template",
+          "shortName": "demo",
+          "description": "Test template",
+          "tags": { "type": "project" },
+          "sourceName": "MyApp",
+          "sources": [{ "source": "./content/", "target": "./" }]
+        }
+        """;
+
+    public static byte[] CreateValidTemplateArtifact(
+        string packageName,
+        string version,
+        IReadOnlyDictionary<string, string>? additionalTextFiles = null,
+        string? packageJsonOverride = null,
+        string? templateJsonOverride = null)
+    {
+        var templateJson = templateJsonOverride ?? MinimalTemplateJson;
+        var packageJson = packageJsonOverride
+            ?? JsonSerializer.Serialize(new
+            {
+                schema = "beskid.package.v1",
+                id = packageName,
+                version,
+                packageKind = "template",
+                template = new
+                {
+                    shortName = "demo",
+                    tags = new { type = "project" },
+                },
+            });
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [PackageTemplatePaths.TemplateJsonRelativePath] = templateJson,
+        };
+
+        if (additionalTextFiles is not null)
+        {
+            foreach (var kv in additionalTextFiles)
+            {
+                extras[kv.Key] = kv.Value;
+            }
+        }
+
+        return CreateValidArtifact(
+            packageName,
+            version,
+            extras,
+            packageJson,
+            includeStructuredApiDoc: false);
     }
 
     public static byte[] CreateValidArtifact(

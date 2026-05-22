@@ -31,4 +31,20 @@ public class PackagePublishDocumentationTests
         Assert.Contains("api.json", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("demo", ex.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void EnsureStructuredApiDoc_skips_template_packages()
+    {
+        var entries = new Dictionary<string, byte[]>
+        {
+            [PackageTemplatePaths.TemplateJsonRelativePath] = "{}"u8.ToArray(),
+            ["src/Main.bd"] = "//"u8.ToArray(),
+        };
+        const string packageJson = """{"schema":"beskid.package.v1","id":"tpl","version":"1.0.0","packageKind":"template"}""";
+
+        var ex = Record.Exception(() =>
+            PackagePublishDocumentation.EnsureStructuredApiDoc(entries, "tpl", packageJson));
+
+        Assert.Null(ex);
+    }
 }

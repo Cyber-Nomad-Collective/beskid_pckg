@@ -107,16 +107,74 @@ public class PackageArtifactValidatorTests
     [Fact]
     public async Task ValidateAsync_Rejects_Missing_Structured_Api_Doc()
     {
-        var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.0.0");
-        var entries = ReadZipEntries(bytes);
-        entries.Remove(".beskid/docs/api.json");
-        entries["checksums.sha256"] = RecalculateChecksums(entries);
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact(
+            "Demo",
+            "1.0.0",
+            includeStructuredApiDoc: false);
+        await using var stream = new MemoryStream(bytes);
 
-        await using var stream = new MemoryStream(CreateZip(entries));
         var result = await _validator.ValidateAsync(stream, "Demo", "1.0.0");
 
         Assert.False(result.IsValid);
         Assert.Contains("api.json", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Accepts_Template_Artifact_Without_Api_Json()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidTemplateArtifact("beskid.templates.demo", "1.0.0");
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.templates.demo", "1.0.0");
+
+        Assert.True(result.IsValid, result.Message);
+        Assert.Contains("\"packageKind\":\"template\"", result.ManifestJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Rejects_Template_Missing_Template_Json()
+    {
+        var packageJson = JsonSerializer.Serialize(new
+        {
+            schema = "beskid.package.v1",
+            id = "beskid.templates.demo",
+            version = "1.0.0",
+            packageKind = "template",
+        });
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact(
+            "beskid.templates.demo",
+            "1.0.0",
+            packageJsonOverride: packageJson,
+            includeStructuredApiDoc: false);
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.templates.demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("template.json", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Rejects_Template_With_Api_Json_Documentation()
+    {
+        var packageJson = JsonSerializer.Serialize(new
+        {
+            schema = "beskid.package.v1",
+            id = "beskid.templates.demo",
+            version = "1.0.0",
+            packageKind = "template",
+            documentation = new { apiJson = ".beskid/docs/api.json" },
+        });
+        var bytes = BpkTestArtifactBuilder.CreateValidTemplateArtifact(
+            "beskid.templates.demo",
+            "1.0.0",
+            packageJsonOverride: packageJson);
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.templates.demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("documentation.apiJson", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

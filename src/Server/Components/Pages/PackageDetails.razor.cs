@@ -42,6 +42,11 @@ public partial class PackageDetails
     private DateTimeOffset? _firstPublishedAtUtc;
     private DateTimeOffset? _lastPublishedAtUtc;
     private string? _heroLatestVersion;
+    private bool _isTemplatePackage;
+    private string? _explorerTemplateShortName;
+    private string? _explorerTemplateTagType;
+    private readonly Dictionary<string, (string Kind, PackageTemplateSummary? Template)> _manifestProfileByVersion =
+        new(StringComparer.OrdinalIgnoreCase);
     private bool IsAuthenticated => HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
     private bool CanManageVersions => IsAuthenticated && (HttpContextAccessor.HttpContext?.User?.IsInRole("SuperAdmin") == true || Package?.OwnerUserId == HttpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier));
     private double AverageReviewRating => Reviews.Count == 0 ? 0d : Reviews.Average(x => x.Rating);
@@ -74,6 +79,11 @@ public partial class PackageDetails
         await LoadFollowAsync();
 
         if (SelectedTabId == "pkg-tab-badges" && (Package is null || !Package.IsPublic))
+        {
+            SelectedTabId = "pkg-tab-readme";
+        }
+
+        if (_isTemplatePackage && SelectedTabId is "pkg-tab-docs" or "pkg-tab-source")
         {
             SelectedTabId = "pkg-tab-readme";
         }
@@ -156,6 +166,10 @@ public partial class PackageDetails
         _firstPublishedAtUtc = null;
         _lastPublishedAtUtc = null;
         _heroLatestVersion = null;
+        _isTemplatePackage = false;
+        _explorerTemplateShortName = null;
+        _explorerTemplateTagType = null;
+        _manifestProfileByVersion.Clear();
 
         if (Package is null)
         {
@@ -211,6 +225,7 @@ public partial class PackageDetails
             var versionManifest = PackageManifestMetadataReader.Read(x.ManifestJson);
             _manifestReadmePathByVersion[x.Version] = versionManifest.ReadmePath;
             _readmeMarkdownByVersion[x.Version] = x.ReadmeMarkdown;
+            _manifestProfileByVersion[x.Version] = (versionManifest.PackageKind, versionManifest.Template);
             return PackageResponseMapper.ToVersionSummary(x, Package.Name);
         }));
 
@@ -227,6 +242,7 @@ public partial class PackageDetails
 
         LatestVersion = Versions.FirstOrDefault();
         ExplorerVersion = LatestVersion?.Version ?? "latest";
+        ApplyExplorerManifestProfile();
         var manifest = PackageManifestMetadataReader.Read(orderedVersionRows.FirstOrDefault()?.ManifestJson);
         Dependencies.AddRange(manifest.Dependencies.Select(d => new PackageDependencyResponse(
             d.Name,
@@ -255,7 +271,33 @@ public partial class PackageDetails
         await LoadExplorerReadmeAsync();
     }
 
-    private Task OnExplorerVersionChangedAsync() => LoadExplorerReadmeAsync();
+    private async Task OnExplorerVersionChangedAsync()
+    {
+        ApplyExplorerManifestProfile();
+        await LoadExplorerReadmeAsync();
+    }
+
+    private void ApplyExplorerManifestProfile()
+    {
+        _isTemplatePackage = false;
+        _explorerTemplateShortName = null;
+        _explorerTemplateTagType = null;
+
+        if (string.IsNullOrWhiteSpace(ExplorerVersion)
+            || !_manifestProfileByVersion.TryGetValue(ExplorerVersion, out var profile))
+        {
+            return;
+        }
+
+        _isTemplatePackage = PackageKinds.IsTemplate(profile.Kind);
+        if (profile.Template is null)
+        {
+            return;
+        }
+
+        _explorerTemplateShortName = profile.Template.ShortName;
+        _explorerTemplateTagType = profile.Template.TagType;
+    }
 
     private async Task LoadExplorerReadmeAsync()
     {
@@ -481,7 +523,7 @@ public partial class PackageDetails
 
     private void OpenDocsFullPage()
     {
-        if (Package is null)
+        if (Package is null || _isTemplatePackage)
         {
             return;
         }

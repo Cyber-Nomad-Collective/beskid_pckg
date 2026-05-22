@@ -9,19 +9,18 @@
         </FluentLabel>
     }
     <div class="docs-module-tree-scroll">
-        <FluentStack Orientation="Orientation.Vertical" Gap="2">
+        <FluentTreeView Class="docs-module-tree-view">
             @foreach (var root in Roots)
             {
-                <DocModuleGraphBranch Node="root"
-                                      Depth="0"
-                                      SelectedItemId="SelectedItemId"
-                                      SelectedQualifiedName="SelectedQualifiedName"
-                                      ExpandedIds="ExpandedIds"
-                                      ForceExpandAll="ForceExpandAll"
-                                      OnToggleExpand="OnToggleExpand"
-                                      OnItemSelected="OnItemSelected" />
+                <DocModuleGraphTreeItem Node="root"
+                                        SelectedItemId="SelectedItemId"
+                                        SelectedQualifiedName="SelectedQualifiedName"
+                                        ExpandedIds="ExpandedIds"
+                                        ForceExpandAll="ForceExpandAll"
+                                        OnToggleExpand="OnToggleExpand"
+                                        OnItemSelected="OnItemSelected" />
             }
-        </FluentStack>
+        </FluentTreeView>
     </div>
 </FluentStack>
 

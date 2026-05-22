@@ -1,0 +1,103 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentTreeItem Text="@ItemText"
+                Title="@ItemTitle"
+                Expanded="@IsExpanded"
+                ExpandedChanged="OnExpandedChangedAsync"
+                Selected="@IsNodeSelected"
+                SelectedChanged="OnSelectedChangedAsync"
+                IconCollapsed="@FolderIcon"
+                IconExpanded="@FolderIcon">
+    @foreach (var child in Node.Children)
+    {
+        <DocModuleGraphTreeItem Node="child"
+                                SelectedItemId="SelectedItemId"
+                                SelectedQualifiedName="SelectedQualifiedName"
+                                ExpandedIds="ExpandedIds"
+                                ForceExpandAll="ForceExpandAll"
+                                OnToggleExpand="OnToggleExpand"
+                                OnItemSelected="OnItemSelected" />
+    }
+</FluentTreeItem>
+
+@code {
+    [Parameter]
+    public GraphNavNode Node { get; set; } = null!;
+
+    [Parameter]
+    public int? SelectedItemId { get; set; }
+
+    [Parameter]
+    public string? SelectedQualifiedName { get; set; }
+
+    [Parameter]
+    public IReadOnlySet<int> ExpandedIds { get; set; } = new HashSet<int>();
+
+    [Parameter]
+    public bool ForceExpandAll { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnToggleExpand { get; set; }
+
+    [Parameter]
+    public EventCallback<StructuredApiItemDto> OnItemSelected { get; set; }
+
+    private bool IsExpanded =>
+        ForceExpandAll
+        || (Node.Children.Count > 0 && ExpandedIds.Contains(Node.ExpansionKey));
+
+    private bool IsNodeSelected =>
+        Node.Item is not null && IsSelected(Node.Item);
+
+    private Icon? FolderIcon => ApiDocTreeIcons.ForNode(Node);
+
+    private string ItemText =>
+        Node.Item is not null
+            ? DisplayTitle(Node.Item)
+            : Node.Label;
+
+    private string ItemTitle =>
+        Node.Item is not null
+            ? (Node.Item.QualifiedName ?? Node.Item.Name ?? ItemText)
+            : Node.Label;
+
+    private static string DisplayTitle(StructuredApiItemDto m) =>
+        string.IsNullOrWhiteSpace(m.Name) ? (m.QualifiedName ?? "?") : m.Name!;
+
+    private bool IsSelected(StructuredApiItemDto m)
+    {
+        if (SelectedItemId is int id && m.Id == id)
+        {
+            return true;
+        }
+
+        var key = m.QualifiedName ?? m.Name;
+        return !string.IsNullOrEmpty(SelectedQualifiedName)
+            && string.Equals(key, SelectedQualifiedName, StringComparison.Ordinal);
+    }
+
+    private async Task OnExpandedChangedAsync(bool expanded)
+    {
+        if (Node.Children.Count == 0)
+        {
+            return;
+        }
+
+        if (expanded == IsExpanded)
+        {
+            return;
+        }
+
+        await OnToggleExpand.InvokeAsync(Node.ExpansionKey);
+    }
+
+    private async Task OnSelectedChangedAsync(bool selected)
+    {
+        if (!selected || Node.Item is null)
+        {
+            return;
+        }
+
+        await OnItemSelected.InvokeAsync(Node.Item);
+    }
+}
