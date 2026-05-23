@@ -105,6 +105,30 @@ public static class BpkTestArtifactBuilder
         }
         """;
 
+    public static byte[] CreateValidToolArtifact(
+        string packageName,
+        string version,
+        IReadOnlyDictionary<string, string>? additionalTextFiles = null,
+        string? packageJsonOverride = null,
+        bool includeStructuredApiDoc = false)
+    {
+        var packageJson = packageJsonOverride
+            ?? JsonSerializer.Serialize(new
+            {
+                schema = "beskid.package.v1",
+                id = packageName,
+                version,
+                packageKind = "tool",
+            });
+
+        return CreateValidArtifact(
+            packageName,
+            version,
+            additionalTextFiles,
+            packageJson,
+            includeStructuredApiDoc);
+    }
+
     public static byte[] CreateValidTemplateArtifact(
         string packageName,
         string version,

@@ -16,9 +16,14 @@ public static class PackageKinds
     {
         var normalized = NormalizeOrDefault(packageKind);
         return string.Equals(normalized, Library, StringComparison.OrdinalIgnoreCase)
-               || string.Equals(normalized, Template, StringComparison.OrdinalIgnoreCase);
+               || string.Equals(normalized, Template, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(normalized, Tool, StringComparison.OrdinalIgnoreCase);
     }
 
     public static bool IsTemplate(string? packageKind)
         => string.Equals(NormalizeOrDefault(packageKind), Template, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Tool packages bypass structured api.json requirements and surface the tool install card in the dashboard.</summary>
+    public static bool IsTool(string? packageKind)
+        => string.Equals(NormalizeOrDefault(packageKind), Tool, StringComparison.OrdinalIgnoreCase);
 }

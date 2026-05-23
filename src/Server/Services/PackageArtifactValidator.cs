@@ -95,6 +95,7 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
             var manifestMetadata = PackageManifestMetadataReader.Read(packageJsonText);
             var packageKind = manifestMetadata.PackageKind;
             var isTemplatePackage = PackageKinds.IsTemplate(packageKind);
+            var isToolPackage = PackageKinds.IsTool(packageKind);
 
             if (!PackageKinds.IsSupported(packageKind))
             {
@@ -103,6 +104,7 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
 
             if (_publishOptions.RequireStructuredApiDoc
                 && !isTemplatePackage
+                && !isToolPackage
                 && !fileEntries.ContainsKey(PackageDocsPaths.StructuredApiDocRelativePath))
             {
                 return new(
@@ -125,6 +127,16 @@ public sealed class PackageArtifactValidator(IOptions<PackagePublishOptions> pub
                     return new(
                         false,
                         $"Template packages must not include '{PackageDocsPaths.StructuredApiDocRelativePath}'.");
+                }
+            }
+            else if (isToolPackage)
+            {
+                if (fileEntries.ContainsKey(PackageTemplatePaths.TemplateJsonRelativePath))
+                {
+                    return new(
+                        false,
+                        $"Tool packages must not include '{PackageTemplatePaths.TemplateJsonRelativePath}' "
+                        + "(set packageKind to 'template' for scaffold packages).");
                 }
             }
             else if (fileEntries.ContainsKey(PackageTemplatePaths.TemplateJsonRelativePath))
