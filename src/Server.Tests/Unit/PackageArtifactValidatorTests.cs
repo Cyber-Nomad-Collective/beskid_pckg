@@ -178,6 +178,73 @@ public class PackageArtifactValidatorTests
     }
 
     [Fact]
+    public async Task ValidateAsync_Accepts_Tool_Artifact_Without_Api_Json()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidToolArtifact("beskid.tools.demo", "1.0.0");
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.tools.demo", "1.0.0");
+
+        Assert.True(result.IsValid, result.Message);
+        Assert.Contains("\"packageKind\":\"tool\"", result.ManifestJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Accepts_Tool_Artifact_With_Optional_Api_Json()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidToolArtifact(
+            "beskid.tools.demo",
+            "1.0.0",
+            includeStructuredApiDoc: true);
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.tools.demo", "1.0.0");
+
+        Assert.True(result.IsValid, result.Message);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Rejects_Tool_With_Template_Json()
+    {
+        var bytes = BpkTestArtifactBuilder.CreateValidToolArtifact(
+            "beskid.tools.demo",
+            "1.0.0",
+            additionalTextFiles: new Dictionary<string, string>
+            {
+                [".beskid/template.json"] = BpkTestArtifactBuilder.MinimalTemplateJson,
+            });
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "beskid.tools.demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("Tool packages must not include", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Rejects_Unknown_Package_Kind()
+    {
+        var packageJson = JsonSerializer.Serialize(new
+        {
+            schema = "beskid.package.v1",
+            id = "Demo",
+            version = "1.0.0",
+            packageKind = "exotic",
+        });
+        var bytes = BpkTestArtifactBuilder.CreateValidArtifact(
+            "Demo",
+            "1.0.0",
+            packageJsonOverride: packageJson,
+            includeStructuredApiDoc: true);
+        await using var stream = new MemoryStream(bytes);
+
+        var result = await _validator.ValidateAsync(stream, "Demo", "1.0.0");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("packageKind 'exotic'", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ValidateAsync_WhenRelaxPackageJsonVersion_Skips_Version_Equality()
     {
         var bytes = BpkTestArtifactBuilder.CreateValidArtifact("Demo", "1.0.0");

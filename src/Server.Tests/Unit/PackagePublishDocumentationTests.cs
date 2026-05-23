@@ -47,4 +47,19 @@ public class PackagePublishDocumentationTests
 
         Assert.Null(ex);
     }
+
+    [Fact]
+    public void EnsureStructuredApiDoc_skips_tool_packages()
+    {
+        var entries = new Dictionary<string, byte[]>
+        {
+            ["src/Main.bd"] = "//"u8.ToArray(),
+        };
+        const string packageJson = """{"schema":"beskid.package.v1","id":"beskid.tools.demo","version":"1.0.0","packageKind":"tool"}""";
+
+        var ex = Record.Exception(() =>
+            PackagePublishDocumentation.EnsureStructuredApiDoc(entries, "beskid.tools.demo", packageJson));
+
+        Assert.Null(ex);
+    }
 }

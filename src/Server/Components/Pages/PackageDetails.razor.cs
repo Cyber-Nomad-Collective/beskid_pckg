@@ -43,6 +43,7 @@ public partial class PackageDetails
     private DateTimeOffset? _lastPublishedAtUtc;
     private string? _heroLatestVersion;
     private bool _isTemplatePackage;
+    private bool _isToolPackage;
     private string? _explorerTemplateShortName;
     private string? _explorerTemplateTagType;
     private readonly Dictionary<string, (string Kind, PackageTemplateSummary? Template)> _manifestProfileByVersion =
@@ -83,7 +84,7 @@ public partial class PackageDetails
             SelectedTabId = "pkg-tab-readme";
         }
 
-        if (_isTemplatePackage && SelectedTabId is "pkg-tab-docs" or "pkg-tab-source")
+        if ((_isTemplatePackage || _isToolPackage) && SelectedTabId is "pkg-tab-docs" or "pkg-tab-source")
         {
             SelectedTabId = "pkg-tab-readme";
         }
@@ -167,6 +168,7 @@ public partial class PackageDetails
         _lastPublishedAtUtc = null;
         _heroLatestVersion = null;
         _isTemplatePackage = false;
+        _isToolPackage = false;
         _explorerTemplateShortName = null;
         _explorerTemplateTagType = null;
         _manifestProfileByVersion.Clear();
@@ -280,6 +282,7 @@ public partial class PackageDetails
     private void ApplyExplorerManifestProfile()
     {
         _isTemplatePackage = false;
+        _isToolPackage = false;
         _explorerTemplateShortName = null;
         _explorerTemplateTagType = null;
 
@@ -290,6 +293,7 @@ public partial class PackageDetails
         }
 
         _isTemplatePackage = PackageKinds.IsTemplate(profile.Kind);
+        _isToolPackage = PackageKinds.IsTool(profile.Kind);
         if (profile.Template is null)
         {
             return;
@@ -523,7 +527,7 @@ public partial class PackageDetails
 
     private void OpenDocsFullPage()
     {
-        if (Package is null || _isTemplatePackage)
+        if (Package is null || _isTemplatePackage || _isToolPackage)
         {
             return;
         }

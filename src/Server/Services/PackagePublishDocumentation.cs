@@ -21,10 +21,13 @@ public static class PackagePublishDocumentation
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(packageJsonText)
-            && PackageKinds.IsTemplate(PackageManifestMetadataReader.Read(packageJsonText).PackageKind))
+        if (!string.IsNullOrWhiteSpace(packageJsonText))
         {
-            return false;
+            var kind = PackageManifestMetadataReader.Read(packageJsonText).PackageKind;
+            if (PackageKinds.IsTemplate(kind) || PackageKinds.IsTool(kind))
+            {
+                return false;
+            }
         }
 
         return true;

@@ -53,6 +53,10 @@ else
                     {
                         <FluentBadge Appearance="Appearance.Accent">Template</FluentBadge>
                     }
+                    @if (_isToolPackage)
+                    {
+                        <FluentBadge Appearance="Appearance.Accent">Tool</FluentBadge>
+                    }
                     <FluentBadge Appearance="Appearance.Accent">@Package.Category</FluentBadge>
                     <FluentBadge Appearance="Appearance.Neutral">@Package.TotalDownloads downloads</FluentBadge>
                     @if (HealthStatus is not null)
@@ -123,6 +127,22 @@ else
                         <div class="package-embed-label">Scaffold by short name</div>
                         <pre class="package-embed-snippet" tabindex="0">beskid new @_explorerTemplateShortName</pre>
                     }
+                </div>
+            </FluentCard>
+        }
+
+        @if (_isToolPackage)
+        {
+            <FluentCard Class="package-template-card">
+                <div class="package-template-head">
+                    <h2>Tool package</h2>
+                    <p class="muted package-template-lead">
+                        CLI / developer-tool package. Fetch from the registry, then invoke through the tool's published entrypoint.
+                    </p>
+                </div>
+                <div class="package-template-install">
+                    <div class="package-embed-label">Fetch from registry</div>
+                    <pre class="package-embed-snippet" tabindex="0">beskid pckg download @Package.Name --version @ExplorerVersion --output ./@Package.Name.bpk</pre>
                 </div>
             </FluentCard>
         }
@@ -263,7 +283,7 @@ else
                 </div>
             </FluentTab>
 
-            @if (!_isTemplatePackage)
+            @if (!_isTemplatePackage && !_isToolPackage)
             {
                 <FluentTab Id="pkg-tab-docs" Label="Documentation">
                     <section class="package-tab-fill package-explorer-tab" aria-label="Package documentation">
