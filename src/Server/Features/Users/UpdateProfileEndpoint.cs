@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 using Server.Components.Shared;
 using Server.Data;
 

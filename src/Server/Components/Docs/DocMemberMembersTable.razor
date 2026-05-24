@@ -1,42 +1,36 @@
-@using Microsoft.FluentUI.AspNetCore.Components
 @using Server.Contracts.ApiDocumentation
 
 @if (Members.Count > 0)
 {
     <FluentStack Orientation="Orientation.Vertical" Gap="6" Class="docs-members-table">
         <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Members</FluentLabel>
-        <table class="package-docs-grid">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Kind</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var row in Members)
+        <FluentDataGrid TGridItem="StructuredApiItemDto"
+                        Items="@MemberRows"
+                        DisplayMode="DataGridDisplayMode.Table"
+                        Class="package-docs-data-grid">
+            <TemplateColumn Title="Name" Context="row">
+                <FluentAnchor Href="#"
+                              Appearance="Appearance.Hypertext"
+                              OnClick="@(() => OnMemberSelected.InvokeAsync(row))">
+                    @(row.DisplayName ?? row.Name)
+                </FluentAnchor>
+            </TemplateColumn>
+            <TemplateColumn Title="Type" Context="row">
+                @if (row.FieldType is not null)
                 {
-                    <tr>
-                        <td>
-                            <FluentAnchor Href="#" Appearance="Appearance.Hypertext" OnClick="@(() => OnMemberSelected.InvokeAsync(row))">
-                                @(row.DisplayName ?? row.Name)
-                            </FluentAnchor>
-                        </td>
-                        <td>
-                            @if (row.FieldType is not null)
-                            {
-                                <DocTypeLink Annotation="@row.FieldType" OnNavigate="OnTypeRefSelected" />
-                            }
-                            else if (!string.IsNullOrWhiteSpace(row.Signature))
-                            {
-                                <span class="muted docs-type-text">@row.Signature</span>
-                            }
-                        </td>
-                        <td>@row.Kind</td>
-                    </tr>
+                    <DocTypeLink Annotation="@row.FieldType"
+                                 PackageIdentifier="@PackageIdentifier"
+                                 Version="@Version"
+                                 ItemsById="@ItemsById"
+                                 OnNavigate="OnTypeRefSelected" />
                 }
-            </tbody>
-        </table>
+                else if (!string.IsNullOrWhiteSpace(row.Signature))
+                {
+                    <FluentLabel Typo="Typography.Body" Class="muted docs-type-text">@row.Signature</FluentLabel>
+                }
+            </TemplateColumn>
+            <PropertyColumn Property="@(row => row.Kind)" Title="Kind" />
+        </FluentDataGrid>
     </FluentStack>
 }
 
@@ -45,8 +39,19 @@
     public IReadOnlyList<StructuredApiItemDto> Members { get; set; } = [];
 
     [Parameter]
+    public string PackageIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = "latest";
+
+    [Parameter]
+    public IReadOnlyDictionary<int, StructuredApiItemDto>? ItemsById { get; set; }
+
+    [Parameter]
     public EventCallback<StructuredApiItemDto> OnMemberSelected { get; set; }
 
     [Parameter]
     public EventCallback<int> OnTypeRefSelected { get; set; }
+
+    private IQueryable<StructuredApiItemDto> MemberRows => Members.AsQueryable();
 }

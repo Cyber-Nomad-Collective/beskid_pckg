@@ -1,7 +1,5 @@
-using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 
 namespace Server.Components.Pages.Dashboard.Admin;
@@ -82,7 +80,7 @@ public partial class AdminBlockedLinks
     [
         new GridActionDefinition
         {
-            Icon = new Icons.Regular.Size20.Delete(),
+            Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Delete(),
             Tooltip = "Remove blocked pattern",
             Disabled = IsSavingLinks,
             OnClick = EventCallback.Factory.Create(this, () => DeleteBlockedLinkAsync(row.Id))

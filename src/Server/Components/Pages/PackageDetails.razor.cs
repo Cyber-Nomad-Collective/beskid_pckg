@@ -1,9 +1,8 @@
-using System.Security.Claims;
 using System.Net;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 using Server.Data;
 using Server.Features.Packages;
@@ -448,7 +447,7 @@ public partial class PackageDetails
             [
                 new GridActionDefinition
                 {
-                    Icon = new Icons.Regular.Size20.ArrowCounterclockwise(),
+                    Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ArrowCounterclockwise(),
                     Tooltip = "Unyank version",
                     Appearance = Appearance.Accent,
                     OnClick = EventCallback.Factory.Create(this, () => ToggleYankVersionAsync(version))
@@ -460,7 +459,7 @@ public partial class PackageDetails
         [
             new GridActionDefinition
             {
-                Icon = new Icons.Regular.Size20.Prohibited(),
+                Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Prohibited(),
                 Tooltip = "Yank version",
                 OnClick = EventCallback.Factory.Create(this, () => ToggleYankVersionAsync(version))
             }

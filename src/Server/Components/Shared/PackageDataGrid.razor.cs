@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Features.Packages;
 
 namespace Server.Components.Shared;
 
-public partial class PackageGrid
+public partial class PackageDataGrid
 {
     [Parameter] public IEnumerable<PackageSummaryResponse> Packages { get; set; } = [];
     [Parameter] public bool ShowActions { get; set; } = true;
@@ -21,7 +20,7 @@ public partial class PackageGrid
         {
             list.Add(new GridActionDefinition
             {
-                Icon = new Icons.Regular.Size20.ArrowUpload(),
+                Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ArrowUpload(),
                 Tooltip = "Upload version",
                 Appearance = Appearance.Accent,
                 OnClick = EventCallback.Factory.Create(this, () => OnUploadVersion.InvokeAsync(package))
@@ -32,7 +31,7 @@ public partial class PackageGrid
         {
             list.Add(new GridActionDefinition
             {
-                Icon = new Icons.Regular.Size20.DocumentEdit(),
+                Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.DocumentEdit(),
                 Tooltip = "Edit metadata",
                 OnClick = EventCallback.Factory.Create(this, () => OnEditMetadata.InvokeAsync(package))
             });
@@ -42,7 +41,7 @@ public partial class PackageGrid
         {
             list.Add(new GridActionDefinition
             {
-                Icon = new Icons.Regular.Size20.Delete(),
+                Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Delete(),
                 Tooltip = "Delete package",
                 Appearance = Appearance.Outline,
                 OnClick = EventCallback.Factory.Create(this, () => OnDeletePackage.InvokeAsync(package))

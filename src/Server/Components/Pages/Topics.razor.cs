@@ -1,7 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
-using System.Security.Claims;
 
 namespace Server.Components.Pages;
 

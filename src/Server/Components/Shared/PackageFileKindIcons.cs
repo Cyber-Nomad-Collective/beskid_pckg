@@ -1,5 +1,4 @@
 using Microsoft.FluentUI.AspNetCore.Components;
-using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 
 namespace Server.Components.Shared;
 
@@ -11,7 +10,7 @@ public static class PackageFileKindIcons
     {
         if (isDirectory)
         {
-            return new Icons.Regular.Size16.Folder();
+            return new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Folder();
         }
 
         return ForKey(iconKey, large: false);
@@ -21,16 +20,16 @@ public static class PackageFileKindIcons
     {
         return (iconKey ?? string.Empty).ToLowerInvariant() switch
         {
-            "markdown" => Pick(large, () => new Icons.Regular.Size20.DocumentText(), () => new Icons.Regular.Size16.DocumentText()),
-            "json" => Pick(large, () => new Icons.Regular.Size20.DataBarHorizontal(), () => new Icons.Regular.Size16.Code()),
-            "yaml" or "toml" or "xml" => Pick(large, () => new Icons.Regular.Size20.DocumentBulletList(), () => new Icons.Regular.Size16.DocumentBulletList()),
-            "beskid" => Pick(large, () => new Icons.Regular.Size20.Library(), () => new Icons.Regular.Size16.Library()),
-            "image" => Pick(large, () => new Icons.Regular.Size20.Image(), () => new Icons.Regular.Size16.Image()),
-            "project" => Pick(large, () => new Icons.Regular.Size20.Settings(), () => new Icons.Regular.Size16.Settings()),
-            "binary" => Pick(large, () => new Icons.Regular.Size20.Box(), () => new Icons.Regular.Size16.Box()),
-            "code" => Pick(large, () => new Icons.Regular.Size20.Code(), () => new Icons.Regular.Size16.Code()),
-            "text" => Pick(large, () => new Icons.Regular.Size20.DocumentText(), () => new Icons.Regular.Size16.DocumentText()),
-            _ => Pick(large, () => new Icons.Regular.Size20.Document(), () => new Icons.Regular.Size16.Document()),
+            "markdown" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.DocumentText(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.DocumentText()),
+            "json" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.DataBarHorizontal(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Code()),
+            "yaml" or "toml" or "xml" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.DocumentBulletList(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.DocumentBulletList()),
+            "beskid" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Library(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Library()),
+            "image" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Image(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Image()),
+            "project" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Settings(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Settings()),
+            "binary" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Box(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Box()),
+            "code" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Code(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Code()),
+            "text" => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.DocumentText(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.DocumentText()),
+            _ => Pick(large, () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Document(), () => new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size16.Document()),
         };
     }
 

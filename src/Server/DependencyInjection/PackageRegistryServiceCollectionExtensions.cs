@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Server.Features.Packages;
 using Server.Services;
 using Server.Services.Artifacts;

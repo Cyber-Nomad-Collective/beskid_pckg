@@ -1,4 +1,3 @@
-@using Microsoft.FluentUI.AspNetCore.Components
 @using Server.Contracts.ApiDocumentation
 
 @if (Item is not null)
@@ -18,31 +17,22 @@
     {
         <FluentStack Orientation="Orientation.Vertical" Gap="6">
             <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Parameters</FluentLabel>
-            <table class="package-docs-grid">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Type</th>
-                        <th>Modifier</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var param in Item.Parameters)
-                    {
-                        <tr>
-                            <td>@param.Name</td>
-                            <td>
-                                <DocTypeLink Annotation="@param.Ty"
-                                             PackageIdentifier="@PackageIdentifier"
-                                             Version="@Version"
-                                             ItemsById="@ItemsById"
-                                             OnNavigate="OnTypeRefSelected" />
-                            </td>
-                            <td>@(param.Modifier ?? "-")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+            <FluentDataGrid TGridItem="ApiParameterDocDto"
+                            Items="@ParameterRows"
+                            DisplayMode="DataGridDisplayMode.Table"
+                            Class="package-docs-data-grid">
+                <PropertyColumn Property="@(p => p.Name)" Title="Name" />
+                <TemplateColumn Title="Type" Context="param">
+                    <DocTypeLink Annotation="@param.Ty"
+                                 PackageIdentifier="@PackageIdentifier"
+                                 Version="@Version"
+                                 ItemsById="@ItemsById"
+                                 OnNavigate="OnTypeRefSelected" />
+                </TemplateColumn>
+                <TemplateColumn Title="Modifier" Context="param">
+                    @(string.IsNullOrWhiteSpace(param.Modifier) ? "-" : param.Modifier)
+                </TemplateColumn>
+            </FluentDataGrid>
         </FluentStack>
     }
     @if (Item.GenericParameters.Count > 0)
@@ -80,4 +70,7 @@
 
     [Parameter]
     public EventCallback<int> OnTypeRefSelected { get; set; }
+
+    private IQueryable<ApiParameterDocDto> ParameterRows =>
+        (Item?.Parameters ?? []).AsQueryable();
 }

@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Server.Tests.TestUtils;

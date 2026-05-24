@@ -1,5 +1,5 @@
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Server.Components.Layout;
 

@@ -1,9 +1,9 @@
-using Server.Services;
-using Server.Tests.TestUtils;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Server.Services;
+using Server.Tests.TestUtils;
 
 namespace Server.Tests.Unit;
 
@@ -324,11 +324,37 @@ public class PackageArtifactValidatorTests
     }
 
     [Fact]
+    public void StructuredApiDocValidator_Rejects_Absolute_Source_Path()
+    {
+        const string json = """
+            {
+              "schemaVersion": 4,
+              "navigationModel": "graph-v1",
+              "source": "/tmp/pkg/src/Main.bd",
+              "items": [
+                {
+                  "id": 1,
+                  "qualifiedName": "Root",
+                  "name": "Root",
+                  "kind": "module",
+                  "location": { "file": "src/Main.bd", "startLine": 1, "startColumn": 1, "endLine": 1, "endColumn": 1 }
+                }
+              ]
+            }
+            """;
+
+        var (isValid, message) = StructuredApiDocValidator.ValidateJson(json);
+
+        Assert.False(isValid);
+        Assert.Contains("artifact-relative", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void StructuredApiDocValidator_Rejects_Flat_Graph_With_Too_Many_Roots()
     {
         var items = Enumerable.Range(1, 200)
             .Select(i => $"{{\"id\":{i},\"qualifiedName\":\"S{i}\",\"name\":\"S{i}\",\"kind\":\"type\",\"parentId\":null}}");
-        var json = "{\"schemaVersion\":4,\"navigationModel\":\"graph-v1\",\"items\":["
+        var json = "{\"schemaVersion\":4,\"navigationModel\":\"graph-v1\",\"source\":\"src/Main.bd\",\"items\":["
             + string.Join(',', items)
             + "]}";
 

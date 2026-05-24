@@ -1,6 +1,6 @@
+using Server.Data;
 using Wolverine;
 using Wolverine.SignalR;
-using Server.Data;
 
 namespace Server.Services.Notifications;
 

@@ -1,6 +1,3 @@
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Server.Contracts.ApiDocumentation
-@using Server.Services
 @inject NavigationManager Navigation
 
 @if (Annotation is not null)
@@ -22,7 +19,7 @@
     }
     else
     {
-        <span class="docs-type-text">@Annotation.Display</span>
+        <FluentLabel Typo="Typography.Body" Class="docs-type-text">@Annotation.Display</FluentLabel>
     }
 }
 

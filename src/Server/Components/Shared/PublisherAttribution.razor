@@ -1,6 +1,3 @@
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
-
 <span class="publisher-attribution">
     <FluentAnchor Appearance="Appearance.Stealth" Href="@($"/profile/{Uri.EscapeDataString(OwnerUserId)}")">@DisplayName</FluentAnchor>
     @if (IsVerified)

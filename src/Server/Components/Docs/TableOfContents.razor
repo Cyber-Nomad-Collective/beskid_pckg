@@ -1,8 +1,6 @@
-@using Microsoft.AspNetCore.Components
-@using Microsoft.FluentUI.AspNetCore.Components
 @inject NavigationManager Navigation
 
-<div class="package-docs-toc-shell">
+<FluentStack Orientation="Orientation.Vertical" Gap="4" Class="package-docs-toc-shell">
     @if (!string.IsNullOrWhiteSpace(Heading))
     {
         <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold" Class="package-docs-toc-heading">@Heading</FluentLabel>
@@ -14,18 +12,20 @@
     else
     {
         <nav class="package-docs-toc-nav" aria-label="@Heading">
-            <ul class="package-docs-toc-list">
+            <FluentStack Orientation="Orientation.Vertical" Gap="2" Class="package-docs-toc-list">
                 @foreach (var row in Rows)
                 {
                     var pad = Math.Clamp((row.Level - 2) * 0.65, 0, 4);
-                    <li class="package-docs-toc-item" style="padding-left: @(pad.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))rem">
-                        <FluentAnchor Href="@FragmentHref(row.Anchor)" Class="docs-file-link package-docs-toc-link">@row.Title</FluentAnchor>
-                    </li>
+                    <FluentAnchor Href="@FragmentHref(row.Anchor)"
+                                  Class="docs-file-link package-docs-toc-link package-docs-toc-item"
+                                  Style="@($"padding-inline-start: {pad.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}rem")">
+                        @row.Title
+                    </FluentAnchor>
                 }
-            </ul>
+            </FluentStack>
         </nav>
     }
-</div>
+</FluentStack>
 
 @code {
     [Parameter]

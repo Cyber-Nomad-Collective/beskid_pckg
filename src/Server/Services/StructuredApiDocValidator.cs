@@ -38,6 +38,11 @@ public static class StructuredApiDocValidator
             return (false, "api.json navigationModel must be \"graph-v1\".");
         }
 
+        if (!ApiDocArtifactPathValidation.IsArtifactRelative(doc.Source))
+        {
+            return (false, "api.json source must be artifact-relative (forward slashes, same paths as in the .bpk).");
+        }
+
         foreach (var item in doc.Items)
         {
             if (item.Id is null)
@@ -51,6 +56,14 @@ public static class StructuredApiDocValidator
                 return (
                     false,
                     $"api.json item \"{item.QualifiedName}\" references missing parentId {pid}.");
+            }
+
+            if (item.Location is { File: { } file }
+                && !ApiDocArtifactPathValidation.IsArtifactRelative(file))
+            {
+                return (
+                    false,
+                    $"api.json item \"{item.QualifiedName}\" location.file must be artifact-relative (forward slashes, same paths as in the .bpk).");
             }
 
             if (string.Equals(item.Kind, "module", StringComparison.OrdinalIgnoreCase)

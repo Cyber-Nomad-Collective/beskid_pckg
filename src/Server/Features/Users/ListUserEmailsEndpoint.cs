@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using Server.Data;
 
 namespace Server.Features.Users;

@@ -1,8 +1,8 @@
+using System.Security.Claims;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.Services;
-using System.Security.Claims;
 
 namespace Server.Features.Boards;
 

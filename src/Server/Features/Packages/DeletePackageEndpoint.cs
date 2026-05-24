@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Server.Data;

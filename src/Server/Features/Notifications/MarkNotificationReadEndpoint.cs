@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using FastEndpoints;
 using Server.Services.Notifications;
-using System.Security.Claims;
 
 namespace Server.Features.Notifications;
 

@@ -1,12 +1,7 @@
 @page "/packages/{PackageName}"
 @rendermode InteractiveServer
-@using Microsoft.EntityFrameworkCore
-@using System.Security.Claims
 @using Server.Data
 @using Server.Features.Packages
-@using Server.Components.Shared
-@using Server.Components.Docs
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
 
 @inject ApplicationDbContext DbContext
 @inject IHttpContextAccessor HttpContextAccessor

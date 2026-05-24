@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using Server.Contracts.ApiDocumentation;
-using Server.Features.Packages;
 using Server.Services;
 
 namespace Server.Components.Docs;
@@ -134,7 +133,7 @@ public partial class PackageDocs
                 string.IsNullOrWhiteSpace(x.Kind) ? "unknown" : x.Kind!,
                 ParentDisplayLabel(x),
                 string.IsNullOrWhiteSpace(x.Visibility) ? "-" : x.Visibility!,
-                x.Location is null ? null : $"{x.Location.File}:{x.Location.StartLine}",
+                FormatSymbolLocation(x),
                 x))
             .ToList();
 
@@ -567,6 +566,25 @@ public partial class PackageDocs
         return par.Name ?? par.QualifiedName ?? p.ToString();
     }
 
+    private string? FormatSymbolLocation(StructuredApiItemDto item)
+    {
+        if (item.Location is not { } loc)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.DeclaringPackage)
+            && !string.Equals(
+                item.DeclaringPackage.Trim(),
+                PackageIdentifier.Trim(),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return item.DeclaringPackage.Trim();
+        }
+
+        return $"{loc.File}:{loc.StartLine}";
+    }
+
     private bool ItemIsUnderScopeRoot(StructuredApiItemDto item, int rootId)
     {
         if (item.Id == rootId)
@@ -654,14 +672,18 @@ public partial class PackageDocs
 
     private void CloseMorePanel() => _showMorePanel = false;
 
-    private void ToggleKindFilter(string kind)
+    private void SetKindSelected(string kind, bool selected)
     {
         if (string.IsNullOrWhiteSpace(kind))
         {
             return;
         }
 
-        if (!_kindFilters.Add(kind))
+        if (selected)
+        {
+            _kindFilters.Add(kind);
+        }
+        else
         {
             _kindFilters.Remove(kind);
         }

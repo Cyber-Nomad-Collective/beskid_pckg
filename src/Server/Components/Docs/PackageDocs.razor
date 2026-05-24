@@ -1,14 +1,16 @@
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
-
 <div class="@($"docs-browser-root {(Variant == PackageDocsVariant.FullPage ? "docs-browser-root--full" : "docs-browser-root--embedded")} package-docs-shell")"
      @onkeydown="HandleDocsKeyDown">
     @if (_loading)
     {
-        <div class="docs-state-inline" role="status">
+        <FluentStack Orientation="Orientation.Horizontal"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Wrap="true"
+                     Gap="12"
+                     Class="docs-state-inline"
+                     role="status">
             <FluentProgressRing />
             <FluentLabel Typo="Typography.Body">Loading API documentation…</FluentLabel>
-        </div>
+        </FluentStack>
     }
     else if (_loadError is not null)
     {
@@ -23,7 +25,11 @@
 
         @if (!string.IsNullOrWhiteSpace(_doc.Source) || _doc.SchemaVersion > 0)
         {
-            <div class="package-docs-meta-row muted">
+            <FluentStack Orientation="Orientation.Horizontal"
+                         Wrap="true"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         Gap="10"
+                         Class="package-docs-meta-row muted">
                 @if (_doc.SchemaVersion > 0)
                 {
                     <FluentBadge Appearance="Appearance.Neutral">schema @(_doc.SchemaVersion)</FluentBadge>
@@ -36,18 +42,26 @@
                 {
                     <FluentLabel Typo="Typography.Body" Class="muted">@_doc.Source</FluentLabel>
                 }
-            </div>
+            </FluentStack>
         }
 
         @if (Variant == PackageDocsVariant.Embedded)
         {
-            <p class="package-docs-embedded-context muted">
+            <FluentStack Orientation="Orientation.Horizontal"
+                         Wrap="true"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         Gap="8"
+                         Class="package-docs-embedded-context muted">
                 <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">@PackageIdentifier</FluentLabel>
                 <FluentLabel Typo="Typography.Body" Class="muted">@Version</FluentLabel>
-            </p>
+            </FluentStack>
         }
 
-        <div class="package-docs-top-toolbar">
+        <FluentStack Orientation="Orientation.Horizontal"
+                     Wrap="true"
+                     VerticalAlignment="VerticalAlignment.Center"
+                     Gap="10"
+                     Class="package-docs-top-toolbar">
             <FluentSearch @bind-Value="_symbolQuery"
                           Id="package-docs-symbol-search"
                           Placeholder="Search API symbols…"
@@ -62,10 +76,14 @@
                 @if (_showMorePanel)
                 {
                     <FluentCard Class="package-docs-more-panel">
-                        <div class="package-docs-more-panel-head">
+                        <FluentStack Orientation="Orientation.Horizontal"
+                                     HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     Gap="8"
+                                     Class="package-docs-more-panel-head">
                             <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Filters and symbols</FluentLabel>
                             <FluentButton Appearance="Appearance.Stealth" OnClick="CloseMorePanel">Close</FluentButton>
-                        </div>
+                        </FluentStack>
                         @if (ScopeRootOptions.Any())
                         {
                             <FluentSelect TOption="string"
@@ -80,17 +98,14 @@
                             </FluentSelect>
                         }
                         <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Kinds</FluentLabel>
-                        <div class="package-docs-kind-grid">
+                        <FluentStack Orientation="Orientation.Vertical" Gap="4" Class="package-docs-kind-grid">
                             @foreach (var kind in AvailableKinds)
                             {
-                                <label class="package-docs-kind-item">
-                                    <input type="checkbox"
-                                           checked="@IsKindSelected(kind)"
-                                           @onchange="@(() => ToggleKindFilter(kind))" />
-                                    <span>@kind</span>
-                                </label>
+                                <FluentCheckbox Label="@kind"
+                                                Checked="@IsKindSelected(kind)"
+                                                CheckedChanged="@((bool selected) => SetKindSelected(kind, selected))" />
                             }
-                        </div>
+                        </FluentStack>
                         <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
                         <div class="package-docs-symbol-scroll package-docs-symbol-scroll--panel">
                             <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
@@ -98,7 +113,7 @@
                     </FluentCard>
                 }
             </div>
-        </div>
+        </FluentStack>
 
         <div class="package-docs-main-grid">
             <div class="package-docs-nav-col">
@@ -118,6 +133,7 @@
                 @if (_selected is not null)
                 {
                     <DocMemberHeader Item="@_selected"
+                                     PackageIdentifier="@PackageIdentifier"
                                      Breadcrumbs="@MemberBreadcrumbs"
                                      MemberPageUrl="@SelectedMemberPageUrl"
                                      OnBreadcrumbSelected="SelectItemAsync" />
@@ -129,6 +145,9 @@
                     @if (SelectedMemberChildren.Count > 0)
                     {
                         <DocMemberMembersTable Members="@SelectedMemberChildren"
+                                               PackageIdentifier="@PackageIdentifier"
+                                               Version="@Version"
+                                               ItemsById="@_itemsById"
                                                OnMemberSelected="SelectItemAsync"
                                                OnTypeRefSelected="SelectItemByIdAsync" />
                     }

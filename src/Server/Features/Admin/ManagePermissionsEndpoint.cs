@@ -1,7 +1,6 @@
-using FastEndpoints;
-using Microsoft.EntityFrameworkCore;
-using Server.Services;
 using System.Security.Claims;
+using FastEndpoints;
+using Server.Services;
 
 namespace Server.Features.Admin;
 

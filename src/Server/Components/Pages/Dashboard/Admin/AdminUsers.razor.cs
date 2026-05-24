@@ -1,7 +1,5 @@
-using System.Net.Http.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
-using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 using Server.Components.Shared;
 using Server.Features.Admin;
 
@@ -117,7 +115,7 @@ public partial class AdminUsers
     [
         new GridActionDefinition
         {
-            Icon = new Icons.Regular.Size20.PersonEdit(),
+            Icon = new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.PersonEdit(),
             Tooltip = "Manage user",
             OnClick = EventCallback.Factory.Create(this, () => SelectUserForManagement(user))
         }

@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
-using Server.Services;
-using Server.Features.Packages;
 using Microsoft.AspNetCore.WebUtilities;
+using Server.Features.Packages;
+using Server.Services;
 
 namespace Server.Components.Pages;
 

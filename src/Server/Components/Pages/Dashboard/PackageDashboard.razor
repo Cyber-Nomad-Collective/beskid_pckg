@@ -1,4 +1,3 @@
-@using Server.Components.Shared
 @inject HttpClient Http
 
 <FluentStack Orientation="Orientation.Vertical" Gap="24px">
@@ -28,7 +27,7 @@
         }
         else
         {
-            <PackageGrid Packages="PackageItems"
+            <PackageDataGrid Packages="PackageItems"
                          ShowActions="true"
                          OnEditMetadata="StartMetadataEdit"
                          OnUploadVersion="StartVersionUpload"

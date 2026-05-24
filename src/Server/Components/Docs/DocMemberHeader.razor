@@ -1,35 +1,31 @@
-@using Microsoft.AspNetCore.Components
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
-@using Server.Contracts.ApiDocumentation
-
 @if (Item is not null)
 {
     <FluentStack Orientation="Orientation.Vertical" Gap="8" Class="package-docs-member-header">
         @if (Breadcrumbs.Count > 0)
         {
-            <nav class="package-docs-breadcrumbs" aria-label="Breadcrumb">
-                @for (var i = 0; i < Breadcrumbs.Count; i++)
+            <FluentBreadcrumb Class="package-docs-breadcrumbs" aria-label="Breadcrumb">
+                <FluentBreadcrumbItem>
+                    @Item.DisplayName
+                </FluentBreadcrumbItem>
+    
+                @foreach (var crumb in Breadcrumbs)
                 {
-                    var crumb = Breadcrumbs[i];
-                    @if (i > 0)
-                    {
-                        <span class="package-docs-breadcrumb-sep muted" aria-hidden="true">›</span>
-                    }
-                    @if (crumb.Selectable && OnBreadcrumbSelected.HasDelegate)
-                    {
-                        <FluentButton Appearance="Appearance.Stealth"
-                                      Class="package-docs-breadcrumb-link"
-                                      OnClick="@(() => OnBreadcrumbSelected.InvokeAsync(crumb.Item!))">
-                            @crumb.Label
-                        </FluentButton>
-                    }
-                    else
-                    {
-                        <span class="package-docs-breadcrumb-label muted">@crumb.Label</span>
-                    }
+                    <FluentBreadcrumbItem>
+                        @if (crumb.Selectable && OnBreadcrumbSelected.HasDelegate)
+                        {
+                            <FluentButton Appearance="Appearance.Stealth"
+                                          Class="package-docs-breadcrumb-link"
+                                          OnClick="@(() => OnBreadcrumbSelected.InvokeAsync(crumb.Item!))">
+                                @crumb.Label
+                            </FluentButton>
+                        }
+                        else
+                        {
+                            <FluentLabel Typo="Typography.Body" Class="muted package-docs-breadcrumb-label">@crumb.Label</FluentLabel>
+                        }
+                    </FluentBreadcrumbItem>
                 }
-            </nav>
+            </FluentBreadcrumb>
         }
         <FluentStack Orientation="Orientation.Horizontal"
                      VerticalAlignment="VerticalAlignment.Center"
@@ -62,9 +58,13 @@
             {
                 <FluentBadge Appearance="Appearance.Neutral">@Item.Visibility</FluentBadge>
             }
-            @if (Item.Location is { } loc)
+            @if (ShowSourceLocation && Item.Location is { } loc)
             {
                 <FluentLabel Typo="Typography.Body" Class="muted">@loc.File:@loc.StartLine</FluentLabel>
+            }
+            else if (ShowExternalDeclaringPackage)
+            {
+                <FluentLabel Typo="Typography.Body" Class="muted">@Item.DeclaringPackage</FluentLabel>
             }
         </FluentStack>
     </FluentStack>
@@ -75,7 +75,22 @@
     public StructuredApiItemDto? Item { get; set; }
 
     [Parameter]
+    public string PackageIdentifier { get; set; } = string.Empty;
+
+    [Parameter]
     public IReadOnlyList<PackageDocsBreadcrumb> Breadcrumbs { get; set; } = Array.Empty<PackageDocsBreadcrumb>();
+
+    private bool ShowSourceLocation =>
+        Item?.Location is not null
+        && (string.IsNullOrWhiteSpace(Item.DeclaringPackage)
+            || string.Equals(
+                Item.DeclaringPackage.Trim(),
+                PackageIdentifier.Trim(),
+                StringComparison.OrdinalIgnoreCase));
+
+    private bool ShowExternalDeclaringPackage =>
+        !ShowSourceLocation
+        && !string.IsNullOrWhiteSpace(Item?.DeclaringPackage);
 
     [Parameter]
     public string? MemberPageUrl { get; set; }

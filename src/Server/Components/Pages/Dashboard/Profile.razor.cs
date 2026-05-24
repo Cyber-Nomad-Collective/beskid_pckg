@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Server.Components.Shared;
 using Server.Data;
-using Server.Features.Users;
-using System.Net.Http.Json;
 
 namespace Server.Components.Pages.Dashboard;
 

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Configuration;
-
 namespace Server.Configuration;
 
 /// <summary>
