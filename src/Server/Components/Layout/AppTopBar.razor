@@ -2,11 +2,6 @@
 
 <header class="top-nav">
         <div class="top-nav-left">
-            @if (HeaderStart != null)
-            {
-                @HeaderStart
-            }
-
             <a class="brand-link" href="@HomeUrl" aria-label="Beskid home">
                 <img src="favicon.svg" width="28" height="17" alt="Beskid" />
                 <span class="brand">beskid pckg</span>
@@ -42,6 +37,9 @@
                         </div>
                     </NotAuthorized>
                 </AuthorizeView>
+            </div>
+            <div class="top-nav-hub">
+                <BeskidHubLauncher />
             </div>
         </div>
 </header>

@@ -107,6 +107,12 @@
     gap: 0.75rem;
 }
 
+.top-nav-hub {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
 .top-nav-user,
 .top-nav-auth {
     display: flex;
