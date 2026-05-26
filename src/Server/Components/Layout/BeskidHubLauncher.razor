@@ -1,0 +1,34 @@
+@* Same hub as packages/beskid-docs-ui (native dialog + beskid-hub.mjs). *@
+
+<div class="beskid-hub-root" data-beskid-hub-root data-services="@ServicesJson">
+    <button
+        type="button"
+        class="beskid-hub-trigger"
+        data-beskid-hub-trigger
+        aria-haspopup="dialog"
+        aria-controls="beskid-hub-dialog"
+        title="Beskid services">
+        @((MarkupString)BeskidHubMarkup.LauncherIcon)
+        <span class="sr-only">Open Beskid services</span>
+    </button>
+
+    <dialog id="beskid-hub-dialog" class="beskid-hub" data-beskid-hub>
+        <header class="beskid-hub__header">
+            <div>
+                <h2 class="beskid-hub__title">Beskid</h2>
+                <p class="beskid-hub__subtitle">Jump to a Beskid service</p>
+            </div>
+            <button type="button" class="beskid-hub__close" data-beskid-hub-close aria-label="Close">
+                @((MarkupString)BeskidHubMarkup.CloseIcon)
+            </button>
+        </header>
+        <div class="beskid-hub__body">
+            <div class="beskid-hub__grid" data-beskid-hub-grid></div>
+        </div>
+    </dialog>
+</div>
+
+@code {
+    private const string ServicesJson =
+        """[{"id":"home","label":"Home","href":"https://beskid-lang.org/","icon":"home"},{"id":"platform-spec","label":"Specification","href":"https://beskid-lang.org/platform-spec/","icon":"platform-spec"},{"id":"book","label":"Book","href":"https://beskid-lang.org/book/","icon":"book"},{"id":"pckg","label":"pckg","href":"https://pckg.beskid-lang.org/","icon":"pckg"},{"id":"tracker","label":"Tracker","href":"https://tracker.beskid-lang.org/","icon":"roadmap"}]""";
+}

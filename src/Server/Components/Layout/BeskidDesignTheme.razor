@@ -1,0 +1,10 @@
+@using Server.Theme
+@* Shared FluentDesignTheme — same brand as beskid-lang.org and beskid_tracker. *@
+<FluentDesignTheme StorageName="@StorageName"
+                     CustomColor="@BeskidFluentTheme.AccentSeed"
+                     NeutralBaseColor="@BeskidFluentTheme.NeutralBase" />
+
+@code {
+	[Parameter]
+	public string StorageName { get; set; } = BeskidFluentTheme.StorageName;
+}

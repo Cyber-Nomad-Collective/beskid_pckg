@@ -40,6 +40,15 @@
   <PropertyGroup>
     <LogCompileItems>false</LogCompileItems>
   </PropertyGroup>
+  <!-- Keep wwwroot/beskid-material.css aligned with docs-ui when building in the superrepo. -->
+  <PropertyGroup>
+    <BeskidDocsUiThemePath>$(MSBuildThisFileDirectory)..\..\..\..\packages\beskid-docs-ui\src\styles\theme.material.css</BeskidDocsUiThemePath>
+    <BeskidMaterialCssOutput>$(MSBuildThisFileDirectory)wwwroot\beskid-material.css</BeskidMaterialCssOutput>
+  </PropertyGroup>
+  <Target Name="SyncBeskidMaterialTheme" BeforeTargets="Build" Condition="Exists('$(BeskidDocsUiThemePath)')">
+    <Copy SourceFiles="$(BeskidDocsUiThemePath)" DestinationFiles="$(BeskidMaterialCssOutput)" SkipUnchangedFiles="true" />
+  </Target>
+
   <Target Name="PrintCompileItems" BeforeTargets="CoreCompile" Condition="'$(LogCompileItems)'=='true'">
     <Message Importance="High" Text="=== Begin Compile items for $(MSBuildProjectName) ===" />
     <Message Importance="High" Text="DefaultItemExcludes=$(DefaultItemExcludes)" />

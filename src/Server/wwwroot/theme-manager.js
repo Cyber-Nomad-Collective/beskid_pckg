@@ -26,6 +26,8 @@ function applyDocumentTheme(mode) {
     const effectiveMode = getEffectiveMode(activeMode);
 
     document.documentElement.setAttribute("data-app-theme", effectiveMode);
+    // Align hub + Material tokens with site/tracker (data-theme on <html>).
+    document.documentElement.setAttribute("data-theme", effectiveMode);
 
     for (const themeElement of document.querySelectorAll("fluent-design-theme")) {
         themeElement.setAttribute("mode", effectiveMode);

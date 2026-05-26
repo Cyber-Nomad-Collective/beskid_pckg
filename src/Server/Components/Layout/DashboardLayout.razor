@@ -4,11 +4,15 @@
         display: none;
     }
 </style>
-<FluentDesignTheme StorageName="theme" CustomColor="#3aac9e" NeutralBaseColor="#3f5458" />
+<BeskidDesignTheme />
 
 <FluentMainLayout HeaderHeight="64" NavMenuWidth=@SideMenuWidth Class="dashboard-layout" NavMenuTitle="Navigation menu">
     <Header>
-        <AppTopBar />
+        <AppTopBar>
+            <HeaderStart>
+                <BeskidHubLauncher />
+            </HeaderStart>
+        </AppTopBar>
     </Header>
     <NavMenuContent>
         <FluentNavMenu Collapsible="false" Expanded="true" CustomToggle="true" Width="@SideMenuWidth"

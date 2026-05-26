@@ -15,8 +15,11 @@
 
     <ImportMap />
     <script src="_content/Microsoft.FluentUI.AspNetCore.Components/js/loading-theme.js" type="text/javascript"></script>
-    <loading-theme storage-name="theme"></loading-theme>
+    <loading-theme storage-name="theme"
+                   primary-color="@Server.Theme.BeskidFluentTheme.AccentSeed"
+                   neutral-color="@Server.Theme.BeskidFluentTheme.NeutralBase"></loading-theme>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="beskid-hub.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
@@ -35,6 +38,7 @@
     <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
     <script src="_content/GoogleCaptchaComponent/Scripts/ScriptLoader.js"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script type="module" src="beskid-hub.mjs"></script>
     <script type="module">
         import { getInitialThemeMode } from '/theme-manager.js';
         getInitialThemeMode();

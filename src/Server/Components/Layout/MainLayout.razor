@@ -1,10 +1,14 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
-<FluentDesignTheme StorageName="theme" CustomColor="#3aac9e" NeutralBaseColor="#3f5458"/>
+<BeskidDesignTheme />
 
 <FluentMainLayout HeaderHeight="64" Class="dashboard-layout"  NavMenuTitle="Navigation menu"  >
     <Header>
-        <AppTopBar/>
+        <AppTopBar>
+            <HeaderStart>
+                <BeskidHubLauncher />
+            </HeaderStart>
+        </AppTopBar>
     </Header>
     <Body>
     <FluentBodyContent Style="padding: 1.5rem 1rem;">

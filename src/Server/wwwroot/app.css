@@ -1,12 +1,13 @@
 @import '_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css';
+@import 'beskid-brand.css';
 @import 'package-chrome.css';
 @import 'layout-tokens.css';
 
-/* Layout tokens only - colors come from FluentUI DesignTheme */
+/* Layout tokens only - accent/neutral ramps come from FluentDesignTheme + beskid-material.css */
 :root {
     --topbar-gradient: linear-gradient(0deg, var(--neutral-fill-layer-rest) 0%, var(--neutral-fill-rest) 100%);
-    --brand-500: #3aac9e;
-    --brand-600: #258d80;
+    --brand-500: var(--beskid-fluent-accent, var(--beskid-material-seed, #0ea5a3));
+    --brand-600: color-mix(in srgb, var(--brand-500) 78%, black);
     --surface-shadow: 0 0 2px rgba(17, 38, 44, 0.08), 0 6px 16px rgba(17, 38, 44, 0.08);
     --topBarBackground:  var(--neutral-fill-layer-rest);
 }
@@ -46,7 +47,7 @@ a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-    outline: 3px solid rgba(58, 172, 158, 0.45);
+    outline: 3px solid color-mix(in srgb, var(--brand-500) 45%, transparent);
     outline-offset: 2px;
     border-radius: 8px;
 }
