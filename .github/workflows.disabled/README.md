@@ -1,7 +1,7 @@
-# GitHub Actions (disabled)
+# GitHub Actions (disabled quality/test workflows)
 
-CI moved to **Drone** — see [`.drone.yml`](../.drone.yml) and [beskid_infra](https://github.com/Cyber-Nomad-Collective/beskid_infra).
+GitHub Actions remains active for build/publish workflows. This folder stores non-build lanes that are currently disabled.
 
-| Former workflow | Replaced by |
-|-----------------|-------------|
-| `ci.yml` | `.drone.yml` → `pckg-image` (GHCR push on `main`/`staging`) |
+| Disabled workflow | Reason |
+|-------------------|--------|
+| `ci.yml` | quality/test lane disabled; build is handled by active `container-images.yml` |

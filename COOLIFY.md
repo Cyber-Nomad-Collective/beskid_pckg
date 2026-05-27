@@ -15,7 +15,7 @@ Application: **pckg** — app image `ghcr.io/cyber-nomad-collective/beskid-pckg:
 
 ## Build
 
-- **Drone CI** (`.drone.yml`) builds and pushes the app image.
+- **GitHub Actions** (`.github/workflows/container-images.yml`) builds and pushes the app image.
 - Coolify must not run server-side .NET builds after cutover.
 
 ## Runtime secrets
