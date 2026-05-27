@@ -1,0 +1,51 @@
+# Runtime-only: app image from GHCR; Postgres stays on Coolify (separate DB per environment).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pckgdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pckg_pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-pckgdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  pckg:
+    image: ghcr.io/cyber-nomad-collective/beskid-pckg:${IMAGE_TAG:-main}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      HTTP_PORTS: ${HTTP_PORTS:-8082}
+      HttpClient__InternalBaseAddress: ${HTTP_CLIENT_INTERNAL_BASE_ADDRESS:-http://127.0.0.1:8082}
+      ConnectionStrings__DefaultConnection: Host=${PCKG_DB_HOST:-postgres};Port=${PCKG_DB_PORT:-5432};Database=${POSTGRES_DB:-pckgdb};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      Pckg__Database__AutoMigrateOnStartup: ${PCKG_AUTO_MIGRATE_ON_STARTUP:-true}
+      Storage__ArtifactsRootPath: /app/packages
+      Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
+      Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
+      Captcha__RecaptchaEnterpriseApiKey: ${CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY:-}
+      Captcha__MinimumScore: ${CAPTCHA_RECAPTCHA_MINIMUM_SCORE:-0.5}
+    expose:
+      - "8082"
+    volumes:
+      - pckg_packages:/app/packages
+      - pckg_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  pckg_pg_data:
+  pckg_packages:
+  pckg_data:
