@@ -1,53 +1,56 @@
 @import '_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css';
 @import 'beskid-brand.css';
+@import 'beskid-fluent-bridge.css';
+@import 'pckg-app.css';
 @import 'package-chrome.css';
 @import 'layout-tokens.css';
 
-/* Layout tokens only - accent/neutral ramps come from FluentDesignTheme + beskid-material.css */
 :root {
-    --topbar-gradient: linear-gradient(0deg, var(--neutral-fill-layer-rest) 0%, var(--neutral-fill-rest) 100%);
-    --brand-500: var(--beskid-fluent-accent, var(--beskid-material-seed, #0ea5a3));
-    --brand-600: color-mix(in srgb, var(--brand-500) 78%, black);
-    --surface-shadow: 0 0 2px rgba(17, 38, 44, 0.08), 0 6px 16px rgba(17, 38, 44, 0.08);
-    --topBarBackground:  var(--neutral-fill-layer-rest);
+	--topbar-gradient: linear-gradient(
+		0deg,
+		var(--background) 0%,
+		var(--card) 100%
+	);
+	--brand-500: var(--beskid-fluent-accent, var(--beskid-material-seed, #0ea5a3));
+	--brand-600: color-mix(in srgb, var(--brand-500) 78%, black);
+	--surface-shadow: 0 0 2px rgba(17, 38, 44, 0.08), 0 6px 16px rgba(17, 38, 44, 0.08);
+	--radius: 0.75rem;
 }
-header.header
-{
-    background-color: var(--topBarBackground) !important;
+
+header.header {
+	background-color: var(--topBarBackground) !important;
 }
+
 body {
-    --body-font: "Segoe UI Variable", "Segoe UI", sans-serif;
-    font-family: var(--body-font);
-    font-size: var(--type-ramp-base-font-size);
-    line-height: var(--type-ramp-base-line-height);
-    margin: 0;
-    /* Use FluentUI design tokens for theming */
-    color: var(--neutral-foreground-rest);
-    background: var(--neutral-fill-layer-rest);
+	--body-font: var(--sl-font, ui-sans-serif, system-ui, sans-serif);
+	font-family: var(--body-font);
+	font-size: var(--type-ramp-base-font-size);
+	line-height: var(--type-ramp-base-line-height);
+	margin: 0;
+	color: var(--foreground);
+	background: var(--background);
 }
 
-/* Shell */
 .app-shell {
-    min-height: 100dvh;
-    /* Background from FluentUI neutral-fill-layer-rest */
-    background: var(--neutral-fill-layer-rest);
+	min-height: 100dvh;
+	background: var(--background);
 }
-
 
 .muted {
-    color: var(--neutral-foreground-hint);
+	color: var(--muted-foreground);
 }
 
-/* Responsive */
-@media (max-width: 980px) {}
+@media (max-width: 980px) {
+}
 
-@media (max-width: 700px) {}
+@media (max-width: 700px) {
+}
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--brand-500) 45%, transparent);
-    outline-offset: 2px;
-    border-radius: 8px;
+	outline: 3px solid color-mix(in srgb, var(--brand-500) 45%, transparent);
+	outline-offset: 2px;
+	border-radius: 8px;
 }

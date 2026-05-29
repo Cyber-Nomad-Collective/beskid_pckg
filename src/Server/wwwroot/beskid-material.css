@@ -3,7 +3,7 @@
 	/* Fluent UI Blazor: FluentDesignTheme CustomColor / loading-theme primary-color */
 	--beskid-fluent-accent: var(--beskid-material-seed);
 	/* Fluent UI Blazor: NeutralBaseColor / loading-theme neutral-color (dark ramp base) */
-	--beskid-fluent-neutral: #3f4948;
+	--beskid-fluent-neutral: #1e2625;
 	/* Pin site typography tokens so docs keep a stable sans stack across Starlight updates. */
 	--sl-font: ui-sans-serif, system-ui, sans-serif;
 	--sl-font-mono: 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;

@@ -1,0 +1,59 @@
+/**
+ * pckg app chrome — dark Beskid shell (tracker / nexus parity).
+ */
+
+body {
+	background-color: var(--background);
+	background-image:
+		radial-gradient(
+			ellipse 120% 80% at 0% -20%,
+			color-mix(in srgb, var(--beskid-primary-container) 22%, transparent),
+			transparent 55%
+		),
+		radial-gradient(
+			ellipse 90% 60% at 100% 0%,
+			color-mix(in srgb, var(--beskid-primary) 8%, transparent),
+			transparent 50%
+		);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.app-shell,
+.dashboard-shell,
+.dashboard-content-area,
+.dashboard-main,
+.dashboard-content,
+fluent-body-content,
+fluent-main-layout {
+	background-color: var(--background);
+}
+
+.pckg-kicker {
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	font-weight: 700;
+	font-size: 0.69rem;
+	color: var(--platform-spec-tab-text, var(--primary));
+}
+
+.pckg-card {
+	border-radius: calc(var(--radius, 0.75rem) + 4px);
+	border: 1px solid var(--border);
+	background: var(--card);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+a:not([data-slot='button']):not(.top-nav-links a):not(.brand-link) {
+	color: var(--beskid-primary);
+	text-decoration-color: color-mix(in srgb, var(--beskid-primary) 35%, transparent);
+	text-underline-offset: 2px;
+}
+
+a:not([data-slot='button']):not(.top-nav-links a):not(.brand-link):hover {
+	color: color-mix(in srgb, var(--beskid-primary) 88%, white);
+}
+
+html[data-theme='light'] a:not([data-slot='button']):not(.top-nav-links a):not(.brand-link):hover {
+	color: color-mix(in srgb, var(--beskid-primary) 82%, black);
+}

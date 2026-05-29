@@ -6,8 +6,8 @@
 
 .dashboard-sidebar {
     width: 260px;
-    background: var(--neutral-fill-stealth-rest);
-    border-right: 1px solid var(--neutral-stroke-rest);
+    background: var(--muted);
+    border-right: 1px solid var(--border);
     padding: 12px;
     overflow-y: auto;
     position: sticky;

@@ -8,7 +8,8 @@
     left: 0;
     flex-wrap: nowrap;
     right: 0;
-    height: 64px;
+    height: var(--beskid-topbar-height, 3rem);
+    min-height: var(--beskid-topbar-height, 3rem);
     width: 100%;
     background: var(--topBarBackground);
     backdrop-filter: blur(20px) saturate(180%);
@@ -51,12 +52,16 @@
     transform: translateY(-1px);
 }
 
+.brand-link .pckg-kicker {
+	margin-right: 0.15rem;
+}
+
 .brand {
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--neutral-foreground-rest);
-    white-space: nowrap;
-    font-size: 1.125rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--foreground);
+	white-space: nowrap;
+	font-size: 1rem;
 }
 
 /* Navigation Links */

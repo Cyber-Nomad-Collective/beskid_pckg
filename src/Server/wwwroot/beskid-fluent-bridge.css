@@ -1,0 +1,81 @@
+/**
+ * Maps Beskid Material tokens to shadcn-style semantics and Fluent design tokens.
+ * Parity with beskid_tracker (shadcn-theme.css) and beskid_nexus (ui-react).
+ */
+
+html[data-theme='light'] {
+	--background: var(--beskid-surface);
+	--foreground: color-mix(in srgb, var(--beskid-on-primary-container) 94%, black);
+	--card: var(--platform-spec-card-bg);
+	--card-foreground: var(--foreground);
+	--border: var(--platform-spec-divider);
+	--muted: var(--platform-spec-surface-muted);
+	--muted-foreground: color-mix(
+		in srgb,
+		var(--beskid-outline) 88%,
+		var(--beskid-on-primary-container)
+	);
+	--primary: var(--beskid-primary);
+	--primary-foreground: var(--beskid-on-primary);
+
+	--neutral-fill-layer-rest: var(--beskid-surface);
+	--neutral-fill-layer-hover: color-mix(
+		in srgb,
+		var(--beskid-surface-variant) 28%,
+		var(--beskid-surface)
+	);
+	--neutral-fill-rest: var(--platform-spec-card-bg);
+	--neutral-fill-stealth-rest: var(--platform-spec-surface);
+	--neutral-fill-stencil-rest: var(--platform-spec-surface-muted);
+	--neutral-stroke-rest: var(--platform-spec-divider);
+	--neutral-stroke-divider-rest: var(--platform-spec-divider);
+	--neutral-foreground-rest: var(--foreground);
+	--neutral-foreground-hint: var(--muted-foreground);
+	--neutral-foreground-hover: var(--foreground);
+	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 96%, white);
+}
+
+html[data-theme='dark'] {
+	--background: var(--beskid-surface);
+	--foreground: color-mix(in srgb, var(--beskid-secondary) 82%, white);
+	--card: var(--platform-spec-card-bg);
+	--card-foreground: var(--foreground);
+	--border: var(--platform-spec-divider);
+	--muted: var(--platform-spec-surface-muted);
+	--muted-foreground: color-mix(
+		in srgb,
+		var(--beskid-outline) 78%,
+		var(--beskid-secondary)
+	);
+	--primary: var(--beskid-primary);
+	--primary-foreground: var(--beskid-on-primary);
+
+	--neutral-fill-layer-rest: var(--beskid-surface);
+	--neutral-fill-layer-hover: color-mix(
+		in srgb,
+		var(--beskid-surface-variant) 32%,
+		var(--beskid-surface)
+	);
+	--neutral-fill-rest: var(--platform-spec-card-bg);
+	--neutral-fill-stealth-rest: var(--platform-spec-surface);
+	--neutral-fill-stencil-rest: var(--platform-spec-surface-muted);
+	--neutral-stroke-rest: var(--platform-spec-divider);
+	--neutral-stroke-divider-rest: var(--platform-spec-divider);
+	--neutral-foreground-rest: var(--foreground);
+	--neutral-foreground-hint: var(--muted-foreground);
+	--neutral-foreground-hover: var(--foreground);
+	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 94%, transparent);
+}
+
+/* Before theme-manager runs, default to dark Material shell (matches tracker default). */
+html:not([data-theme]) {
+	--background: var(--beskid-surface);
+	--foreground: color-mix(in srgb, var(--beskid-secondary) 82%, white);
+	--neutral-fill-layer-rest: var(--beskid-surface);
+	--neutral-fill-rest: var(--platform-spec-card-bg);
+	--neutral-fill-stealth-rest: var(--platform-spec-surface);
+	--neutral-fill-stencil-rest: var(--platform-spec-surface-muted);
+	--neutral-stroke-rest: var(--platform-spec-divider);
+	--neutral-stroke-divider-rest: var(--platform-spec-divider);
+	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 94%, transparent);
+}

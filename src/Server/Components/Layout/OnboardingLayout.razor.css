@@ -3,6 +3,7 @@
     display: grid;
     place-items: center;
     padding: 24px;
+    background: var(--background);
 }
 
 .onboarding-main {

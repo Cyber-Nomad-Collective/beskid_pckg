@@ -1,8 +1,8 @@
 .section-card {
-    border: 1px solid var(--neutral-stroke-rest);
-    border-radius: 14px;
-    box-shadow: var(--surface-shadow);
-    background: var(--neutral-fill-rest);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius, 0.75rem) + 4px);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
+    background: var(--card);
     padding: 24px;
 }
 
