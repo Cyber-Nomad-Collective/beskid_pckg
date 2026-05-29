@@ -1,0 +1,156 @@
+@page "/settings/auth/pair"
+@layout MainLayout
+@using Microsoft.AspNetCore.Authorization
+@using Server.Services.AuthHub
+@attribute [AllowAnonymous]
+
+@inject IAuthHubPairingService PairingService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Auth hub pairing</PageTitle>
+
+<section class="auth-page" style="max-width: 36rem; margin: 0 auto;">
+    <header class="section-card-header">
+        <h1>Auth hub pairing</h1>
+        <p class="muted">
+            Approve a pairing code from the auth hub admin. The service token is stored on the server and never shown in the browser.
+        </p>
+    </header>
+
+    @if (Paired)
+    {
+        <div class="feedback-message is-success" role="status">
+            pckg is already paired with the auth hub.
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+    {
+        <div class="feedback-message is-success" role="status">@SuccessMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="feedback-message is-error" role="alert">@ErrorMessage</div>
+    }
+
+    @if (!Paired || !AutoPaired)
+    {
+        <FluentCard Class="section-card auth-card auth-pane">
+            <header class="section-card-header">
+                <h2>Approve pairing</h2>
+            </header>
+            <div class="section-card-body">
+                <EditForm Model="FormModel" OnValidSubmit="OnApproveAsync" class="auth-form">
+                    <FluentTextField @bind-Value="FormModel.Code"
+                                     Label="Pairing code"
+                                     Required
+                                     Class="auth-form-field" />
+                    <FluentTextField @bind-Value="FormModel.PublicUrl"
+                                     Label="This app public URL"
+                                     Placeholder="https://pckg.beskid-lang.org"
+                                     Required
+                                     Class="auth-form-field" />
+                    <FluentButton Appearance="Appearance.Accent"
+                                  Type="ButtonType.Submit"
+                                  Disabled="@Busy">
+                        @(Busy ? "Approving…" : "Approve pairing")
+                    </FluentButton>
+                </EditForm>
+            </div>
+        </FluentCard>
+    }
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? PairingCode { get; set; }
+
+    private sealed class PairFormModel
+    {
+        public string Code { get; set; } = string.Empty;
+        public string PublicUrl { get; set; } = string.Empty;
+    }
+
+    private PairFormModel FormModel { get; } = new();
+    private bool Paired;
+    private bool AutoPaired;
+    private bool Busy;
+    private string? SuccessMessage;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await PairingService.GetStatusAsync();
+        Paired = status.Paired;
+        FormModel.PublicUrl = status.DefaultPublicUrl;
+        FormModel.Code = PairingCode?.Trim() ?? string.Empty;
+
+        if (Paired)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(FormModel.Code) && !string.IsNullOrWhiteSpace(FormModel.PublicUrl))
+        {
+            var auto = await PairingService.CompletePairingAsync(FormModel.Code, FormModel.PublicUrl);
+            if (auto.Ok)
+            {
+                Paired = true;
+                AutoPaired = true;
+                SuccessMessage = auto.AlreadyPaired
+                    ? "pckg is already paired with the auth hub."
+                    : "Auth hub paired successfully. Service token stored on the server.";
+                return;
+            }
+
+            if (auto.Error?.Contains("GITHUB_SYNC_TOKEN", StringComparison.OrdinalIgnoreCase) == true
+                || auto.Error?.Contains("PCKG_PAIRING_APPROVER_LOGIN", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                // fall through to manual flow
+            }
+            else if (!string.IsNullOrWhiteSpace(auto.Error))
+            {
+                ErrorMessage = auto.Error;
+            }
+        }
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.IsInRole("SuperAdmin"))
+        {
+            return;
+        }
+
+        var returnUrl = string.IsNullOrWhiteSpace(FormModel.Code)
+            ? "/settings/auth/pair"
+            : $"/settings/auth/pair?code={Uri.EscapeDataString(FormModel.Code)}";
+        Navigation.NavigateTo($"/auth?mode=login&returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+
+    private async Task OnApproveAsync()
+    {
+        Busy = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var result = await PairingService.CompletePairingAsync(FormModel.Code, FormModel.PublicUrl);
+            if (!result.Ok)
+            {
+                ErrorMessage = result.Error ?? "Pairing failed.";
+                return;
+            }
+
+            Paired = true;
+            SuccessMessage = result.AlreadyPaired
+                ? "pckg is already paired with the auth hub."
+                : "Auth hub paired successfully. Service token stored on the server.";
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}

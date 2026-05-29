@@ -39,6 +39,10 @@
                 </header>
                 <div class="section-card-body">
                     <form method="post" action="/auth/login" class="auth-form" novalidate>
+                        @if (!string.IsNullOrWhiteSpace(ReturnUrl))
+                        {
+                            <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+                        }
                         <FluentTextField Name="email" Label="Email" Placeholder="you@example.com" Required Class="auth-form-field" />
                         <FluentTextField Name="password"
                                          Label="Password"

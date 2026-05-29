@@ -22,6 +22,7 @@ using Server.DependencyInjection;
 using Server.Features.Auth;
 using Server.Hubs;
 using Server.Services;
+using Server.Services.AuthHub;
 using Server.Services.Email;
 using Server.Services.Notifications;
 using Wolverine;
@@ -256,6 +257,15 @@ builder.Services.AddScoped<INotificationBroadcaster, WolverineNotificationBroadc
 builder.Services.AddSingleton<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton<INotificationActionHandler, DefaultNotificationActionHandler>();
+builder.Services.Configure<AuthHubPairingOptions>(options =>
+{
+    options.HubPublicUrl = builder.Configuration["AUTH_HUB_PUBLIC_URL"];
+    options.PublicUrl = builder.Configuration["PCKG_PUBLIC_URL"];
+    options.PairingApproverLogin = builder.Configuration["PCKG_PAIRING_APPROVER_LOGIN"];
+    options.GitHubSyncToken = builder.Configuration["GITHUB_SYNC_TOKEN"];
+});
+builder.Services.AddHttpClient(nameof(AuthHubPairingService));
+builder.Services.AddScoped<IAuthHubPairingService, AuthHubPairingService>();
 
 builder.Services.AddHttpLogging(logging =>
 {
@@ -350,6 +360,7 @@ app.Use(async (context, next) =>
         pathValue.StartsWith("/scalar", StringComparison.OrdinalIgnoreCase) ||
         pathValue.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
         pathValue.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
+        pathValue.StartsWith("/metrics", StringComparison.OrdinalIgnoreCase) ||
         pathValue.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
         Path.HasExtension(path);
 
@@ -381,6 +392,7 @@ app.MapScalarApiReference("/scalar", o =>
 
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
+app.MapPrometheusMetricsEndpoint();
 app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>().DisableAntiforgery();
 
 // System email flows (email confirmation + password reset)
@@ -475,21 +487,28 @@ app.MapPost("/auth/login", async (
     var form = await context.Request.ReadFormAsync(context.RequestAborted);
     var email = form["email"].FirstOrDefault()?.Trim() ?? string.Empty;
     var password = form["password"].FirstOrDefault() ?? string.Empty;
+    var returnUrl = AuthRedirectHelper.SanitizeReturnUrl(form["returnUrl"].FirstOrDefault());
     var rememberMe = string.Equals(form["rememberMe"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase)
         || string.Equals(form["rememberMe"].FirstOrDefault(), "on", StringComparison.OrdinalIgnoreCase);
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
-        return Results.Redirect("/auth?mode=login&error=missing_credentials");
+        var missing = string.IsNullOrWhiteSpace(returnUrl)
+            ? "/auth?mode=login&error=missing_credentials"
+            : $"/auth?mode=login&error=missing_credentials&returnUrl={Uri.EscapeDataString(returnUrl)}";
+        return Results.Redirect(missing);
     }
 
     var result = await signInManager.PasswordSignInAsync(email, password, rememberMe, lockoutOnFailure: false);
     if (!result.Succeeded)
     {
-        return Results.Redirect("/auth?mode=login&error=invalid_credentials");
+        var invalid = string.IsNullOrWhiteSpace(returnUrl)
+            ? "/auth?mode=login&error=invalid_credentials"
+            : $"/auth?mode=login&error=invalid_credentials&returnUrl={Uri.EscapeDataString(returnUrl)}";
+        return Results.Redirect(invalid);
     }
 
-    return Results.Redirect("/dashboard/packages/my");
+    return Results.Redirect(returnUrl ?? "/dashboard/packages/my");
 }).DisableAntiforgery();
 app.MapPost("/auth/register", async (
     HttpContext context,

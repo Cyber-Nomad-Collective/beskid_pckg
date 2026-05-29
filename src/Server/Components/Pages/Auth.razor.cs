@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Server.Features.Auth;
 
 namespace Server.Components.Pages;
 
@@ -11,6 +12,9 @@ public partial class Auth
     [SupplyParameterFromQuery(Name = "error")]
     public string? ErrorCode { get; set; }
 
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private string LoginMessage = string.Empty;
     private bool LoginSuccess;
     private string RegisterMessage = string.Empty;
@@ -21,7 +25,8 @@ public partial class Auth
     {
         if (HttpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            Navigation.NavigateTo("/dashboard/packages", forceLoad: true);
+            var destination = AuthRedirectHelper.SanitizeReturnUrl(ReturnUrl) ?? "/dashboard/packages";
+            Navigation.NavigateTo(destination, forceLoad: true);
             return;
         }
 

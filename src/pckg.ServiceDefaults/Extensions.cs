@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,12 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    private const string MetricsEndpointPath = "/metrics";
+
+    private static bool IsObservabilityPath(PathString path) =>
+        path.StartsWithSegments(HealthEndpointPath)
+        || path.StartsWithSegments(AlivenessEndpointPath)
+        || path.StartsWithSegments(MetricsEndpointPath);
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -56,17 +63,14 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddPrometheusExporter();
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddAspNetCoreInstrumentation(tracing =>
-                        // Exclude health check requests from tracing
-                        tracing.Filter = context =>
-                            !context.Request.Path.StartsWithSegments(HealthEndpointPath)
-                            && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)
-                    )
+                        tracing.Filter = context => !IsObservabilityPath(context.Request.Path))
                     // Uncomment the following line to enable gRPC instrumentation (requires the OpenTelemetry.Instrumentation.GrpcNetClient package)
                     //.AddGrpcClientInstrumentation()
                     .AddHttpClientInstrumentation();
@@ -121,6 +125,12 @@ public static class Extensions
             });
         }
 
+        return app;
+    }
+
+    public static WebApplication MapPrometheusMetricsEndpoint(this WebApplication app)
+    {
+        app.MapPrometheusScrapingEndpoint(MetricsEndpointPath);
         return app;
     }
 }
