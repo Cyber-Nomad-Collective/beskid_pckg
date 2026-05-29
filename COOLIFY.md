@@ -1,27 +1,26 @@
 # Coolify: pckg registry
 
-Application: **pckg** — app image `ghcr.io/cyber-nomad-collective/beskid-pckg:${IMAGE_TAG}` plus **Postgres** in the same compose stack.
+pckg runs as **`pckg`** + **`postgres`** services in the platform compose stack (Compose profile `pckg`).
 
 | Environment | Branch | Image tag |
 |-------------|--------|-----------|
 | production | `main` | `main` |
-| staging | `staging` | `staging` |
+| staging | `stg` (phase 2) | `staging` |
 
 ## Compose entry
 
-**Coolify:** [`docker-compose.coolify.yml`](docker-compose.coolify.yml) — use a **separate Postgres volume** per environment (never share production DB with staging).
+| Mode | File |
+|------|------|
+| **Platform stack** | [`beskid_infra/compose/production/docker-compose.yml`](../beskid_infra/compose/production/docker-compose.yml) |
+| **pckg + Postgres reference** | [`docker-compose.coolify.yml`](docker-compose.coolify.yml) |
+| **Local build** | [`docker-compose.yml`](docker-compose.yml) |
 
-**Local build:** [`docker-compose.yml`](docker-compose.yml)
-
-## Build
-
-- **GitHub Actions** (`.github/workflows/container-images.yml`) builds and pushes the app image.
-- Coolify must not run server-side .NET builds after cutover.
+Enable in production: set `compose_profiles` to `pckg` in `beskid_infra/config/coolify-production.json` and seed OpenBao `secret/beskid/production/pckg`.
 
 ## Runtime secrets
 
-Inject via OpenBao → [beskid_infra](https://github.com/Cyber-Nomad-Collective/beskid_infra) OpenTofu (`secret/beskid/{environment}/pckg`). See superrepo [site/auth/COOLIFY.md](../site/auth/COOLIFY.md) for auth hub pairing.
+OpenBao path `secret/beskid/production/pckg` (`POSTGRES_PASSWORD`, `AUTH_HUB_PUBLIC_URL`, …). See [site/auth/COOLIFY.md](../site/auth/COOLIFY.md) for auth hub pairing.
 
 ## Health
 
-`curl -f http://localhost:8082/health/ready` — expose port **8082** to the proxy.
+`curl -f http://localhost:8082/health/ready` — expose port **8082** to the proxy (`pckg.beskid-lang.org`).
