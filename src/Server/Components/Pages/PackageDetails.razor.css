@@ -22,7 +22,11 @@
     border-radius: 14px;
     object-fit: cover;
     border: 1px solid var(--neutral-stroke-divider-rest);
-    background: var(--neutral-layer-2);
+    background: var(--neutral-layer-2, var(--platform-spec-surface-strong));
+}
+
+.package-community-tab {
+    padding-top: 4px;
 }
 
 .package-icon-placeholder {
@@ -378,7 +382,7 @@
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--neutral-stroke-divider-rest);
-    background: var(--neutral-layer-2);
+    background: var(--neutral-layer-2, var(--platform-spec-surface-strong));
     font-size: 0.82rem;
     line-height: 1.45;
     white-space: pre-wrap;

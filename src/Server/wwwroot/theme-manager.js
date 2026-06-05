@@ -126,6 +126,10 @@ export function getEffectiveThemeMode(mode) {
     return getEffectiveMode(mode ?? readStoredMode());
 }
 
+export function getMonacoTheme(mode) {
+    return getEffectiveThemeMode(mode) === "light" ? "vs" : "vs-dark";
+}
+
 export function toggleThemeMode(currentMode) {
     const effectiveCurrent = getEffectiveThemeMode(currentMode);
     const nextMode = effectiveCurrent === "dark" ? "light" : "dark";

@@ -1,82 +1,238 @@
 .board-container {
     display: grid;
-    gap: 24px;
+    gap: 16px;
 }
 
-.board-header {
-    padding: 18px 22px;
-    border-radius: 14px;
-    border: 1px solid color-mix(in oklab, var(--accent-fill-rest) 18%, var(--neutral-stroke-rest));
-    background: linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--accent-fill-rest) 6%, var(--neutral-fill-layer-rest)),
-        var(--neutral-fill-stealth-rest)
-    );
+/* --- Toolbar (list view) --- */
+.board-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 16px;
+    padding: 16px 18px;
+    border-radius: calc(var(--radius, 0.75rem) + 4px);
+    border: 1px solid var(--border, var(--platform-spec-card-border));
+    background: var(--card, var(--platform-spec-card-bg));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
 }
 
-.board-posts-list {
-    display: grid;
-    gap: 12px;
-}
-
-::deep .board-composer-card {
-    width: 100%;
-    max-width: min(960px, 100%);
-    margin-inline: auto;
-    box-sizing: border-box;
-    border: 1px solid color-mix(in oklab, var(--accent-fill-rest) 24%, var(--neutral-stroke-rest));
-    border-radius: 16px;
-    padding: 24px 26px;
-    background: linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--accent-fill-rest) 7%, var(--neutral-fill-layer-rest)),
-        var(--neutral-fill-layer-rest)
-    );
-    box-shadow: 0 10px 24px color-mix(in oklab, var(--accent-fill-rest) 12%, transparent);
-}
-
-.composer-inner {
-    width: 100%;
+.board-toolbar-copy {
+    flex: 1 1 240px;
     min-width: 0;
 }
 
-.composer-header {
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+.board-toolbar-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--foreground);
 }
 
-.composer-header-row {
-    align-items: flex-start !important;
-    width: 100%;
-}
-
-.composer-header-titles {
-    flex: 1 1 200px;
-    min-width: 0;
-}
-
-.composer-header-spacer {
-    flex: 1 1 auto;
-    min-width: 8px;
-}
-
-.composer-subtitle {
+.board-toolbar-lead {
     margin: 6px 0 0;
     font-size: 0.9rem;
     line-height: 1.45;
     max-width: 42rem;
-    color: color-mix(in oklab, var(--neutral-foreground-rest) 72%, var(--neutral-foreground-hint));
 }
 
-::deep .composer-tracker-badge {
-    flex-shrink: 0;
-    align-self: center;
-}
-
-::deep .composer-back-btn {
+.board-toolbar-actions {
     flex-shrink: 0;
 }
 
+/* --- Compose view (Reddit-style submit page) --- */
+.board-compose-view {
+    display: grid;
+    gap: 18px;
+    padding: 20px 22px;
+    border-radius: calc(var(--radius, 0.75rem) + 4px);
+    border: 1px solid var(--border, var(--platform-spec-card-border));
+    background: var(--card, var(--platform-spec-card-bg));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.board-compose-header {
+    display: grid;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--neutral-stroke-divider-rest, var(--border));
+}
+
+::deep .board-compose-back {
+    justify-self: start;
+}
+
+.board-compose-heading {
+    display: grid;
+    gap: 6px;
+}
+
+.board-compose-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+}
+
+.board-compose-lead {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    max-width: 42rem;
+}
+
+.board-compose-body {
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+}
+
+/* --- Thread feed (Reddit-style rows) --- */
+.board-feed {
+    display: grid;
+    gap: 1px;
+    border: 1px solid var(--border, var(--platform-spec-card-border));
+    border-radius: calc(var(--radius, 0.75rem) + 2px);
+    overflow: hidden;
+    background: var(--border, var(--platform-spec-divider));
+}
+
+.board-post-row {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px 14px 12px 8px;
+    background: var(--card, var(--platform-spec-card-bg));
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    outline: none;
+}
+
+.board-post-row:hover,
+.board-post-row:focus-visible {
+    background: color-mix(in srgb, var(--card, var(--platform-spec-card-bg)) 88%, var(--primary) 12%);
+}
+
+.board-post-row.is-pinned {
+    border-left: 3px solid var(--primary, var(--beskid-primary));
+    padding-left: 5px;
+}
+
+.post-vote-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding-top: 2px;
+}
+
+.post-score {
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--muted-foreground);
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+.post-score.is-positive {
+    color: #ff4500;
+}
+
+.post-score.is-negative {
+    color: #7193ff;
+}
+
+.post-main {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.post-type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--post-type-color, var(--primary));
+    background: color-mix(in srgb, var(--post-type-color, var(--primary)) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--post-type-color, var(--primary)) 32%, transparent);
+}
+
+.post-title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--foreground);
+    line-height: 1.35;
+}
+
+.post-content {
+    color: var(--muted-foreground);
+    line-height: 1.5;
+    font-size: 0.88rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.post-date {
+    font-size: 0.78rem;
+    margin-left: auto;
+}
+
+.post-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 2px;
+}
+
+::deep .post-comments-link::part(control) {
+    padding-inline: 6px;
+    min-height: 28px;
+    font-size: 0.82rem;
+}
+
+.board-empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 48px 24px;
+    border: 1px solid var(--border, var(--platform-spec-card-border));
+    border-radius: calc(var(--radius, 0.75rem) + 2px);
+    background: var(--card, var(--platform-spec-card-bg));
+    text-align: center;
+}
+
+.board-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: calc(var(--radius, 0.75rem) + 2px);
+    border: 1px solid var(--border, var(--platform-spec-card-border));
+    background: var(--muted, var(--platform-spec-surface-muted));
+}
+
+/* --- Composer fields --- */
 .composer-section {
     display: grid;
     gap: 6px;
@@ -90,7 +246,7 @@
     margin: 0;
     font-size: 0.8125rem;
     line-height: 1.4;
-    color: color-mix(in oklab, var(--neutral-foreground-rest) 64%, var(--neutral-foreground-hint));
+    color: var(--muted-foreground);
 }
 
 .composer-tags-row {
@@ -109,42 +265,31 @@
 .composer-actions {
     padding-top: 16px;
     margin-top: 4px;
-    border-top: 1px solid var(--neutral-stroke-divider-rest);
+    border-top: 1px solid var(--neutral-stroke-divider-rest, var(--border));
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
 }
 
-.composer-title {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    line-height: 1.25;
-    color: var(--neutral-foreground-rest);
-}
-
-/* Square post-type tiles with large icons (capped so ultra-wide viewports stay compact) */
+/* Post-type tiles */
 .post-type-tiles {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-top: 10px;
-    justify-items: center;
+    gap: 10px;
+    margin-top: 8px;
 }
 
 @media (max-width: 640px) {
     .post-type-tiles {
         grid-template-columns: 1fr;
-        justify-items: stretch;
     }
 }
 
 .post-type-tile {
     appearance: none;
     margin: 0;
-    padding: 16px 12px;
+    padding: 14px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -152,65 +297,58 @@
     text-align: center;
     gap: 8px;
     width: 100%;
-    max-width: 200px;
-    aspect-ratio: 1;
-    border-radius: 14px;
-    border: 2px solid var(--neutral-stroke-rest);
-    background: color-mix(in oklab, var(--neutral-fill-layer-rest) 88%, var(--neutral-fill-stealth-rest));
-    color: var(--neutral-foreground-rest);
+    border-radius: 12px;
+    border: 1px solid var(--border, var(--platform-spec-divider));
+    background: var(--muted, var(--platform-spec-surface-muted));
+    color: var(--foreground);
     cursor: pointer;
     font: inherit;
     transition:
-        border-color 0.18s ease,
-        background-color 0.18s ease,
-        box-shadow 0.18s ease,
-        transform 0.15s ease;
+        border-color 0.15s ease,
+        background-color 0.15s ease,
+        box-shadow 0.15s ease;
 }
 
 .post-type-tile:hover {
-    border-color: color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 55%, var(--neutral-stroke-rest));
-    background: color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 10%, var(--neutral-fill-layer-rest));
-    box-shadow: 0 6px 16px color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 14%, transparent);
+    border-color: color-mix(in srgb, var(--post-type-accent, var(--primary)) 45%, var(--border));
+    background: color-mix(in srgb, var(--post-type-accent, var(--primary)) 8%, var(--card));
 }
 
 .post-type-tile:focus-visible {
-    outline: 2px solid var(--accent-fill-rest);
+    outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
 
 .post-type-tile.selected {
-    border-color: var(--post-type-accent, var(--accent-fill-rest));
-    background: color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 16%, var(--neutral-fill-layer-rest));
-    box-shadow:
-        0 0 0 1px color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 35%, transparent),
-        0 8px 20px color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 18%, transparent);
+    border-color: var(--post-type-accent, var(--primary));
+    background: color-mix(in srgb, var(--post-type-accent, var(--primary)) 12%, var(--card));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--post-type-accent, var(--primary)) 28%, transparent);
 }
 
 .post-type-tile-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    background: color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 14%, var(--neutral-fill-stealth-rest));
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--post-type-accent, var(--primary)) 12%, var(--muted));
     flex-shrink: 0;
 }
 
 .post-type-tile.selected .post-type-tile-icon {
-    background: color-mix(in oklab, var(--post-type-accent, var(--accent-fill-rest)) 28%, var(--neutral-fill-stealth-rest));
+    background: color-mix(in srgb, var(--post-type-accent, var(--primary)) 22%, var(--muted));
 }
 
 .post-type-tile-icon ::deep svg {
-    width: 36px !important;
-    height: 36px !important;
+    width: 28px !important;
+    height: 28px !important;
 }
 
 .post-type-tile-label {
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 700;
     line-height: 1.2;
-    letter-spacing: -0.01em;
 }
 
 .post-type-tile-text {
@@ -222,14 +360,9 @@
 }
 
 .post-type-tile-desc {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     line-height: 1.3;
-    color: color-mix(in oklab, var(--neutral-foreground-rest) 62%, var(--neutral-foreground-hint));
-    max-width: 11rem;
-}
-
-.post-type-tile.selected .post-type-tile-desc {
-    color: color-mix(in oklab, var(--neutral-foreground-rest) 75%, var(--post-type-accent));
+    color: var(--muted-foreground);
 }
 
 ::deep .composer-tag-chip {
@@ -247,155 +380,39 @@
     border-radius: 999px;
 }
 
-::deep .board-post-card {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid var(--neutral-stroke-rest);
-    border-radius: 14px;
-    padding: 20px;
-}
-
-::deep .board-post-card:hover {
-    border-color: var(--accent-fill-rest);
-    box-shadow: 0 8px 20px color-mix(in oklab, var(--accent-fill-rest) 18%, transparent);
-    transform: translateY(-2px);
-}
-
-::deep .board-post-card.pinned {
-    border-left: 4px solid var(--accent-fill-rest);
-    background: var(--neutral-fill-stealth-rest);
-}
-
-.post-type-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.post-title {
-    margin: 0;
-    font-size: 1.12rem;
-    font-weight: 600;
-    color: var(--neutral-foreground-rest);
-    line-height: 1.35;
-}
-
-.post-content {
-    color: color-mix(in oklab, var(--neutral-foreground-rest) 70%, var(--neutral-foreground-hint));
-    line-height: 1.5;
-    font-size: 0.93rem;
-}
-
-.post-date {
-    font-size: 0.85rem;
-}
-
-.post-actions {
-    padding-top: 8px;
-    border-top: 1px solid var(--neutral-stroke-rest);
-}
-
-.vote-buttons {
-    display: flex;
-    gap: 4px;
-}
-
-::deep .vote-buttons fluent-button {
-    min-width: auto;
-    padding: 6px 12px;
-    transition: all 0.15s ease;
-}
-
-::deep .vote-buttons fluent-button span {
-    font-weight: 600;
-    margin-left: 4px;
-}
-
-::deep .vote-buttons .voted-up {
-    background-color: rgba(255, 69, 0, 0.15) !important;
-    border-color: #ff4500 !important;
-}
-
-::deep .vote-buttons .voted-down {
-    background-color: rgba(113, 147, 255, 0.15) !important;
-    border-color: #7193ff !important;
-}
-
-.vote-count-active {
-    font-weight: 700;
-}
-
-.vote-count-active.upvote {
-    color: #ff4500;
-}
-
-.vote-count-active.downvote {
-    color: #7193ff;
-}
-
+/* Vote buttons */
 ::deep .vote-btn {
     border-radius: 6px;
-    transition: all 0.15s ease;
+    min-width: 32px;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 ::deep .vote-btn:hover {
     transform: scale(1.05);
 }
 
-@media (max-width: 720px) {
-    ::deep .board-composer-card {
-        padding: 18px;
-        max-width: 100%;
-    }
-
-    .post-type-tile {
-        max-width: none;
-        aspect-ratio: auto;
-        min-height: 112px;
-        flex-direction: row;
-        text-align: left;
-        justify-content: flex-start;
-        gap: 14px;
-        padding: 14px 16px;
-    }
-
-    .post-type-tile-icon {
-        width: 52px;
-        height: 52px;
-    }
-
-    .post-type-tile-text {
-        align-items: flex-start;
-        text-align: left;
-        flex: 1;
-    }
-
-    .post-type-tile-desc {
-        max-width: none;
-    }
+::deep .vote-btn.voted-up {
+    background-color: color-mix(in srgb, #ff4500 15%, transparent) !important;
 }
 
-/* Taller editor in composer */
-::deep .composer-rich-text .themed-rte-editor {
-    min-height: 220px;
-}
-
-::deep .composer-rich-text .ql-editor {
-    min-height: 220px;
+::deep .vote-btn.voted-down {
+    background-color: color-mix(in srgb, #7193ff 15%, transparent) !important;
 }
 
 .fluent-label {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--neutral-foreground-rest);
+    color: var(--foreground);
     margin-bottom: 4px;
     display: block;
+}
+
+::deep .composer-rich-text .themed-rte-editor,
+::deep .composer-rich-text .ql-editor {
+    min-height: 220px;
 }
 
 /* Markdown content styling */
@@ -410,7 +427,7 @@
 }
 
 ::deep .markdown-content code {
-    background: var(--neutral-fill-stealth-rest);
+    background: var(--muted);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 0.9em;
@@ -418,7 +435,7 @@
 }
 
 ::deep .markdown-content pre {
-    background: var(--neutral-fill-stealth-rest);
+    background: var(--muted);
     padding: 12px 16px;
     border-radius: 8px;
     overflow-x: auto;
@@ -431,14 +448,14 @@
 }
 
 ::deep .markdown-content blockquote {
-    border-left: 3px solid var(--accent-fill-rest);
+    border-left: 3px solid var(--primary);
     margin: 12px 0;
     padding-left: 16px;
-    color: var(--neutral-foreground-hint);
+    color: var(--muted-foreground);
 }
 
 ::deep .markdown-content a {
-    color: var(--accent-foreground-rest);
+    color: var(--primary);
     text-decoration: none;
 }
 
@@ -446,11 +463,27 @@
     text-decoration: underline;
 }
 
-::deep .markdown-content strong {
-    font-weight: 600;
-}
+@media (max-width: 720px) {
+    .board-compose-view {
+        padding: 16px;
+    }
 
-::deep .markdown-content em {
-    font-style: italic;
-}
+    .board-post-row {
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 8px;
+        padding: 10px 10px 10px 6px;
+    }
 
+    .post-type-tile {
+        flex-direction: row;
+        text-align: left;
+        justify-content: flex-start;
+        gap: 12px;
+    }
+
+    .post-type-tile-text {
+        align-items: flex-start;
+        text-align: left;
+        flex: 1;
+    }
+}

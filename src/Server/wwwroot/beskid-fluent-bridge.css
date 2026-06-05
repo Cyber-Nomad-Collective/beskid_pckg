@@ -32,6 +32,8 @@ html[data-theme='light'] {
 	--neutral-foreground-rest: var(--foreground);
 	--neutral-foreground-hint: var(--muted-foreground);
 	--neutral-foreground-hover: var(--foreground);
+	--neutral-layer-1: var(--platform-spec-surface);
+	--neutral-layer-2: var(--platform-spec-surface-strong);
 	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 96%, white);
 }
 
@@ -64,6 +66,8 @@ html[data-theme='dark'] {
 	--neutral-foreground-rest: var(--foreground);
 	--neutral-foreground-hint: var(--muted-foreground);
 	--neutral-foreground-hover: var(--foreground);
+	--neutral-layer-1: var(--platform-spec-surface);
+	--neutral-layer-2: var(--platform-spec-surface-strong);
 	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 94%, transparent);
 }
 
@@ -77,5 +81,7 @@ html:not([data-theme]) {
 	--neutral-fill-stencil-rest: var(--platform-spec-surface-muted);
 	--neutral-stroke-rest: var(--platform-spec-divider);
 	--neutral-stroke-divider-rest: var(--platform-spec-divider);
+	--neutral-layer-1: var(--platform-spec-surface);
+	--neutral-layer-2: var(--platform-spec-surface-strong);
 	--topBarBackground: color-mix(in srgb, var(--platform-spec-surface) 94%, transparent);
 }

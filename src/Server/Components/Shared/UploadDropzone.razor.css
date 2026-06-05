@@ -23,26 +23,17 @@
     gap: 12px;
     padding: 14px 16px;
     border-radius: 12px;
-    border: 1px dashed color-mix(in oklab, var(--accent-fill-rest) 45%, var(--neutral-stroke-rest));
-    background: linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--accent-fill-rest) 9%, var(--neutral-fill-layer-rest)),
-        color-mix(in oklab, var(--accent-fill-rest) 4%, var(--neutral-fill-layer-rest))
-    );
-    color: var(--neutral-foreground-rest);
-    box-shadow: 0 1px 2px color-mix(in oklab, var(--accent-fill-rest) 16%, transparent);
+    border: 1px dashed var(--border, var(--platform-spec-divider));
+    background: var(--muted, var(--platform-spec-surface-muted));
+    color: var(--foreground);
     transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .upload-dropzone-trigger:hover .upload-dropzone-surface,
 .upload-dropzone-trigger:focus-visible .upload-dropzone-surface {
-    border-color: var(--accent-stroke-control-hover);
-    background: linear-gradient(
-        180deg,
-        color-mix(in oklab, var(--accent-fill-rest) 14%, var(--neutral-fill-layer-rest)),
-        color-mix(in oklab, var(--accent-fill-rest) 8%, var(--neutral-fill-layer-rest))
-    );
-    box-shadow: 0 6px 18px color-mix(in oklab, var(--accent-fill-rest) 20%, transparent);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, var(--card));
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 12%, transparent);
     transform: translateY(-1px);
 }
 
@@ -53,8 +44,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in oklab, var(--accent-fill-rest) 24%, transparent);
-    color: var(--accent-foreground-rest);
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    color: var(--primary);
 }
 
 .upload-dropzone-text {

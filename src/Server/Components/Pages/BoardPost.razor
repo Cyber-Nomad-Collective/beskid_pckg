@@ -1,0 +1,126 @@
+@page "/board/post/{PostId:int}"
+@rendermode InteractiveServer
+
+<PageTitle>@(Post?.Title ?? "Thread")</PageTitle>
+
+<section class="board-post-page">
+    @if (IsLoading)
+    {
+        <div class="board-post-state">
+            <FluentProgressRing />
+            <span class="muted">Loading thread…</span>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <FluentCard Class="section-card">
+            <div class="feedback-message is-error">@ErrorMessage</div>
+        </FluentCard>
+    }
+    else if (Post is not null)
+    {
+        <header class="board-post-nav">
+            <FluentButton Appearance="Appearance.Stealth"
+                          IconStart="@(new Icons.Regular.Size20.ArrowLeft())"
+                          Href="@BackHref">
+                Back to @Post.BoardName
+            </FluentButton>
+        </header>
+
+        <article class="board-post-detail">
+            <div class="board-post-vote-rail">
+                <FluentButton Appearance="@(Post.CurrentUserVote == 1 ? Appearance.Accent : Appearance.Stealth)"
+                              OnClick="@(() => VotePostAsync(1))"
+                              Title="Upvote"
+                              Class="@($"vote-btn {(Post.CurrentUserVote == 1 ? "voted-up" : "")}")">
+                    @if (Post.CurrentUserVote == 1)
+                    {
+                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowUp())" Color="Color.Custom" CustomColor="#ff4500" />
+                    }
+                    else
+                    {
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUp())" Color="Color.Neutral" />
+                    }
+                </FluentButton>
+                <span class="post-score @ScoreClass">@NetScore</span>
+                <FluentButton Appearance="@(Post.CurrentUserVote == -1 ? Appearance.Accent : Appearance.Stealth)"
+                              OnClick="@(() => VotePostAsync(-1))"
+                              Title="Downvote"
+                              Class="@($"vote-btn {(Post.CurrentUserVote == -1 ? "voted-down" : "")}")">
+                    @if (Post.CurrentUserVote == -1)
+                    {
+                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowDown())" Color="Color.Custom" CustomColor="#7193ff" />
+                    }
+                    else
+                    {
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowDown())" Color="Color.Neutral" />
+                    }
+                </FluentButton>
+            </div>
+
+            <div class="board-post-body">
+                <div class="board-post-meta">
+                    <span class="post-type-badge" style="--post-type-color: @GetPostTypeColor(Post.PostType);">
+                        @GetPostTypeLabel(Post.PostType)
+                    </span>
+                    @if (Post.IsPinned)
+                    {
+                        <FluentBadge Appearance="Appearance.Accent">Pinned</FluentBadge>
+                    }
+                    @if (Post.IsLocked)
+                    {
+                        <FluentBadge Appearance="Appearance.Neutral">Locked</FluentBadge>
+                    }
+                    <span class="muted">@Post.CreatedAtUtc.ToString("MMM d, yyyy 'at' HH:mm") UTC</span>
+                </div>
+                <h1 class="board-post-title">@Post.Title</h1>
+                <div class="board-post-content markdown-content">@((MarkupString)SanitizedContent)</div>
+            </div>
+        </article>
+
+        <section class="board-comments" aria-label="Replies">
+            <h2 class="board-comments-heading">@Comments.Count @(Comments.Count == 1 ? "reply" : "replies")</h2>
+
+            @if (Comments.Count == 0)
+            {
+                <p class="muted board-comments-empty">No replies yet. Be the first to comment.</p>
+            }
+            else
+            {
+                <div class="board-comment-list">
+                    @foreach (var comment in Comments)
+                    {
+                        <article class="board-comment">
+                            <div class="board-comment-meta muted">
+                                <span>@comment.CreatedAtUtc.ToString("MMM d, yyyy")</span>
+                            </div>
+                            <div class="board-comment-body markdown-content">@((MarkupString)Sanitize(comment.Content))</div>
+                        </article>
+                    }
+                </div>
+            }
+
+            <AuthorizeView>
+                <Authorized>
+                    @if (!Post.IsLocked)
+                    {
+                        <div class="board-comment-compose">
+                            <ThemedRichTextEditor Label="Add a reply"
+                                                  Placeholder="Share your thoughts…"
+                                                  @ref="ReplyEditor"
+                                                  @bind-Value="ReplyContent" />
+                            <FluentButton Appearance="Appearance.Accent"
+                                          OnClick="SubmitReplyAsync"
+                                          Disabled="@(string.IsNullOrWhiteSpace(ReplyContent) || IsSubmittingReply)">
+                                @(IsSubmittingReply ? "Posting…" : "Post reply")
+                            </FluentButton>
+                        </div>
+                    }
+                </Authorized>
+                <NotAuthorized>
+                    <p class="muted">Sign in to reply.</p>
+                </NotAuthorized>
+            </AuthorizeView>
+        </section>
+    }
+</section>

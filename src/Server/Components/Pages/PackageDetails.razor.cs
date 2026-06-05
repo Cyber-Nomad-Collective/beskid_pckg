@@ -16,6 +16,8 @@ public partial class PackageDetails
     private const string PackageBoardEntityType = "Package";
 
     [Parameter] public string PackageName { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? InitialTabId { get; set; }
     private PackageEntity? Package;
     private readonly List<PackageCommunityReviewEntity> Reviews = [];
     private readonly List<PackageVersionSummaryResponse> Versions = [];
@@ -77,6 +79,11 @@ public partial class PackageDetails
         await RefreshBoardModerationAsync();
         await LoadSecondaryDataAsync();
         await LoadFollowAsync();
+
+        if (!string.IsNullOrWhiteSpace(InitialTabId))
+        {
+            SelectedTabId = InitialTabId;
+        }
 
         if (SelectedTabId == "pkg-tab-badges" && (Package is null || !Package.IsPublic))
         {

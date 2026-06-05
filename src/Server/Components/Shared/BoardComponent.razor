@@ -1,52 +1,21 @@
 <div class="board-container">
-    <header class="board-header">
-            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-                <FluentStack Orientation="Orientation.Vertical" Style="flex: 1;">
-                    <h3 style="margin: 0;">@BoardName</h3>
-                    @if (!string.IsNullOrWhiteSpace(BoardDescription))
-                    {
-                        <p class="muted" style="margin: 0;">@BoardDescription</p>
-                    }
-                </FluentStack>
-                <AuthorizeView>
-                    <Authorized>
-                        @if (CanModerateBoard)
-                        {
-                            <FluentButton Appearance="Appearance.Outline"
-                                          OnClick="ToggleBoardLockAsync"
-                                          Title="@(IsLocked ? "Allow new threads and comments" : "Prevent new threads")">
-                                @(IsLocked ? "Unlock board" : "Lock board")
-                            </FluentButton>
-                        }
-                        @if (!IsLocked)
-                        {
-                            <FluentButton Appearance="Appearance.Accent" OnClick="OpenComposer" IconStart="@(new Icons.Regular.Size20.Add())">
-                                @NewPostButtonText
-                            </FluentButton>
-                        }
-                    </Authorized>
-                </AuthorizeView>
-            </FluentStack>
-    </header>
-
     @if (IsComposerOpen)
     {
-        <FluentCard Class="board-composer-card">
-            <FluentStack Orientation="Orientation.Vertical" Gap="20px" Class="composer-inner">
-                <div class="composer-header">
-                    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Gap="12px" Wrap="true" Class="composer-header-row">
-                        <div class="composer-header-titles">
-                            <h4 class="composer-title">Create new thread</h4>
-                            <p class="composer-subtitle muted">Describe a problem, a feature you need, or an improvement idea.</p>
-                        </div>
-                        <FluentBadge Appearance="Appearance.Neutral" Class="composer-tracker-badge">Issue tracker</FluentBadge>
-                        <span class="composer-header-spacer"></span>
-                        <FluentButton Appearance="Appearance.Stealth" IconStart="@(new Icons.Regular.Size20.ArrowLeft())" OnClick="CancelComposer" Class="composer-back-btn">
-                            Back to threads
-                        </FluentButton>
-                    </FluentStack>
+        <section class="board-compose-view" aria-label="Create new thread">
+            <header class="board-compose-header">
+                <FluentButton Appearance="Appearance.Stealth"
+                              IconStart="@(new Icons.Regular.Size20.ArrowLeft())"
+                              OnClick="CancelComposer"
+                              Class="board-compose-back">
+                    Back to threads
+                </FluentButton>
+                <div class="board-compose-heading">
+                    <h3 class="board-compose-title">Create new thread</h3>
+                    <p class="board-compose-lead muted">Describe a problem, a feature you need, or an improvement idea.</p>
                 </div>
+            </header>
 
+            <div class="board-compose-body">
                 @if (ShowPostTypeSelector && FilterPostType is null)
                 {
                     <BoardComposerPostTypeTiles @bind-SelectedPostType="NewPostType" />
@@ -116,118 +85,155 @@
                     </FluentButton>
                     <FluentButton Appearance="Appearance.Outline" OnClick="CancelComposer" Disabled="IsSubmittingPost">Cancel</FluentButton>
                 </FluentStack>
-            </FluentStack>
-        </FluentCard>
-    }
-    else if (IsLoading)
-    {
-        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
-            <FluentProgressRing />
-            <span class="muted">Loading posts...</span>
-        </FluentStack>
-    }
-    else if (Posts.Count == 0)
-    {
-        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 48px;">
-            <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Neutral"/>
-            <p class="muted" style="text-align: center;">@EmptyStateText</p>
-        </FluentStack>
+            </div>
+        </section>
     }
     else
     {
-        <FluentStack Orientation="Orientation.Vertical" Gap="12px" Class="board-posts-list">
-            @foreach (var post in Posts)
-            {
-                <FluentCard Class="@($"board-post-card {(post.IsPinned ? "pinned" : "")}")" @onclick="@(() => ViewPost(post.Id))">
-                    <FluentStack Orientation="Orientation.Vertical" Gap="12px">
-                        <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
-                            <span class="post-type-badge" style="background-color: @GetPostTypeColor(post.PostType);">
-                                @GetPostTypeLabel(post.PostType)
-                            </span>
-                            @if (post.IsPinned)
-                            {
-                                <FluentBadge Appearance="Appearance.Accent">
-                                    <FluentIcon Value="@(new Icons.Regular.Size16.Pin())" Style="margin-right: 4px;" /> Pinned
-                                </FluentBadge>
-                            }
-                            <span style="flex: 1;"></span>
-                            <span class="muted post-date">@post.CreatedAtUtc.ToString("MMM d, yyyy")</span>
-                        </FluentStack>
-                        <h4 class="post-title">@post.Title</h4>
-                        <div class="post-content">@RenderContentPreview(post.Content)</div>
-                        <FluentStack Orientation="Orientation.Horizontal" Gap="16px" VerticalAlignment="VerticalAlignment.Center" Class="post-actions">
-                            <FluentStack Orientation="Orientation.Horizontal" Gap="4px" VerticalAlignment="VerticalAlignment.Center" Class="vote-buttons">
-                                <FluentButton Appearance="@(post.CurrentUserVote == 1 ? Appearance.Accent : Appearance.Stealth)"
-                                              OnClick="@(() => VotePost(post.Id, 1))"
-                                              OnClick:stopPropagation="true"
-                                              Title="Upvote"
-                                              Class="@($"vote-btn {(post.CurrentUserVote == 1 ? "voted-up" : "")}")">
-                                    @if (post.CurrentUserVote == 1)
-                                    {
-                                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowUp())" Color="Color.Custom" CustomColor="#ff4500" />
-                                    }
-                                    else
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUp())" Color="Color.Neutral" />
-                                    }
-                                    <span class="@(post.CurrentUserVote == 1 ? "vote-count-active upvote" : "")">@post.UpvoteCount</span>
-                                </FluentButton>
-                                <FluentButton Appearance="@(post.CurrentUserVote == -1 ? Appearance.Accent : Appearance.Stealth)"
-                                              OnClick="@(() => VotePost(post.Id, -1))"
-                                              OnClick:stopPropagation="true"
-                                              Title="Downvote"
-                                              Class="@($"vote-btn {(post.CurrentUserVote == -1 ? "voted-down" : "")}")">
-                                    @if (post.CurrentUserVote == -1)
-                                    {
-                                        <FluentIcon Value="@(new Icons.Filled.Size20.ArrowDown())" Color="Color.Custom" CustomColor="#7193ff" />
-                                    }
-                                    else
-                                    {
-                                        <FluentIcon Value="@(new Icons.Regular.Size20.ArrowDown())" Color="Color.Neutral" />
-                                    }
-                                    <span class="@(post.CurrentUserVote == -1 ? "vote-count-active downvote" : "")">@post.DownvoteCount</span>
-                                </FluentButton>
-                            </FluentStack>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => ViewPost(post.Id))" OnClick:stopPropagation="true">
-                                <FluentIcon Value="@(new Icons.Regular.Size20.Comment())" Style="margin-right: 6px;" />
-                                @ViewDiscussionButtonText
+        <header class="board-toolbar">
+            <div class="board-toolbar-copy">
+                <h3 class="board-toolbar-title">@BoardName</h3>
+                @if (!string.IsNullOrWhiteSpace(BoardDescription))
+                {
+                    <p class="board-toolbar-lead muted">@BoardDescription</p>
+                }
+            </div>
+            <AuthorizeView>
+                <Authorized>
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" Wrap="true" Class="board-toolbar-actions">
+                        @if (CanModerateBoard)
+                        {
+                            <FluentButton Appearance="Appearance.Outline"
+                                          OnClick="ToggleBoardLockAsync"
+                                          Title="@(IsLocked ? "Allow new threads and comments" : "Prevent new threads")">
+                                @(IsLocked ? "Unlock board" : "Lock board")
                             </FluentButton>
-                        </FluentStack>
+                        }
+                        @if (!IsLocked)
+                        {
+                            <FluentButton Appearance="Appearance.Accent" OnClick="OpenComposer" IconStart="@(new Icons.Regular.Size20.Add())">
+                                @NewPostButtonText
+                            </FluentButton>
+                        }
                     </FluentStack>
-                </FluentCard>
-            }
-        </FluentStack>
+                </Authorized>
+            </AuthorizeView>
+        </header>
 
-        @if (TotalPages > 1)
+        @if (IsLoading)
         {
-            <FluentStack Orientation="Orientation.Horizontal" Gap="12px" Style="margin-top: 24px; padding: 16px; background: var(--neutral-fill-stealth-rest); border-radius: 8px;" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center">
-                <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">
-                    <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" Style="margin-right: 4px;" />
-                    Previous
-                </FluentButton>
-                <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
-                    @for (var i = 1; i <= TotalPages; i++)
-                    {
-                        var page = i;
-                        @if (i == CurrentPage)
+            <div class="board-empty-state" role="status">
+                <FluentProgressRing />
+                <span class="muted">Loading threads…</span>
+            </div>
+        }
+        else if (Posts.Count == 0)
+        {
+            <div class="board-empty-state">
+                <FluentIcon Value="@(new Icons.Regular.Size48.Chat())" Color="Color.Neutral"/>
+                <p class="muted">@EmptyStateText</p>
+            </div>
+        }
+        else
+        {
+            <div class="board-feed" role="feed" aria-label="Discussion threads">
+                @foreach (var post in Posts)
+                {
+                    <article class="board-post-row @(post.IsPinned ? "is-pinned" : "")"
+                             @onclick="@(() => ViewPost(post.Id))"
+                             @onkeydown="@(e => HandlePostRowKeyDown(e, post.Id))"
+                             tabindex="0"
+                             role="article">
+                        <div class="post-vote-rail" @onclick:stopPropagation="true">
+                            <FluentButton Appearance="@(post.CurrentUserVote == 1 ? Appearance.Accent : Appearance.Stealth)"
+                                          OnClick="@(() => VotePost(post.Id, 1))"
+                                          Title="Upvote"
+                                          Class="@($"vote-btn vote-btn-up {(post.CurrentUserVote == 1 ? "voted-up" : "")}")">
+                                @if (post.CurrentUserVote == 1)
+                                {
+                                    <FluentIcon Value="@(new Icons.Filled.Size20.ArrowUp())" Color="Color.Custom" CustomColor="#ff4500" />
+                                }
+                                else
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowUp())" Color="Color.Neutral" />
+                                }
+                            </FluentButton>
+                            <span class="post-score @GetScoreClass(post)">@GetNetScore(post)</span>
+                            <FluentButton Appearance="@(post.CurrentUserVote == -1 ? Appearance.Accent : Appearance.Stealth)"
+                                          OnClick="@(() => VotePost(post.Id, -1))"
+                                          Title="Downvote"
+                                          Class="@($"vote-btn vote-btn-down {(post.CurrentUserVote == -1 ? "voted-down" : "")}")">
+                                @if (post.CurrentUserVote == -1)
+                                {
+                                    <FluentIcon Value="@(new Icons.Filled.Size20.ArrowDown())" Color="Color.Custom" CustomColor="#7193ff" />
+                                }
+                                else
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.ArrowDown())" Color="Color.Neutral" />
+                                }
+                            </FluentButton>
+                        </div>
+
+                        <div class="post-main">
+                            <div class="post-meta">
+                                <span class="post-type-badge" style="--post-type-color: @GetPostTypeColor(post.PostType);">
+                                    @GetPostTypeLabel(post.PostType)
+                                </span>
+                                @if (post.IsPinned)
+                                {
+                                    <FluentBadge Appearance="Appearance.Accent">
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.Pin())" Style="margin-right: 4px;" /> Pinned
+                                    </FluentBadge>
+                                }
+                                <span class="post-date muted">@post.CreatedAtUtc.ToString("MMM d, yyyy")</span>
+                            </div>
+                            <h4 class="post-title">@post.Title</h4>
+                            <div class="post-content">@RenderContentPreview(post.Content)</div>
+                            <div class="post-footer">
+                                <FluentButton Appearance="Appearance.Stealth"
+                                              OnClick="@(() => ViewPost(post.Id))"
+                                              OnClick:stopPropagation="true"
+                                              Class="post-comments-link">
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Comment())" Style="margin-right: 6px;" />
+                                    @ViewDiscussionButtonText
+                                </FluentButton>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            @if (TotalPages > 1)
+            {
+                <nav class="board-pagination" aria-label="Thread pages">
+                    <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage <= 1)" OnClick="PreviousPageAsync">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" Style="margin-right: 4px;" />
+                        Previous
+                    </FluentButton>
+                    <FluentStack Orientation="Orientation.Horizontal" Gap="8px" VerticalAlignment="VerticalAlignment.Center">
+                        @for (var i = 1; i <= TotalPages; i++)
                         {
-                            <FluentBadge Appearance="Appearance.Accent">@i</FluentBadge>
+                            var page = i;
+                            @if (i == CurrentPage)
+                            {
+                                <FluentBadge Appearance="Appearance.Accent">@i</FluentBadge>
+                            }
+                            else if (i == 1 || i == TotalPages || (i >= CurrentPage - 1 && i <= CurrentPage + 1))
+                            {
+                                <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => GoToPageAsync(page))">@i</FluentButton>
+                            }
+                            else if (i == CurrentPage - 2 || i == CurrentPage + 2)
+                            {
+                                <span class="muted">…</span>
+                            }
                         }
-                        else if (i == 1 || i == TotalPages || (i >= CurrentPage - 1 && i <= CurrentPage + 1))
-                        {
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="@(() => GoToPageAsync(page))">@i</FluentButton>
-                        }
-                        else if (i == CurrentPage - 2 || i == CurrentPage + 2)
-                        {
-                            <span class="muted">...</span>
-                        }
-                    }
-                </FluentStack>
-                <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">
-                    Next
-                    <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" Style="margin-left: 4px;" />
-                </FluentButton>
-            </FluentStack>
+                    </FluentStack>
+                    <FluentButton Appearance="Appearance.Stealth" Disabled="@(CurrentPage >= TotalPages)" OnClick="NextPageAsync">
+                        Next
+                        <FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" Style="margin-left: 4px;" />
+                    </FluentButton>
+                </nav>
+            }
         }
     }
 </div>

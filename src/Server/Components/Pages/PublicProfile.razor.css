@@ -6,9 +6,10 @@
 }
 
 .public-profile-hero {
-    border: 1px solid var(--neutral-stroke-rest);
+    border: 1px solid var(--border, var(--platform-spec-card-border));
     border-radius: 16px;
-    background: linear-gradient(180deg, var(--neutral-fill-rest) 0%, var(--neutral-fill-stealth-rest) 100%);
+    background: var(--card, var(--platform-spec-card-bg));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
     padding: 24px;
 }
 
@@ -54,9 +55,10 @@
 }
 
 .public-profile-card {
-    border: 1px solid var(--neutral-stroke-rest);
+    border: 1px solid var(--border, var(--platform-spec-card-border));
     border-radius: 12px;
-    background: var(--neutral-fill-rest);
+    background: var(--card, var(--platform-spec-card-bg));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 6%, transparent);
     padding: 18px;
     display: grid;
     gap: 10px;
@@ -134,7 +136,7 @@
     gap: 12px;
     padding: 12px;
     border-radius: 8px;
-    background: var(--neutral-fill-layer-rest);
+    background: var(--muted, var(--platform-spec-surface-muted));
 }
 
 .activity-icon {
@@ -173,7 +175,7 @@
     gap: 16px;
     padding: 16px;
     border-radius: 8px;
-    background: var(--neutral-fill-layer-rest);
+    background: var(--muted, var(--platform-spec-surface-muted));
 }
 
 .package-info {

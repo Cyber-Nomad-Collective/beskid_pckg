@@ -15,8 +15,10 @@
     [Parameter] public int LayoutGeneration { get; set; }
 
     private string _editorKey = string.Empty;
+    private string _monacoTheme = "vs-dark";
     private ElementReference _shellRef;
     private IJSObjectReference? _layoutModule;
+    private IJSObjectReference? _themeModule;
     private int _attachedLayoutGeneration = -1;
 
     private StandaloneEditorConstructionOptions BuildOptions(StandaloneCodeEditor _)
@@ -28,13 +30,19 @@
             Minimap = new EditorMinimapOptions { Enabled = false },
             ScrollBeyondLastLine = false,
             FontSize = 13,
+            Theme = _monacoTheme,
             Language = NormalizeLanguage(Language),
             Value = Value ?? string.Empty
         };
 
+    protected override async Task OnInitializedAsync()
+    {
+        _monacoTheme = await ResolveMonacoThemeAsync();
+    }
+
     protected override void OnParametersSet()
     {
-        _editorKey = $"{NormalizeLanguage(Language)}::{Value?.GetHashCode() ?? 0}::{EditorId}";
+        _editorKey = $"{NormalizeLanguage(Language)}::{Value?.GetHashCode() ?? 0}::{EditorId}::{_monacoTheme}";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -52,17 +60,14 @@
         try
         {
             await _layoutModule.InvokeVoidAsync("attach", _shellRef, EditorId);
-            // Monaco mounts asynchronously after Blazor render; relayout once it is ready.
             await Task.Delay(50);
             await _layoutModule.InvokeVoidAsync("layoutNow", _shellRef, EditorId);
         }
         catch (JSDisconnectedException)
         {
-            // Circuit gone during navigation.
         }
         catch (JSException)
         {
-            // Host not measurable yet; ResizeObserver will retry.
         }
     }
 
@@ -79,6 +84,24 @@
             }
 
             await _layoutModule.DisposeAsync();
+        }
+
+        if (_themeModule is not null)
+        {
+            await _themeModule.DisposeAsync();
+        }
+    }
+
+    private async Task<string> ResolveMonacoThemeAsync()
+    {
+        try
+        {
+            _themeModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "/theme-manager.js");
+            return await _themeModule.InvokeAsync<string>("getMonacoTheme");
+        }
+        catch
+        {
+            return "vs-dark";
         }
     }
 

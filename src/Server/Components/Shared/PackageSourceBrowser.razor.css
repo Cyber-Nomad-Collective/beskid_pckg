@@ -124,7 +124,7 @@
     max-height: min(60vh, 36rem);
     border: 1px solid var(--neutral-stroke-divider-rest);
     border-radius: 8px;
-    background: var(--neutral-layer-1);
+    background: var(--neutral-layer-1, var(--platform-spec-surface));
 }
 
 .source-tree-row {
@@ -148,8 +148,8 @@
 }
 
 .source-tree-row--active {
-    background: var(--accent-fill-rest);
-    color: var(--neutral-foreground-rest);
+    background: var(--platform-spec-tab-active-bg, color-mix(in srgb, var(--primary) 18%, transparent));
+    color: var(--foreground);
 }
 
 .source-tree-name {

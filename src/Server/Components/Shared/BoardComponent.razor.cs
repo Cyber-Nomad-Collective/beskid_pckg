@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Server.Data;
 using Server.Services;
 
@@ -347,6 +348,27 @@ public partial class BoardComponent
     private void ViewPost(int postId)
     {
         Navigation.NavigateTo($"/board/post/{postId}");
+    }
+
+    private static int GetNetScore(BoardPostDto post) => post.UpvoteCount - post.DownvoteCount;
+
+    private static string GetScoreClass(BoardPostDto post)
+    {
+        var score = GetNetScore(post);
+        return score switch
+        {
+            > 0 => "is-positive",
+            < 0 => "is-negative",
+            _ => string.Empty
+        };
+    }
+
+    private void HandlePostRowKeyDown(KeyboardEventArgs e, int postId)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            ViewPost(postId);
+        }
     }
 
     private sealed record GetBoardPostsResponse(List<BoardPostDto> Posts, int TotalCount, int Page, int PageSize);

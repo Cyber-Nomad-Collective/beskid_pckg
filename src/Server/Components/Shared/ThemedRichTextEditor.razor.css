@@ -1,14 +1,13 @@
 .themed-rte {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
-    /* Fluent-aligned semantic aliases for consistent contrast in dark surfaces */
-    --rte-surface: color-mix(in oklab, var(--neutral-fill-layer-rest) 92%, var(--neutral-fill-stealth-rest));
-    --rte-surface-subtle: color-mix(in oklab, var(--neutral-fill-layer-rest) 78%, var(--neutral-fill-stealth-rest));
-    --rte-stroke: color-mix(in oklab, var(--neutral-stroke-rest) 84%, transparent);
-    --rte-text: var(--neutral-foreground-rest);
-    --rte-text-muted: color-mix(in oklab, var(--neutral-foreground-rest) 70%, var(--neutral-foreground-hint) 30%);
-    --rte-accent-soft: color-mix(in oklab, var(--accent-fill-rest) 18%, transparent);
+    --rte-surface: var(--card, var(--platform-spec-card-bg));
+    --rte-surface-subtle: var(--muted, var(--platform-spec-surface-muted));
+    --rte-stroke: var(--border, var(--platform-spec-divider));
+    --rte-text: var(--foreground);
+    --rte-text-muted: var(--muted-foreground);
+    --rte-accent-soft: color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .themed-rte-label {
@@ -22,14 +21,16 @@
     color: var(--rte-text-muted);
 }
 
-/* --- Toolbar: strip Quill Snow defaults, match Fluent surfaces --- */
+/* Unified editor shell: toolbar + content share one border (no gap) */
 ::deep .themed-rte .ql-toolbar.ql-snow {
     border: 1px solid var(--rte-stroke);
-    border-bottom: 1px solid color-mix(in oklab, var(--rte-stroke) 72%, var(--neutral-stroke-divider-rest));
+    border-bottom: none;
     border-radius: 10px 10px 0 0;
     background: var(--rte-surface-subtle);
     padding: 8px 10px;
+    margin: 0;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
 ::deep .themed-rte .ql-toolbar.ql-snow .ql-formats {
@@ -38,28 +39,32 @@
 
 ::deep .themed-rte .ql-toolbar.ql-snow .ql-formats:not(:last-child) {
     padding-right: 12px;
-    border-right: 1px solid var(--neutral-stroke-divider-rest);
+    border-right: 1px solid var(--rte-stroke);
 }
 
 ::deep .themed-rte-toolbar {
     border: 1px solid var(--rte-stroke);
+    border-bottom: none;
     border-radius: 10px 10px 0 0;
     background: var(--rte-surface-subtle);
 }
 
-::deep .themed-rte-editor {
-    min-height: 190px;
+::deep .themed-rte .ql-container.ql-snow {
     border: 1px solid var(--rte-stroke);
-    border-top: 0;
+    border-top: none;
     border-radius: 0 0 10px 10px;
     background: var(--rte-surface);
-    color: var(--rte-text);
-}
-
-::deep .themed-rte .ql-container.ql-snow {
-    border: none;
     font-family: inherit;
     font-size: 1rem;
+    margin: 0;
+}
+
+::deep .themed-rte-editor {
+    min-height: 190px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--rte-text);
 }
 
 ::deep .themed-rte .ql-container {
@@ -73,6 +78,7 @@
     line-height: 1.65;
     color: var(--rte-text);
     letter-spacing: 0.005em;
+    background: transparent;
 }
 
 ::deep .themed-rte .ql-editor p,
@@ -117,17 +123,13 @@
 }
 
 ::deep .themed-rte .ql-editor a {
-    color: var(--accent-foreground-rest);
+    color: var(--primary);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
 
-::deep .themed-rte .ql-editor a:hover {
-    color: var(--accent-foreground-hover, var(--accent-foreground-rest));
-}
-
 ::deep .themed-rte .ql-editor blockquote {
-    border-left: 3px solid var(--accent-fill-rest);
+    border-left: 3px solid var(--primary);
     margin: 0.65em 0;
     padding: 6px 0 6px 14px;
     color: var(--rte-text-muted);
@@ -144,7 +146,7 @@
     background: var(--rte-surface-subtle);
     padding: 0.15em 0.45em;
     border-radius: 5px;
-    border: 1px solid color-mix(in oklab, var(--rte-stroke) 78%, transparent);
+    border: 1px solid color-mix(in srgb, var(--rte-stroke) 78%, transparent);
 }
 
 ::deep .themed-rte .ql-editor pre.ql-syntax,
@@ -195,7 +197,7 @@
     background: var(--rte-surface);
     border: 1px solid var(--rte-stroke);
     border-radius: 8px;
-    box-shadow: 0 8px 24px color-mix(in oklab, var(--neutral-foreground-rest) 12%, transparent);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 12%, transparent);
     padding: 6px;
 }
 
@@ -206,7 +208,7 @@
 
 ::deep .themed-rte .ql-snow .ql-picker-item:hover,
 ::deep .themed-rte .ql-snow .ql-picker-item.ql-selected {
-    color: var(--accent-foreground-rest);
+    color: var(--primary);
     background: var(--rte-accent-soft);
 }
 
@@ -224,25 +226,24 @@
 }
 
 ::deep .themed-rte .ql-toolbar.ql-snow button.ql-active {
-    background: color-mix(in oklab, var(--accent-fill-rest) 26%, transparent);
+    background: color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
 ::deep .themed-rte .ql-toolbar button:hover .ql-stroke,
 ::deep .themed-rte .ql-toolbar button.ql-active .ql-stroke {
-    stroke: var(--accent-foreground-rest);
+    stroke: var(--primary);
 }
 
 ::deep .themed-rte .ql-toolbar button:hover .ql-fill,
 ::deep .themed-rte .ql-toolbar button.ql-active .ql-fill {
-    fill: var(--accent-foreground-rest);
+    fill: var(--primary);
 }
 
-/* Focus ring on editor */
+::deep .themed-rte .ql-container:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
 ::deep .themed-rte .ql-container:focus-within .ql-editor {
     outline: none;
-}
-
-::deep .themed-rte .themed-rte-editor:focus-within {
-    border-color: var(--accent-stroke-control-rest, var(--accent-fill-rest));
-    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-fill-rest) 35%, transparent);
 }
