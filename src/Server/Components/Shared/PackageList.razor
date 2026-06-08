@@ -1,0 +1,48 @@
+@if (Items.Count == 0)
+{
+    <p class="muted package-list-empty">@EmptyMessage</p>
+}
+else
+{
+    <ul class="package-list @(Compact ? "package-list--compact" : "")">
+        @foreach (var pkg in Items)
+        {
+            <li class="package-list-item">
+                <PackageListThumbnail Name="@pkg.Name" IconUrl="@pkg.IconUrl" />
+                <div class="package-list-body">
+                    <div class="package-list-head">
+                        <h3 class="package-list-name">
+                            <NavLink href="@($"/packages/{pkg.Name}")">@pkg.Name</NavLink>
+                        </h3>
+                        <FluentBadge Appearance="Appearance.Lightweight">@pkg.Category</FluentBadge>
+                    </div>
+                    @if (!Compact && !string.IsNullOrWhiteSpace(pkg.Description))
+                    {
+                        <p class="muted package-list-description">@pkg.Description</p>
+                    }
+                    <div class="package-list-metrics muted">
+                        <span>@pkg.TotalDownloads.ToString("N0") downloads</span>
+                        @if (pkg.ReviewCount > 0)
+                        {
+                            <span>@pkg.AverageRating.ToString("0.0")★ · @pkg.ReviewCount reviews</span>
+                        }
+                        else
+                        {
+                            <span>No reviews yet</span>
+                        }
+                        <span>Updated @pkg.UpdatedAtUtc.ToString("yyyy-MM-dd")</span>
+                    </div>
+                </div>
+                <div class="package-list-action">
+                    <FluentButton Appearance="Appearance.Outline" Href="@($"/packages/{pkg.Name}")">View</FluentButton>
+                </div>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<PackageListRow> Items { get; set; } = [];
+    [Parameter] public string EmptyMessage { get; set; } = "No packages to show.";
+    [Parameter] public bool Compact { get; set; }
+}

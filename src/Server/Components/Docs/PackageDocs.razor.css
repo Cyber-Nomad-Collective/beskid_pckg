@@ -25,24 +25,43 @@
     max-width: min(100%, 36rem);
 }
 
-.package-docs-more-anchor {
+.package-docs-filter-anchor {
     position: relative;
     flex: 0 0 auto;
 }
 
-.package-docs-more-panel {
-    position: absolute;
-    z-index: 25;
-    top: calc(100% + var(--spacingVerticalXS, 4px));
-    right: 0;
-    min-width: 18rem;
-    max-width: min(28rem, 94vw);
+.package-docs-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1299;
+    background: transparent;
+}
+
+.package-docs-filter-popover {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     padding: var(--spacingVerticalM, 12px) var(--spacingHorizontalM, 12px);
-    box-shadow: var(--shadow16);
+    border-radius: 14px;
+    border: 1px solid var(--neutral-stroke-rest);
+    background: var(--neutral-fill-layer-rest);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24);
+    max-height: min(70vh, 640px);
+    overflow: hidden;
+}
+
+.package-docs-more-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 0 0 auto;
 }
 
 .package-docs-symbol-scroll--panel {
     max-height: min(50vh, 22rem);
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .package-docs-member-header {
@@ -124,10 +143,9 @@
     padding: 0.25rem 0;
 }
 
-.package-docs-meta-row,
 .package-docs-top-toolbar {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 10px;
     width: 100%;
@@ -143,17 +161,13 @@
     padding-bottom: var(--spacingVerticalXXS, 2px);
 }
 
-.package-docs-more-panel {
+.package-docs-meta-row {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.package-docs-more-panel-head {
-    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
 }
 
 .package-docs-article-col {
@@ -209,8 +223,8 @@
     padding-inline: 0.5rem;
 }
 
-.package-docs-filter-popover {
-    position: absolute;
+.package-docs-filter-popover-shell {
+    position: fixed;
     z-index: 20;
     top: calc(100% + var(--spacingVerticalXS, 4px));
     right: 0;
@@ -351,6 +365,18 @@
 
     .package-docs-toc-shell {
         position: static;
+    }
+}
+
+/* Narrow docs toolbar: allow search row to wrap, keep filter button adjacent */
+@media (max-width: 720px) {
+    .package-docs-top-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .package-docs-fluent-search {
+        flex: 1 1 100%;
+        max-width: none;
     }
 }
 

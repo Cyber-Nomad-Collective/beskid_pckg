@@ -8,81 +8,149 @@
 
 <PageTitle>Beskid Registry</PageTitle>
 
+<div class="home-dashboard">
+    <FluentGrid Spacing="3">
+        <FluentGridItem xs="12" sm="6" md="3">
+            <FluentCard Class="home-stat-card">
+                <p class="home-stat-label">Total packages</p>
+                <p class="home-stat-value">@TotalPackages.ToString("N0")</p>
+                <p class="muted home-stat-detail">@PublicPackageCount public · @(TotalPackages - PublicPackageCount) private</p>
+            </FluentCard>
+        </FluentGridItem>
 
-<FluentGrid Spacing="3">
-    <FluentGridItem xs="12">
-        <section class="hero">
-            <h1>Package paradise for developers and consumers</h1>
-            <p>Discover, evaluate, and publish Beskid packages in one unified workspace.</p>
-        </section>
-    </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <FluentCard Class="home-stat-card">
+                <p class="home-stat-label">Total downloads</p>
+                <p class="home-stat-value">@TotalDownloads.ToString("N0")</p>
+                <p class="muted home-stat-detail">Across all published versions</p>
+            </FluentCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" sm="6" md="3">
-        <FluentCard Class="section-card">
-            <h3>Total packages</h3>
-            <FluentBadge Appearance="@Appearance.Accent">@TotalPackages</FluentBadge>
-        </FluentCard>
-    </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <FluentCard Class="home-stat-card">
+                <p class="home-stat-label">Publishers</p>
+                <p class="home-stat-value">@TotalPublishers.ToString("N0")</p>
+                <p class="muted home-stat-detail">Accounts with at least one package</p>
+            </FluentCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" sm="6" md="3">
-        <FluentCard Class="section-card">
-            <h3>Total downloads</h3>
-            <FluentBadge Appearance="@Appearance.Neutral">@TotalDownloads</FluentBadge>
-        </FluentCard>
-    </FluentGridItem>
+        <FluentGridItem xs="12" sm="6" md="3">
+            <FluentCard Class="home-stat-card">
+                <p class="home-stat-label">Community reviews</p>
+                <p class="home-stat-value">@PackagesWithReviews.ToString("N0")</p>
+                <p class="muted home-stat-detail">@PendingReviews pending moderation queue</p>
+            </FluentCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" sm="6" md="3">
-        <FluentCard Class="section-card">
-            <h3>Publishers</h3>
-            <FluentBadge Appearance="@Appearance.Neutral">@TotalPublishers</FluentBadge>
-        </FluentCard>
-    </FluentGridItem>
+        <FluentGridItem xs="12" lg="8">
+            <SectionCard Title="Discover packages"
+                         Description="Browse trending, recently updated, and top-rated public packages.">
+                <PackageCarousel Slides="@CarouselSlides" AriaLabel="Featured package collections" />
+                <FluentStack Orientation="Orientation.Horizontal" Wrap="true" Gap="8">
+                    <FluentButton Appearance="Appearance.Accent" Href="/packages">Browse all packages</FluentButton>
+                </FluentStack>
+            </SectionCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" sm="6" md="3">
-        <FluentCard Class="section-card">
-            <h3>Pending reviews</h3>
-            <FluentBadge Appearance="@Appearance.Neutral">@PendingReviews</FluentBadge>
-        </FluentCard>
-    </FluentGridItem>
+        <FluentGridItem xs="12" lg="4">
+            <SectionCard Title="Top categories"
+                         Description="Where packages cluster today.">
+                @if (TopCategories.Count == 0)
+                {
+                    <p class="muted">No public packages yet.</p>
+                }
+                else
+                {
+                    <ul class="home-category-list">
+                        @foreach (var row in TopCategories)
+                        {
+                            <li class="home-category-item">
+                                <div>
+                                    <strong>@row.Category</strong>
+                                    <p class="muted">@row.Count packages</p>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(row.TopPackageName))
+                                {
+                                    <FluentAnchor Href="@($"/packages/{row.TopPackageName}")" Appearance="Appearance.Stealth">
+                                        @row.TopPackageName
+                                    </FluentAnchor>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </SectionCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" md="6">
-        <FluentCard Class="section-card">
-            <h2>Top categories</h2>
-            @if (TopCategories.Count == 0)
-            {
-                <p>No packages yet.</p>
-            }
-            else
-            {
-                <ul>
-                    @foreach (var row in TopCategories)
-                    {
-                        <li><strong>@row.Category</strong> - @row.Count packages</li>
-                    }
-                </ul>
-            }
-        </FluentCard>
-    </FluentGridItem>
+        <FluentGridItem xs="12" md="6">
+            <SectionCard Title="Recent community posts"
+                         Description="Latest threads from package and topic boards.">
+                @if (RecentPosts.Count == 0)
+                {
+                    <p class="muted">No community posts yet.</p>
+                }
+                else
+                {
+                    <ul class="home-feed-list">
+                        @foreach (var post in RecentPosts)
+                        {
+                            <li class="home-feed-item">
+                                <div class="home-feed-main">
+                                    <FluentAnchor Href="@($"/board/post/{post.PostId}")" Appearance="Appearance.Stealth">
+                                        @post.Title
+                                    </FluentAnchor>
+                                    <p class="muted home-feed-meta">
+                                        @post.BoardName
+                                        @if (!string.IsNullOrWhiteSpace(post.PackageName))
+                                        {
+                                            <span> · <NavLink href="@($"/packages/{post.PackageName}")">@post.PackageName</NavLink></span>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="home-feed-side muted">
+                                    <span>@post.AuthorDisplayName</span>
+                                    <span>@post.NetVotes score</span>
+                                    <span>@post.CreatedAtUtc.ToString("yyyy-MM-dd")</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </SectionCard>
+        </FluentGridItem>
 
-    <FluentGridItem xs="12" md="6">
-        <FluentCard Class="section-card">
-            <h2>Trending packages</h2>
-            @if (TrendingPackages.Count == 0)
-            {
-                <p>No public packages yet.</p>
-            }
-            else
-            {
-                <ul>
-                    @foreach (var pkg in TrendingPackages)
-                    {
-                        <li>
-                            <NavLink href="@($"/packages/{pkg.Name}")">@pkg.Name</NavLink>
-                            <span> · @pkg.TotalDownloads downloads</span>
-                        </li>
-                    }
-                </ul>
-            }
-        </FluentCard>
-    </FluentGridItem>
-</FluentGrid>
+        <FluentGridItem xs="12" md="6">
+            <SectionCard Title="Latest reviews"
+                         Description="Recent ratings and comments from the community.">
+                @if (RecentReviews.Count == 0)
+                {
+                    <p class="muted">No reviews yet.</p>
+                }
+                else
+                {
+                    <ul class="home-feed-list">
+                        @foreach (var review in RecentReviews)
+                        {
+                            <li class="home-feed-item home-review-item">
+                                <PackageListThumbnail Name="@review.PackageName" IconUrl="@review.PackageIconUrl" />
+                                <div class="home-feed-main">
+                                    <div class="home-review-head">
+                                        <NavLink href="@($"/packages/{review.PackageName}")">@review.PackageName</NavLink>
+                                        <FluentRatingPicker ReadOnly="true" Value="@review.Rating" />
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(review.CommentPreview))
+                                    {
+                                        <p class="home-review-comment">@review.CommentPreview</p>
+                                    }
+                                    <p class="muted home-feed-meta">
+                                        @review.AuthorDisplayName · @review.CreatedAtUtc.ToString("yyyy-MM-dd")
+                                    </p>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </SectionCard>
+        </FluentGridItem>
+    </FluentGrid>
+</div>

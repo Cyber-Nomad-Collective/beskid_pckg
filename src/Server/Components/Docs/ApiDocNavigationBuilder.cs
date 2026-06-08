@@ -7,16 +7,11 @@ public static class ApiDocNavigationBuilder
 {
     public const string NavigationModelGraphV1 = "graph-v1";
 
+    /// <summary>Compiler intrinsics (<c>beskid::…</c>) — omitted from dependency trees (same in every package).</summary>
+    public const string BuiltinDeclaringPackage = "beskid";
+
     private static readonly string[] ExplorerKinds =
         ["module", "type", "enum", "contract", "function", "test"];
-
-    private static readonly (string Label, string[] Kinds)[] SymbolKindFolders =
-    [
-        ("Types", ["type"]),
-        ("Enums", ["enum"]),
-        ("Contracts", ["contract"]),
-        ("Functions", ["function", "test"]),
-    ];
 
     private static readonly StringComparer KindComparer = StringComparer.OrdinalIgnoreCase;
 
@@ -62,7 +57,8 @@ public static class ApiDocNavigationBuilder
 
         var depGroups = doc.Items
             .Where(i => !string.IsNullOrWhiteSpace(i.DeclaringPackage)
-                && !string.Equals(i.DeclaringPackage!.Trim(), publishing, StringComparison.OrdinalIgnoreCase))
+                && !string.Equals(i.DeclaringPackage!.Trim(), publishing, StringComparison.OrdinalIgnoreCase)
+                && !IsHiddenDependencyPackage(i.DeclaringPackage))
             .GroupBy(i => i.DeclaringPackage!.Trim(), StringComparer.OrdinalIgnoreCase)
             .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
 
@@ -252,13 +248,11 @@ public static class ApiDocNavigationBuilder
                 continue;
             }
 
-            var members = byPath[key]
-                .Where(i => !string.Equals(i.Kind, "module", StringComparison.OrdinalIgnoreCase))
-                .Select(GraphNavNode.Symbol)
-                .ToList();
-            if (members.Count > 0)
+            foreach (var member in byPath[key]
+                         .Where(i => !string.Equals(i.Kind, "module", StringComparison.OrdinalIgnoreCase))
+                         .OrderBy(i => i.QualifiedName ?? i.Name, StringComparer.Ordinal))
             {
-                AttachKindFolders(leaf, [], members, ref folderId);
+                leaf!.Children.Add(GraphNavNode.Symbol(member));
             }
         }
 
@@ -356,73 +350,17 @@ public static class ApiDocNavigationBuilder
             return node;
         }
 
-        var childNodes = new List<GraphNavNode>();
-        if (string.Equals(item.Kind, "module", StringComparison.OrdinalIgnoreCase))
+        foreach (var k in kids.Where(k => IsNavExplorerKind(k.Kind)))
         {
-            var submodules = new List<GraphNavNode>();
-            foreach (var k in kids.Where(k =>
-                         string.Equals(k.Kind, "module", StringComparison.OrdinalIgnoreCase)))
-            {
-                submodules.Add(BuildSymbolNode(k, childBuckets, ref folderId));
-            }
-            var symbols = kids
-                .Where(k => IsNavExplorerKind(k.Kind)
-                    && !string.Equals(k.Kind, "module", StringComparison.OrdinalIgnoreCase))
-                .Select(GraphNavNode.Symbol)
-                .ToList();
-            AttachKindFolders(node, submodules, symbols, ref folderId);
-        }
-        else
-        {
-            foreach (var k in kids.Where(k => IsNavExplorerKind(k.Kind)))
-            {
-                childNodes.Add(BuildSymbolNode(k, childBuckets, ref folderId));
-            }
-
-            node.Children.AddRange(childNodes);
+            node.Children.Add(BuildSymbolNode(k, childBuckets, ref folderId));
         }
 
         return node;
     }
 
-    private static void AttachKindFolders(
-        GraphNavNode moduleNode,
-        IReadOnlyList<GraphNavNode> submodules,
-        IReadOnlyList<GraphNavNode> symbols,
-        ref int folderId)
-    {
-        if (submodules.Count > 0)
-        {
-            moduleNode.Children.Add(GraphNavNode.Folder("Modules", submodules, ref folderId));
-        }
-
-        foreach (var (label, kinds) in SymbolKindFolders)
-        {
-            var bucket = symbols
-                .Where(s => kinds.Contains(s.Item?.Kind ?? "", KindComparer))
-                .OrderBy(s => s.Item?.QualifiedName ?? s.Item?.Name, StringComparer.Ordinal)
-                .ToList();
-            if (bucket.Count > 0)
-            {
-                moduleNode.Children.Add(GraphNavNode.Folder(label, bucket, ref folderId));
-            }
-        }
-    }
-
-    private static void AttachKindFolders(
-        GraphNavNode moduleNode,
-        IReadOnlyList<GraphNavNode> symbolChildren,
-        ref int folderId)
-    {
-        var submodules = symbolChildren
-            .Where(n => string.Equals(n.Item?.Kind, "module", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        var symbols = symbolChildren
-            .Where(n => n.Item is not null
-                && !string.Equals(n.Item.Kind, "module", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        AttachKindFolders(moduleNode, submodules, symbols, ref folderId);
-    }
+    private static bool IsHiddenDependencyPackage(string? declaringPackage) =>
+        !string.IsNullOrWhiteSpace(declaringPackage)
+        && string.Equals(declaringPackage.Trim(), BuiltinDeclaringPackage, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsNavExplorerKind(string? kind) =>
         !string.IsNullOrWhiteSpace(kind) && ExplorerKinds.Contains(kind, KindComparer);

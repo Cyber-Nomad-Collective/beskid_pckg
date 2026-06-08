@@ -1,0 +1,26 @@
+@if (!_failed && !string.IsNullOrWhiteSpace(IconUrl))
+{
+    <img src="@IconUrl"
+         width="48"
+         height="48"
+         alt=""
+         class="package-list-thumb-image"
+         referrerpolicy="no-referrer"
+         @onerror="OnIconError" />
+}
+else
+{
+    <div class="package-list-thumb-placeholder" aria-hidden="true">@Initial</div>
+}
+
+@code {
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string? IconUrl { get; set; }
+
+    private bool _failed;
+
+    private string Initial =>
+        string.IsNullOrWhiteSpace(Name) ? "?" : Name[..1].ToUpperInvariant();
+
+    private void OnIconError() => _failed = true;
+}

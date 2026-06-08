@@ -1,0 +1,61 @@
+@if (Slides.Count == 0)
+{
+    <p class="muted">No package collections yet.</p>
+}
+else
+{
+    <section class="package-carousel" aria-label="@AriaLabel">
+        <div class="package-carousel-tabs" role="tablist" aria-label="Package collections">
+            @foreach (var slide in Slides)
+            {
+                <button type="button"
+                        role="tab"
+                        class="package-carousel-tab @(slide.Id == _activeSlideId ? "is-active" : "")"
+                        aria-selected="@(slide.Id == _activeSlideId)"
+                        @onclick="@(() => SelectSlide(slide.Id))">
+                    @slide.Title
+                </button>
+            }
+        </div>
+
+        @foreach (var slide in Slides)
+        {
+            if (slide.Id != _activeSlideId)
+            {
+                continue;
+            }
+
+            <div class="package-carousel-panel" role="tabpanel">
+                @if (!string.IsNullOrWhiteSpace(slide.Description))
+                {
+                    <p class="muted package-carousel-lead">@slide.Description</p>
+                }
+                <PackageList Items="@slide.Packages" Compact="true" EmptyMessage="No packages in this collection." />
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<PackageCarouselSlide> Slides { get; set; } = [];
+    [Parameter] public string AriaLabel { get; set; } = "Featured packages";
+
+    private string _activeSlideId = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (Slides.Count == 0)
+        {
+            _activeSlideId = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_activeSlideId)
+            || Slides.All(s => !string.Equals(s.Id, _activeSlideId, StringComparison.Ordinal)))
+        {
+            _activeSlideId = Slides[0].Id;
+        }
+    }
+
+    private void SelectSlide(string id) => _activeSlideId = id;
+}

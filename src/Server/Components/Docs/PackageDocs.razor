@@ -67,22 +67,23 @@
                           Placeholder="Search API symbols…"
                           AriaLabel="Search API symbols"
                           Class="package-docs-fluent-search" />
-            <div class="package-docs-more-anchor">
-                <FluentButton Id="package-docs-more-button"
+            <div class="package-docs-filter-anchor">
+                <FluentButton Id="package-docs-filter-button"
                               Appearance="Appearance.Outline"
-                              IconStart="@(new Icons.Regular.Size20.MoreHorizontal())"
+                              IconStart="@(new Icons.Regular.Size20.Filter())"
                               Title="Filters and symbol table"
                               OnClick="ToggleMorePanel" />
                 @if (_showMorePanel)
                 {
-                    <FluentCard Class="package-docs-more-panel">
+                    <div class="package-docs-filter-backdrop" @onclick="CloseMorePanel"></div>
+                    <div id="package-docs-filter-popover" class="package-docs-filter-popover">
                         <FluentStack Orientation="Orientation.Horizontal"
                                      HorizontalAlignment="HorizontalAlignment.SpaceBetween"
                                      VerticalAlignment="VerticalAlignment.Center"
                                      Gap="8"
                                      Class="package-docs-more-panel-head">
                             <FluentLabel Typo="Typography.Body" Weight="FontWeight.Bold">Filters and symbols</FluentLabel>
-                            <FluentButton Appearance="Appearance.Stealth" OnClick="CloseMorePanel">Close</FluentButton>
+                            <FluentButton Appearance="Appearance.Stealth" OnClick="CloseMorePanel" IconStart="@(new Icons.Regular.Size16.Dismiss())" Title="Close" />
                         </FluentStack>
                         @if (ScopeRootOptions.Any())
                         {
@@ -108,9 +109,9 @@
                         </FluentStack>
                         <FluentButton Appearance="Appearance.Outline" OnClick="ClearFilters">Reset filters</FluentButton>
                         <div class="package-docs-symbol-scroll package-docs-symbol-scroll--panel">
-                            <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectItemAsync" />
+                            <PackageDocsSymbolGrid Rows="@SymbolRows" OnSelect="SelectSymbolFromPanelAsync" />
                         </div>
-                    </FluentCard>
+                    </div>
                 }
             </div>
         </FluentStack>
