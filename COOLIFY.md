@@ -38,3 +38,7 @@ OpenBao path `secret/beskid/production/pckg` (`POSTGRES_PASSWORD`, `AUTH_HUB_PUB
 ## Health
 
 `curl -f http://localhost:8082/health/ready` — expose port **8082** to the proxy (`pckg.beskid-lang.org`).
+
+## Platform matrix
+
+Cross-service URLs, OpenBao paths, and shared auth variables: [beskid_infra/docs/deploy-matrix.md](../beskid_infra/docs/deploy-matrix.md).
