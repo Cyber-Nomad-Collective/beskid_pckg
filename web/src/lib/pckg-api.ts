@@ -59,6 +59,21 @@ export interface PublishedPackageVersion {
 
 export interface SearchPackagesInput {
 	query?: string;
+	owner?: "me";
+}
+
+export interface ApiKey {
+	id: string;
+	name: string;
+	prefix: string;
+	scopes: string[];
+	createdAtUtc: string;
+	revokedAtUtc: string | null;
+}
+
+export interface CreatedApiKey {
+	key: ApiKey;
+	plainTextKey: string;
 }
 
 export interface CommunityProfile {
@@ -95,9 +110,23 @@ export class PckgApiClient {
 
 	async listPackages(input: SearchPackagesInput = {}): Promise<PackageSummary[]> {
 		const query = input.query?.trim();
+		if (input.owner === "me") return this.get<PackageSummary[]>("/api/packages?owner=me");
 		if (!query) return this.get<PackageSummary[]>("/api/packages");
 		const results = await this.get<Array<{ package: PackageSummary }>>(`/api/search?q=${encodeURIComponent(query)}`);
 		return results.map((result) => result.package);
+	}
+
+	async listApiKeys(): Promise<ApiKey[]> {
+		return this.get<ApiKey[]>("/api/api-keys");
+	}
+
+	async createApiKey(input: { name: string; scopes: string[] }): Promise<CreatedApiKey> {
+		return this.postJson<CreatedApiKey>("/api/api-keys", input);
+	}
+
+	async revokeApiKey(keyId: string): Promise<void> {
+		const response = await this.request(`/api/api-keys/${encodeURIComponent(keyId)}`, { method: "DELETE" });
+		if (!response.ok) throw new PckgApiError(response.status);
 	}
 
 	async getPackage(packageName: string): Promise<PackageDetails> {

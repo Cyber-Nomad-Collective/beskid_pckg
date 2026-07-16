@@ -30,6 +30,45 @@ describe("PckgApiClient", () => {
 		expect(new URL(requests[0].url, "https://pckg.test").pathname).toBe("/api/packages");
 	});
 
+	it("loads the authenticated owner's packages without a client-side filter", async () => {
+		const requests: Request[] = [];
+		const client = new PckgApiClient({
+			fetch: async (request) => {
+				requests.push(new Request(request));
+				return Response.json([]);
+			},
+		});
+
+		await client.listPackages({ owner: "me" });
+		expect(new URL(requests[0].url, "https://pckg.test").pathname).toBe("/api/packages");
+		expect(new URL(requests[0].url, "https://pckg.test").search).toBe("?owner=me");
+		expect(requests[0].credentials).toBe("include");
+	});
+
+	it("uses credentialed API-key list, create, and revoke contracts", async () => {
+		const requests: Request[] = [];
+		const client = new PckgApiClient({
+			fetch: async (request) => {
+				const captured = new Request(request);
+				requests.push(captured);
+				if (captured.method === "POST") return Response.json({ key: { id: "key-1", name: "CI", prefix: "bpk_", scopes: ["publish"], createdAtUtc: "2026-07-16T00:00:00Z", revokedAtUtc: null }, plainTextKey: "bpk_secret" });
+				return captured.method === "DELETE" ? new Response(null, { status: 204 }) : Response.json([]);
+			},
+		});
+
+		await client.listApiKeys();
+		await expect(client.createApiKey({ name: "CI", scopes: ["publish"] })).resolves.toMatchObject({ plainTextKey: "bpk_secret" });
+		await client.revokeApiKey("key-1");
+
+		expect(requests.map((request) => `${request.method} ${new URL(request.url, "https://pckg.test").pathname}`)).toEqual([
+			"GET /api/api-keys",
+			"POST /api/api-keys",
+			"DELETE /api/api-keys/key-1",
+		]);
+		expect(requests.every((request) => request.credentials === "include")).toBe(true);
+		expect(await requests[1].text()).toBe('{"name":"CI","scopes":["publish"]}');
+	});
+
 	it("loads package details with metadata and a latest download URL", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({

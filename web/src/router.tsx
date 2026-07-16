@@ -184,9 +184,37 @@ function NotificationsPage() {
 	if (notifications.isError) throw notifications.error;
 	return <section className="space-y-6"><header><h1 className="text-3xl font-bold">Notifications</h1><p className="mt-2 text-muted-foreground">Control community notifications and mark messages read when you have handled them.</p></header><Card><CardContent className="py-5"><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={preference.isPending} onClick={() => preference.mutate("all")}>All community notifications</Button><Button variant="outline" disabled={preference.isPending} onClick={() => preference.mutate("mentionsOnly")}>Mentions only</Button></div>{preference.isError && <p className="mt-3 text-sm text-destructive">Could not update notification preference.</p>}</CardContent></Card><div className="space-y-3">{notifications.data.length === 0 ? <Card><CardContent className="py-6 text-muted-foreground">No notifications.</CardContent></Card> : notifications.data.map((notice) => <Card key={notice.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm"><p><strong>{notice.actor}</strong> triggered a <strong>{notice.scope}</strong> notification{notice.post_id !== null ? ` on post ${notice.post_id}` : ""}{notice.comment_id !== null ? ` in comment ${notice.comment_id}` : ""}.</p>{!notice.is_read && <Button size="sm" variant="outline" disabled={markRead.isPending} onClick={() => markRead.mutate(notice.id)}>Mark read</Button>}</CardContent></Card>)}</div></section>;
 }
+const apiKeysRoute = createRoute({ getParentRoute: () => dashboardRoute, path: "/api-keys", component: ApiKeysPage });
+function ApiKeysPage() {
+	const queryClient = useQueryClient();
+	const [createdKey, setCreatedKey] = useState<string | null>(null);
+	const keys = useQuery({ queryKey: ["api-keys"], queryFn: pckgApi.listApiKeys });
+	const create = useMutation({
+		mutationFn: (input: { name: string; scopes: string[] }) => pckgApi.createApiKey(input),
+		onSuccess: (result) => {
+			setCreatedKey(result.plainTextKey);
+			void queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+		},
+	});
+	const revoke = useMutation({ mutationFn: (keyId: string) => pckgApi.revokeApiKey(keyId), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }) });
+	if (keys.isPending) return <p className="text-muted-foreground">Loading API keys…</p>;
+	if (keys.isError) throw keys.error;
+	const submit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget);
+		const scopes = ["read", "publish"].filter((scope) => form.get(scope) === "on");
+		create.mutate({ name: String(form.get("name") ?? "").trim(), scopes });
+	};
+	return <section className="max-w-3xl space-y-6"><header><h1 className="text-3xl font-bold">API keys</h1><p className="mt-2 text-muted-foreground">Create narrowly scoped credentials for local tools and CI. The secret is displayed only once.</p></header>{createdKey && <Card><CardHeader><CardTitle>Copy this key now</CardTitle><CardDescription>It cannot be recovered after this message is dismissed.</CardDescription></CardHeader><CardContent className="space-y-3"><code className="block overflow-x-auto rounded-md border border-border bg-muted p-3 text-sm">{createdKey}</code><Button variant="outline" onClick={() => setCreatedKey(null)}>I copied it</Button></CardContent></Card>}<Card><CardHeader><CardTitle>Create API key</CardTitle></CardHeader><CardContent className="pt-1"><form className="space-y-4" onSubmit={submit}><label className="grid gap-2 text-sm font-medium">Name<Input name="name" required placeholder="CI publishing" /></label><fieldset className="space-y-2"><legend className="text-sm font-medium">Scopes</legend><label className="flex items-center gap-2 text-sm"><input name="read" type="checkbox" defaultChecked />Read public and permitted package data</label><label className="flex items-center gap-2 text-sm"><input name="publish" type="checkbox" defaultChecked />Publish package versions</label></fieldset>{create.isError && <p className="text-sm text-destructive">Could not create this API key. Check its name and scopes.</p>}<Button type="submit" disabled={create.isPending}>{create.isPending ? "Creating…" : "Create API key"}</Button></form></CardContent></Card><div className="space-y-3">{keys.data.length === 0 ? <Card><CardContent className="py-6 text-muted-foreground">No API keys yet.</CardContent></Card> : keys.data.map((key) => <Card key={key.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-medium">{key.name}</p><p className="mt-1 text-sm text-muted-foreground"><code>{key.prefix}</code> · {key.scopes.join(", ")} · created {new Date(key.createdAtUtc).toLocaleDateString()}{key.revokedAtUtc ? ` · revoked ${new Date(key.revokedAtUtc).toLocaleDateString()}` : ""}</p></div>{!key.revokedAtUtc && <Button size="sm" variant="outline" disabled={revoke.isPending} onClick={() => revoke.mutate(key.id)}>Revoke</Button>}</CardContent></Card>)}</div>{revoke.isError && <p className="text-sm text-destructive">Could not revoke this API key.</p>}</section>;
+}
+const myPackagesRoute = createRoute({ getParentRoute: () => dashboardRoute, path: "/packages/my", component: MyPackagesPage });
+function MyPackagesPage() {
+	const packages = useQuery({ queryKey: ["packages", "owner", "me"], queryFn: () => pckgApi.listPackages({ owner: "me" }) });
+	if (packages.isPending) return <p className="text-muted-foreground">Loading your packages…</p>;
+	if (packages.isError) throw packages.error;
+	return <section className="space-y-6"><header className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-bold">My packages</h1><p className="mt-2 text-muted-foreground">Packages owned by your GitHub-backed Auth Hub subject.</p></div><Link to="/dashboard/packages/upload" className={buttonVariants()}>Upload package</Link></header><div className="grid gap-4 md:grid-cols-2">{packages.data.length === 0 ? <Card className="md:col-span-2"><CardContent className="py-8 text-muted-foreground">You do not own any packages yet.</CardContent></Card> : packages.data.map((item) => <Card key={item.id}><CardHeader><CardTitle><Link to="/packages/$packageName" params={{ packageName: item.name }} className="hover:underline">{item.name}</Link></CardTitle><CardDescription>{item.description}</CardDescription></CardHeader><CardContent className="text-sm text-muted-foreground">{item.totalDownloads.toLocaleString()} downloads · updated {new Date(item.updatedAtUtc).toLocaleDateString()}</CardContent></Card>)}</div></section>;
+}
 const dashboardPages = [
-	["/api-keys", "API keys", "API-key management is not available without an authenticated key-management contract.", "API key list/create/revoke API"],
-	["/packages/my", "My packages", "The package list cannot be safely filtered to the current owner yet.", "owner-scoped package listing API"],
 	["/packages/all", "All packages", "Registry-wide administration is not exposed by the service.", "administrator package listing API"],
 	["/admin", "Administration", "Administration remains disabled until server authorization and operations routes are available.", "administrator overview API"],
 	["/admin/users", "Users and roles", "User and role changes require the operations HTTP API.", "administrator users and roles API"],
@@ -197,6 +225,6 @@ const dashboardPages = [
 const dashboardChildRoutes = dashboardPages.map(([path, title, description, missing]) => createRoute({ getParentRoute: () => dashboardRoute, path, component: () => <UnsupportedPage title={title} description={description} missing={missing} /> }));
 
 export const clientRoutePaths = ["/", "/packages", "/packages/$packageName", "/packages/$packageName/docs", "/publishers", "/publishers/$publisher", "/topics", "/topics/$topic", "/board/post/$postId", "/auth", "/dashboard/profile", "/dashboard/notifications", "/dashboard/api-keys", "/dashboard/packages/my", "/dashboard/packages/upload", "/dashboard/packages/all", "/dashboard/admin", "/dashboard/admin/users", "/dashboard/admin/email", "/dashboard/admin/registry-activity", "/dashboard/admin/blocked-links"] as const;
-const routeTree = rootRoute.addChildren([homeRoute, packagesRoute, packageRoute, packageDocsRoute, publishersRoute, publisherRoute, topicsRoute, topicRoute, boardPostRoute, authRoute, dashboardRoute.addChildren([profileRoute, notificationsRoute, packageUploadRoute, ...dashboardChildRoutes])]);
+const routeTree = rootRoute.addChildren([homeRoute, packagesRoute, packageRoute, packageDocsRoute, publishersRoute, publisherRoute, topicsRoute, topicRoute, boardPostRoute, authRoute, dashboardRoute.addChildren([profileRoute, notificationsRoute, apiKeysRoute, myPackagesRoute, packageUploadRoute, ...dashboardChildRoutes])]);
 export const router = createRouter({ routeTree, context: { queryClient: undefined! }, defaultErrorComponent: ErrorPage, defaultNotFoundComponent: NotFoundPage });
 declare module "@tanstack/react-router" { interface Register { router: typeof router; } }
