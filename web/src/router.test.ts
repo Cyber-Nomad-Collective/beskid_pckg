@@ -18,16 +18,21 @@ describe("pckg browser routes", () => {
 		]));
 	});
 
-	it("keeps all dashboard destinations behind the dashboard route", () => {
+	it("keeps only supported dashboard destinations behind the dashboard route", () => {
 		expect(clientRoutePaths.filter((path) => path.startsWith("/dashboard/"))).toEqual(expect.arrayContaining([
 			"/dashboard/profile",
 			"/dashboard/notifications",
 			"/dashboard/api-keys",
 			"/dashboard/packages/my",
 			"/dashboard/packages/upload",
-			"/dashboard/packages/all",
 			"/dashboard/admin",
 			"/dashboard/admin/users",
+		]));
+	});
+
+	it("does not retain retired C# dashboard routes as browser stubs", () => {
+		expect(clientRoutePaths).not.toEqual(expect.arrayContaining([
+			"/dashboard/packages/all",
 			"/dashboard/admin/email",
 			"/dashboard/admin/registry-activity",
 			"/dashboard/admin/blocked-links",
