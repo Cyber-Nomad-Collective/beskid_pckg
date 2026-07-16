@@ -30,6 +30,28 @@ describe("PckgApiClient", () => {
 		expect(new URL(requests[0].url, "https://pckg.test").pathname).toBe("/api/packages");
 	});
 
+	it("loads public GitHub-subject publishers and their package catalog without client-side filtering", async () => {
+		const requests: Request[] = [];
+		const client = new PckgApiClient({
+			fetch: async (request) => {
+				const captured = new Request(request);
+				requests.push(captured);
+				return captured.url.includes("/packages")
+					? Response.json([{ id: "1", name: "beskid.compiler", description: "Compiler", tags: [] }])
+					: Response.json([{ subject: "github:42", display_name: "Ada", bio: "Compiler author", social_links: [] }]);
+			},
+		});
+
+		await expect(client.listPublishers()).resolves.toMatchObject([{ subject: "github:42", display_name: "Ada" }]);
+		await expect(client.listPublisherPackages("github:42")).resolves.toMatchObject([{ name: "beskid.compiler" }]);
+
+		expect(requests.map((request) => `${request.method} ${new URL(request.url, "https://pckg.test").pathname}`)).toEqual([
+			"GET /api/publishers",
+			"GET /api/publishers/github%3A42/packages",
+		]);
+		expect(requests.every((request) => request.credentials === "include")).toBe(true);
+	});
+
 	it("loads the authenticated owner's packages without a client-side filter", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({

@@ -134,6 +134,14 @@ export class PckgApiClient {
 		return results.map((result) => result.package);
 	}
 
+	async listPublishers(): Promise<CommunityProfile[]> {
+		return this.get<CommunityProfile[]>("/api/publishers");
+	}
+
+	async listPublisherPackages(subject: string): Promise<PackageSummary[]> {
+		return this.get<PackageSummary[]>(`/api/publishers/${encodeURIComponent(subject)}/packages`);
+	}
+
 	async listApiKeys(): Promise<ApiKey[]> {
 		return this.get<ApiKey[]>("/api/api-keys");
 	}
