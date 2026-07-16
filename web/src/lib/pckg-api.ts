@@ -76,6 +76,24 @@ export interface CreatedApiKey {
 	plainTextKey: string;
 }
 
+export interface AdminUser {
+	subject: string;
+	githubLogin: string;
+	roles: string[];
+	publisherVerified: boolean;
+}
+
+export interface UpdateAdminUserInput {
+	roles: string[];
+	publisherVerified: boolean;
+}
+
+export interface AdminPermission {
+	subject: string;
+	resource: string;
+	capability: string;
+}
+
 export interface CommunityProfile {
 	subject: string;
 	display_name: string;
@@ -127,6 +145,26 @@ export class PckgApiClient {
 	async revokeApiKey(keyId: string): Promise<void> {
 		const response = await this.request(`/api/api-keys/${encodeURIComponent(keyId)}`, { method: "DELETE" });
 		if (!response.ok) throw new PckgApiError(response.status);
+	}
+
+	async listAdminUsers(): Promise<AdminUser[]> {
+		return this.get<AdminUser[]>("/api/admin/users");
+	}
+
+	async updateAdminUser(subject: string, input: UpdateAdminUserInput): Promise<AdminUser> {
+		return this.readJson<AdminUser>(await this.request(`/api/admin/users/${encodeURIComponent(subject)}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(input),
+		}));
+	}
+
+	async listAdminPermissions(): Promise<AdminPermission[]> {
+		return this.get<AdminPermission[]>("/api/admin/permissions");
+	}
+
+	async grantAdminPermission(input: AdminPermission): Promise<AdminPermission> {
+		return this.postJson<AdminPermission>("/api/admin/permissions", input);
 	}
 
 	async getPackage(packageName: string): Promise<PackageDetails> {

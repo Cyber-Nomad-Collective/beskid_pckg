@@ -69,6 +69,35 @@ describe("PckgApiClient", () => {
 		expect(await requests[1].text()).toBe('{"name":"CI","scopes":["publish"]}');
 	});
 
+	it("uses credentialed GitHub-subject admin user and permission contracts", async () => {
+		const requests: Request[] = [];
+		const client = new PckgApiClient({
+			fetch: async (request) => {
+				const captured = new Request(request);
+				requests.push(captured);
+				if (captured.method === "PATCH") return Response.json({ subject: "github:42", roles: ["Moderator"], publisherVerified: true });
+				if (captured.method === "POST") return Response.json({ subject: "github:42", resource: "package:beskid.http", capability: "moderate" }, { status: 201 });
+				if (captured.url.includes("/permissions")) return Response.json([{ subject: "github:42", resource: "package:beskid.http", capability: "moderate" }]);
+				return Response.json([{ subject: "github:42", githubLogin: "ada", roles: ["Member"], publisherVerified: false }]);
+			},
+		});
+
+		await expect(client.listAdminUsers()).resolves.toMatchObject([{ subject: "github:42", githubLogin: "ada" }]);
+		await expect(client.updateAdminUser("github:42", { roles: ["Moderator"], publisherVerified: true })).resolves.toMatchObject({ publisherVerified: true });
+		await expect(client.listAdminPermissions()).resolves.toMatchObject([{ capability: "moderate" }]);
+		await expect(client.grantAdminPermission({ subject: "github:42", resource: "package:beskid.http", capability: "moderate" })).resolves.toMatchObject({ resource: "package:beskid.http" });
+
+		expect(requests.map((request) => `${request.method} ${new URL(request.url, "https://pckg.test").pathname}`)).toEqual([
+			"GET /api/admin/users",
+			"PATCH /api/admin/users/github%3A42",
+			"GET /api/admin/permissions",
+			"POST /api/admin/permissions",
+		]);
+		expect(requests.every((request) => request.credentials === "include")).toBe(true);
+		expect(await requests[1].text()).toBe('{"roles":["Moderator"],"publisherVerified":true}');
+		expect(await requests[3].text()).toBe('{"subject":"github:42","resource":"package:beskid.http","capability":"moderate"}');
+	});
+
 	it("loads package details with metadata and a latest download URL", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({

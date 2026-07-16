@@ -214,10 +214,51 @@ function MyPackagesPage() {
 	if (packages.isError) throw packages.error;
 	return <section className="space-y-6"><header className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-3xl font-bold">My packages</h1><p className="mt-2 text-muted-foreground">Packages owned by your GitHub-backed Auth Hub subject.</p></div><Link to="/dashboard/packages/upload" className={buttonVariants()}>Upload package</Link></header><div className="grid gap-4 md:grid-cols-2">{packages.data.length === 0 ? <Card className="md:col-span-2"><CardContent className="py-8 text-muted-foreground">You do not own any packages yet.</CardContent></Card> : packages.data.map((item) => <Card key={item.id}><CardHeader><CardTitle><Link to="/packages/$packageName" params={{ packageName: item.name }} className="hover:underline">{item.name}</Link></CardTitle><CardDescription>{item.description}</CardDescription></CardHeader><CardContent className="text-sm text-muted-foreground">{item.totalDownloads.toLocaleString()} downloads · updated {new Date(item.updatedAtUtc).toLocaleDateString()}</CardContent></Card>)}</div></section>;
 }
+
+function adminErrorMessage(error: unknown): string {
+	if (!(error instanceof PckgApiError)) return "The registry could not complete this administrative request.";
+	if (error.status === 401) return "Your Auth Hub session has expired. Sign in again to continue.";
+	if (error.status === 403) return "Your GitHub-backed account does not have permission to administer the registry.";
+	if (error.status === 404) return "The requested administrative record no longer exists.";
+	return "The registry could not complete this administrative request.";
+}
+
+const adminRoute = createRoute({ getParentRoute: () => dashboardRoute, path: "/admin", component: AdminOverviewPage });
+function AdminOverviewPage() {
+	const queryClient = useQueryClient();
+	const users = useQuery({ queryKey: ["admin-users"], queryFn: pckgApi.listAdminUsers });
+	const permissions = useQuery({ queryKey: ["admin-permissions"], queryFn: pckgApi.listAdminPermissions });
+	const grant = useMutation({
+		mutationFn: pckgApi.grantAdminPermission,
+		onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-permissions"] }),
+	});
+	if (users.isPending || permissions.isPending) return <p className="text-muted-foreground">Loading administration…</p>;
+	if (users.isError) throw users.error;
+	if (permissions.isError) throw permissions.error;
+	const submit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget);
+		grant.mutate({
+			subject: String(form.get("subject") ?? "").trim(),
+			resource: String(form.get("resource") ?? "").trim(),
+			capability: String(form.get("capability") ?? "moderate"),
+		});
+	};
+	return <section className="max-w-4xl space-y-6"><header><h1 className="text-3xl font-bold">Administration</h1><p className="mt-2 text-muted-foreground">Manage GitHub-subject registry roles, publisher verification, and narrowly scoped resource permissions.</p></header><div className="grid gap-4 sm:grid-cols-2"><Card><CardHeader><CardTitle>{users.data.length} users</CardTitle><CardDescription>Roles and publisher verification are managed by immutable GitHub subjects.</CardDescription></CardHeader><CardContent><Link to="/dashboard/admin/users" className={buttonVariants({ variant: "outline" })}>Manage users</Link></CardContent></Card><Card><CardHeader><CardTitle>{permissions.data.length} permissions</CardTitle><CardDescription>Explicit grants supplement the standard role policy for a resource.</CardDescription></CardHeader></Card></div><Card><CardHeader><CardTitle>Grant resource permission</CardTitle><CardDescription>Use a GitHub subject, such as <code>github:42</code>, and a server-recognized resource identifier.</CardDescription></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-[1fr_1fr_10rem_auto]" onSubmit={submit}><Input name="subject" required pattern="github:[0-9]+" placeholder="github:42" aria-label="GitHub subject" /><Input name="resource" required placeholder="package:beskid.http" aria-label="Resource" /><select name="capability" className="h-9 rounded-md border border-input bg-transparent px-3 text-sm" aria-label="Capability"><option value="moderate">Moderate</option><option value="manage">Manage</option></select><Button type="submit" disabled={grant.isPending}>{grant.isPending ? "Granting…" : "Grant"}</Button></form>{grant.isError && <p className="mt-3 text-sm text-destructive">{adminErrorMessage(grant.error)}</p>}</CardContent></Card><section><h2 className="text-xl font-semibold">Current permissions</h2><div className="mt-3 space-y-3">{permissions.data.length === 0 ? <Card><CardContent className="py-5 text-sm text-muted-foreground">No explicit permissions have been granted.</CardContent></Card> : permissions.data.map((permission) => <Card key={`${permission.subject}:${permission.resource}:${permission.capability}`}><CardContent className="py-4 text-sm"><code>{permission.subject}</code> can <strong>{permission.capability}</strong> <code>{permission.resource}</code>.</CardContent></Card>)}</div></section></section>;
+}
+
+const adminUsersRoute = createRoute({ getParentRoute: () => dashboardRoute, path: "/admin/users", component: AdminUsersPage });
+function AdminUsersPage() {
+	const queryClient = useQueryClient();
+	const users = useQuery({ queryKey: ["admin-users"], queryFn: pckgApi.listAdminUsers });
+	const update = useMutation({ mutationFn: ({ subject, roles, publisherVerified }: { subject: string; roles: string[]; publisherVerified: boolean }) => pckgApi.updateAdminUser(subject, { roles, publisherVerified }), onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin-users"] }) });
+	if (users.isPending) return <p className="text-muted-foreground">Loading registry users…</p>;
+	if (users.isError) throw users.error;
+	return <section className="max-w-4xl space-y-6"><header><h1 className="text-3xl font-bold">Users and roles</h1><p className="mt-2 text-muted-foreground">Changes apply to the GitHub subject shown for each account. Email addresses and local passwords are never used.</p></header>{users.data.length === 0 ? <Card><CardContent className="py-6 text-muted-foreground">No registry users are available.</CardContent></Card> : <div className="space-y-4">{users.data.map((user) => <Card key={user.subject}><CardHeader><CardTitle>{user.githubLogin}</CardTitle><CardDescription><code>{user.subject}</code></CardDescription></CardHeader><CardContent><form className="flex flex-wrap items-end justify-between gap-4" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); update.mutate({ subject: user.subject, roles: ["Member", "Moderator", "SuperAdmin"].filter((role) => form.get(role) === "on"), publisherVerified: form.get("publisherVerified") === "on" }); }}><fieldset className="flex flex-wrap gap-x-4 gap-y-2"><legend className="mb-2 text-sm font-medium">Roles</legend>{["Member", "Moderator", "SuperAdmin"].map((role) => <label key={role} className="flex items-center gap-2 text-sm"><input name={role} type="checkbox" defaultChecked={user.roles.includes(role)} />{role}</label>)}<label className="flex items-center gap-2 text-sm"><input name="publisherVerified" type="checkbox" defaultChecked={user.publisherVerified} />Verified publisher</label></fieldset><Button type="submit" disabled={update.isPending}>{update.isPending ? "Saving…" : "Save changes"}</Button></form>{update.isError && <p className="mt-3 text-sm text-destructive">{adminErrorMessage(update.error)}</p>}</CardContent></Card>)}</div>}</section>;
+}
+
 const dashboardPages = [
 	["/packages/all", "All packages", "Registry-wide administration is not exposed by the service.", "administrator package listing API"],
-	["/admin", "Administration", "Administration remains disabled until server authorization and operations routes are available.", "administrator overview API"],
-	["/admin/users", "Users and roles", "User and role changes require the operations HTTP API.", "administrator users and roles API"],
 	["/admin/email", "Email settings", "Email configuration is not exposed through the registry service.", "email configuration API"],
 	["/admin/registry-activity", "Registry activity", "Operational events are not exposed through the registry service.", "registry activity API"],
 	["/admin/blocked-links", "Blocked links", "Blocked-link policies are not exposed through the registry service.", "blocked-link policy API"],
@@ -225,6 +266,6 @@ const dashboardPages = [
 const dashboardChildRoutes = dashboardPages.map(([path, title, description, missing]) => createRoute({ getParentRoute: () => dashboardRoute, path, component: () => <UnsupportedPage title={title} description={description} missing={missing} /> }));
 
 export const clientRoutePaths = ["/", "/packages", "/packages/$packageName", "/packages/$packageName/docs", "/publishers", "/publishers/$publisher", "/topics", "/topics/$topic", "/board/post/$postId", "/auth", "/dashboard/profile", "/dashboard/notifications", "/dashboard/api-keys", "/dashboard/packages/my", "/dashboard/packages/upload", "/dashboard/packages/all", "/dashboard/admin", "/dashboard/admin/users", "/dashboard/admin/email", "/dashboard/admin/registry-activity", "/dashboard/admin/blocked-links"] as const;
-const routeTree = rootRoute.addChildren([homeRoute, packagesRoute, packageRoute, packageDocsRoute, publishersRoute, publisherRoute, topicsRoute, topicRoute, boardPostRoute, authRoute, dashboardRoute.addChildren([profileRoute, notificationsRoute, apiKeysRoute, myPackagesRoute, packageUploadRoute, ...dashboardChildRoutes])]);
+const routeTree = rootRoute.addChildren([homeRoute, packagesRoute, packageRoute, packageDocsRoute, publishersRoute, publisherRoute, topicsRoute, topicRoute, boardPostRoute, authRoute, dashboardRoute.addChildren([profileRoute, notificationsRoute, apiKeysRoute, myPackagesRoute, packageUploadRoute, adminRoute, adminUsersRoute, ...dashboardChildRoutes])]);
 export const router = createRouter({ routeTree, context: { queryClient: undefined! }, defaultErrorComponent: ErrorPage, defaultNotFoundComponent: NotFoundPage });
 declare module "@tanstack/react-router" { interface Register { router: typeof router; } }
