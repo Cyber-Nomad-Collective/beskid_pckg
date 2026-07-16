@@ -21,6 +21,7 @@ describe("pckg browser routes", () => {
 	it("keeps all dashboard destinations behind the dashboard route", () => {
 		expect(clientRoutePaths.filter((path) => path.startsWith("/dashboard/"))).toEqual(expect.arrayContaining([
 			"/dashboard/profile",
+			"/dashboard/notifications",
 			"/dashboard/api-keys",
 			"/dashboard/packages/my",
 			"/dashboard/packages/upload",

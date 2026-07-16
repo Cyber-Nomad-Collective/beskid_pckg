@@ -1,4 +1,7 @@
-# Database URL and migration behavior are driven by environment (see .env.example). Coolify: inject the same variables there.
+# Local production-like runtime. The Rust service currently receives the
+# database URL for the repository cutover; Compose waits for Postgres before
+# starting pckg, but service readiness becomes database-aware only after the
+# SQLx repository is wired into the server.
 services:
   postgres:
     image: postgres:16
@@ -26,9 +29,10 @@ services:
     environment:
       PCKG_AUTH_HUB_SERVICE_TOKEN: ${PCKG_AUTH_HUB_SERVICE_TOKEN:?set the paired Auth Hub service token}
       PCKG_SESSION_SECRET: ${PCKG_SESSION_SECRET:?set a separate session signing secret}
+      # HTTP-only local development may opt out; all HTTPS deployments must use true.
       PCKG_COOKIE_SECURE: ${PCKG_COOKIE_SECURE:-false}
       PCKG_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${PCKG_DB_HOST:-postgres}:${PCKG_DB_PORT:-5432}/${POSTGRES_DB:-pckgdb}
-      PCKG_ARTIFACT_ROOT: /app/packages
+      PCKG_ARTIFACT_ROOT: ${PCKG_ARTIFACT_ROOT:-/app/packages}
       # reCAPTCHA Enterprise v3 (board posts/comments, package reviews; always verified server-side when keys are set)
       Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
       Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
@@ -37,6 +41,7 @@ services:
     expose:
       - "8082"
     volumes:
+      # The image entrypoint initializes these named volumes as uid/gid 10001.
       - pckg_packages:/app/packages
       - pckg_data:/app/data
     restart: unless-stopped

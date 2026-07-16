@@ -1,4 +1,5 @@
-# Runtime-only: app image from GHCR; Postgres stays on Coolify (separate DB per environment).
+# Runtime-only: app image from GHCR. Keep each Coolify environment on a
+# separate Postgres volume and inject distinct Auth Hub/session secrets.
 services:
   postgres:
     image: postgres:16
@@ -26,7 +27,7 @@ services:
       PCKG_SESSION_SECRET: ${PCKG_SESSION_SECRET:?set a separate session signing secret}
       PCKG_COOKIE_SECURE: ${PCKG_COOKIE_SECURE:-true}
       PCKG_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${PCKG_DB_HOST:-postgres}:${PCKG_DB_PORT:-5432}/${POSTGRES_DB:-pckgdb}
-      PCKG_ARTIFACT_ROOT: /app/packages
+      PCKG_ARTIFACT_ROOT: ${PCKG_ARTIFACT_ROOT:-/app/packages}
       Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
       Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
       Captcha__RecaptchaEnterpriseApiKey: ${CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY:-}
@@ -34,6 +35,7 @@ services:
     expose:
       - "8082"
     volumes:
+      # The image entrypoint initializes these named volumes as uid/gid 10001.
       - pckg_packages:/app/packages
       - pckg_data:/app/data
     restart: unless-stopped
