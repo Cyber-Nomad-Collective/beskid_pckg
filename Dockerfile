@@ -1,6 +1,9 @@
 FROM oven/bun:1.3.14 AS web-build
 WORKDIR /src/pckg/web
 COPY pckg/web/package.json ./
+COPY pckg/web/.npmrc ./
+ARG NODE_AUTH_TOKEN
+ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
 RUN bun install --frozen-lockfile || bun install
 COPY pckg/web/ ./
 RUN bun run build
