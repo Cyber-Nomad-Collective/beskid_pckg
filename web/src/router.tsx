@@ -18,6 +18,7 @@ import { Button, buttonVariants } from "@beskid/ui-react/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beskid/ui-react/ui/card";
 import { Input } from "@beskid/ui-react/ui/input";
 
+import { PackageSourceGraphPanel } from "./components/package-source-graph-panel";
 import { buildAuthHubLoginUrl, toDashboardGuardDestination } from "./lib/auth-navigation";
 import { PckgApiError, pckgApi } from "./lib/pckg-api";
 
@@ -102,6 +103,11 @@ function PackageDocumentationPage() {
 		{readme.data && <Card><CardHeader><CardTitle>README</CardTitle></CardHeader><CardContent><pre className="overflow-x-auto whitespace-pre-wrap text-sm">{readme.data}</pre></CardContent></Card>}
 		{Boolean(structured.data?.metadata) && <Card><CardHeader><CardTitle>Package metadata</CardTitle></CardHeader><CardContent><pre className="overflow-x-auto whitespace-pre-wrap text-sm">{JSON.stringify(structured.data!.metadata, null, 2)}</pre></CardContent></Card>}
 		<div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Documentation files</CardTitle><CardDescription>Markdown files packaged with version {selectedVersion}.</CardDescription></CardHeader><CardContent className="space-y-2">{documentation.length === 0 ? <p className="text-sm text-muted-foreground">No documentation files were published.</p> : documentation.map((entry) => <Button key={entry.path} variant="outline" className="w-full justify-between" onClick={() => setDocPath(entry.path)}>{entry.path}<span className="text-muted-foreground">{entry.sizeBytes} B</span></Button>)}{doc.isError && <p className="text-sm text-destructive">Could not load this documentation file.</p>}{doc.data && <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border p-3 text-sm">{doc.data}</pre>}</CardContent></Card><Card><CardHeader><CardTitle>Source tree</CardTitle><CardDescription>Source files from the verified package artifact.</CardDescription></CardHeader><CardContent className="space-y-2">{sourceEntries.length === 0 ? <p className="text-sm text-muted-foreground">No source files were published.</p> : sourceEntries.map((entry) => <Button key={entry.path} variant="outline" className="w-full justify-between" onClick={() => setSourcePath(entry.path)}>{entry.path}<span className="text-muted-foreground">{entry.sizeBytes} B</span></Button>)}{sourceFile.isError && <p className="text-sm text-destructive">Could not load this source file.</p>}{sourceFile.data && <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border p-3 text-sm">{sourceFile.data}</pre>}</CardContent></Card></div>
+		<PackageSourceGraphPanel
+			sourceEntries={sourceEntries}
+			selectedPath={sourcePath}
+			onSelectPath={setSourcePath}
+		/>
 	</section>;
 }
 
