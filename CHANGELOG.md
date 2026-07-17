@@ -6,4 +6,4 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
-- Copy the BSOL workspace into the pckg server image before building its compiler-backed package.
+- Publish the repository's .NET 10 Server application in the pckg container instead of a non-existent compiler Rust binary.

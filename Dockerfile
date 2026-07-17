@@ -8,14 +8,15 @@ RUN bun install --frozen-lockfile || bun install
 COPY pckg/web/ ./
 RUN bun run build
 
-FROM rust:1.88-bookworm AS server-build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS server-build
 WORKDIR /src
-COPY beskid_bsol/ ./beskid_bsol/
-COPY compiler/ ./compiler/
-WORKDIR /src/compiler
-RUN cargo build --release -p beskid_pckg_server
+COPY pckg/src/Server/Server.csproj ./src/Server/
+COPY pckg/src/pckg.ServiceDefaults/pckg.ServiceDefaults.csproj ./src/pckg.ServiceDefaults/
+RUN dotnet restore src/Server/Server.csproj
+COPY pckg/src/ ./src/
+RUN dotnet publish src/Server/Server.csproj --configuration Release --output /app/publish --no-restore
 
-FROM debian:bookworm-slim AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl util-linux \
@@ -23,13 +24,13 @@ RUN apt-get update \
     && useradd --system --uid 10001 pckg \
     && mkdir -p /app/web /app/packages /app/data \
     && chown -R pckg:pckg /app
-COPY --from=server-build /src/compiler/target/release/beskid_pckg_server /usr/local/bin/beskid_pckg_server
+COPY --from=server-build /app/publish ./
 COPY --from=web-build /src/pckg/web/dist /app/web
 ENV PCKG_WEB_ROOT=/app/web \
     PCKG_ARTIFACT_ROOT=/app/packages \
     PCKG_COOKIE_SECURE=true \
-    PCKG_BIND_ADDR=0.0.0.0:8082
+    ASPNETCORE_URLS=http://+:8082
 EXPOSE 8082
 # Docker creates named volumes as root. Normalize the writable mounts before
 # dropping privileges so both fresh and restored artifact volumes are writable.
-ENTRYPOINT ["/bin/sh", "-ec", "mkdir -p \"$PCKG_ARTIFACT_ROOT\" /app/data && chown -R pckg:pckg \"$PCKG_ARTIFACT_ROOT\" /app/data && exec setpriv --reuid=10001 --regid=10001 --init-groups beskid_pckg_server"]
+ENTRYPOINT ["/bin/sh", "-ec", "mkdir -p \"$PCKG_ARTIFACT_ROOT\" /app/data && chown -R pckg:pckg \"$PCKG_ARTIFACT_ROOT\" /app/data && exec setpriv --reuid=10001 --regid=10001 --init-groups dotnet Server.dll"]

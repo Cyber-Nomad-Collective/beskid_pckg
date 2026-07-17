@@ -4,8 +4,8 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dockerfile="${root}/Dockerfile"
 
-server_stage="$(sed -n '/^FROM rust:.* AS server-build$/,/^FROM debian:/p' "${dockerfile}")"
-if [[ "${server_stage}" != *'COPY beskid_bsol/ ./beskid_bsol/'* ]]; then
-    echo "pckg server image must copy the beskid_bsol workspace before building the compiler package" >&2
+server_stage="$(sed -n '/^FROM mcr.microsoft.com\/dotnet\/sdk:10.0 AS server-build$/,/^FROM mcr.microsoft.com\/dotnet\/aspnet:10.0 AS final$/p' "${dockerfile}")"
+if [[ "${server_stage}" != *'dotnet publish src/Server/Server.csproj'* ]]; then
+    echo "pckg server image must publish the repository's Server.csproj application" >&2
     exit 1
 fi
