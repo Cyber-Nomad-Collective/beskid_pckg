@@ -1,6 +1,10 @@
 namespace Server.Services.AuthHub;
 
-public sealed record AuthHubPairingStatus(bool Paired, string DefaultPublicUrl);
+public sealed record AuthHubPairingStatus(
+    bool Paired,
+    string DefaultPublicUrl,
+    bool HubAvailable = false,
+    bool AppRegistered = false);
 
 public sealed record AuthHubPairingResult(bool Ok, string? Error = null, bool AlreadyPaired = false);
 

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 COMPOSE_FILE="docker-compose.yml"
-APP_PROFILE=()
 RESET_VOLUMES=0
 ACTION="up"
 PODMAN_SOCK="/run/user/$(id -u)/podman/podman.sock"
@@ -10,10 +9,6 @@ LOCAL_DOCKER_CONFIG_DIR="${PWD}/.podman-docker-config"
 
 while (($#)); do
   case "$1" in
-    --aspire)
-      APP_PROFILE=(--profile aspire)
-      shift
-      ;;
     --reset)
       RESET_VOLUMES=1
       shift
@@ -24,7 +19,7 @@ while (($#)); do
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: $0 [up|down|logs|ps] [--aspire] [--reset]"
+      echo "Usage: $0 [up|down|logs|ps] [--reset]"
       exit 2
       ;;
   esac
@@ -80,29 +75,26 @@ if [[ "${ACTION}" == "down" ]]; then
   if [[ ${RESET_VOLUMES} -eq 1 ]]; then
     down_args+=(-v)
   fi
-  "${compose_cmd[@]}" "${APP_PROFILE[@]}" "${down_args[@]}"
+  "${compose_cmd[@]}" "${down_args[@]}"
   echo "Stack stopped."
   exit 0
 fi
 
 if [[ "${ACTION}" == "logs" ]]; then
-  "${compose_cmd[@]}" "${APP_PROFILE[@]}" logs -f
+  "${compose_cmd[@]}" logs -f
   exit 0
 fi
 
 if [[ "${ACTION}" == "ps" ]]; then
-  "${compose_cmd[@]}" "${APP_PROFILE[@]}" ps
+  "${compose_cmd[@]}" ps
   exit 0
 fi
 
 if [[ ${RESET_VOLUMES} -eq 1 ]]; then
-  "${compose_cmd[@]}" "${APP_PROFILE[@]}" down -v
+  "${compose_cmd[@]}" down -v
 fi
 
-"${compose_cmd[@]}" "${APP_PROFILE[@]}" up --build -d
-"${compose_cmd[@]}" "${APP_PROFILE[@]}" ps
+"${compose_cmd[@]}" up --build -d
+"${compose_cmd[@]}" ps
 
-echo "pckg stack is running. App: http://localhost:8082"
-if [[ ${#APP_PROFILE[@]} -gt 0 ]]; then
-  echo "Aspire dashboard: https://localhost:18888"
-fi
+echo "pckg stack is running. Registry: http://localhost:8082"

@@ -1,51 +1,86 @@
 # beskid_pckg
 
-Package Manager for Beskid.
+The Beskid package registry is a Rust HTTP service with a React client. It
+stores registry data in PostgreSQL, keeps validated package artifacts on the
+configured artifact volume, and delegates all browser identity to
+[Auth Hub](../site/auth/README.md).
 
-## Quick Start (Compose)
+## Runtime
 
-From `pckg/`:
+- Server: `beskid_pckg_server` in [`compiler/`](../compiler/)
+- Client: React/Vite in [`web/`](web/), built with Bun and shared
+  `@beskid/*` UI packages
+- Persistence: PostgreSQL plus the `pckg_packages` artifact volume
+- Identity: GitHub-only Auth Hub session handoff
 
-```bash
-podman compose -f docker-compose.yml up --build -d
-```
+The legacy C# application is retained solely as the migration source while the
+transactional importer reaches complete data coverage. It is not an
+operational runtime and must not be started for local development or
+deployment. See [`CUTOVER.md`](CUTOVER.md) for the required reconciliation
+procedure.
 
-This starts:
-- `postgres` on `5432` (database: `pckgdb`)
-- `pckg` app on `http://localhost:8082`
+## Local Compose
 
-Database migrations are applied automatically on application startup.
-
-## Quick Start (Aspire Profile)
-
-```bash
-podman compose -f docker-compose.yml --profile aspire up --build -d
-```
-
-This additionally starts:
-- `apphost` (Aspire host) on `http://localhost:18888`
-
-## Helper Script
-
-Use `run-podman.sh` from `pckg/`:
+From `pckg/`, copy the environment template and set the two Auth Hub secrets:
 
 ```bash
+cp .env.example .env
+# Set PCKG_AUTH_HUB_SERVICE_TOKEN and PCKG_SESSION_SECRET in .env.
 ./run-podman.sh up
-./run-podman.sh up --aspire
+```
+
+This starts PostgreSQL on `5432` and the registry on
+`http://localhost:8082`. The Rust service applies its SQL migrations on
+startup.
+
+Useful lifecycle commands:
+
+```bash
 ./run-podman.sh logs
 ./run-podman.sh ps
 ./run-podman.sh down
 ./run-podman.sh down --reset
 ```
 
-`--reset` removes volumes for a clean database boot.
+`--reset` removes the PostgreSQL and artifact volumes for a clean local boot.
+
+## Local development
+
+Build or test the React client:
+
+```bash
+bun --cwd web run test
+bun --cwd web run typecheck
+bun --cwd web run build
+```
+
+Build or test the Rust service from the repository root:
+
+```bash
+cd compiler
+cargo test -p beskid_pckg_server
+cargo run -p beskid_pckg_server
+```
+
+The service requires `PCKG_AUTH_HUB_SERVICE_TOKEN` and
+`PCKG_SESSION_SECRET`; supply `PCKG_DATABASE_URL` to use PostgreSQL outside
+Compose. See [`.env.example`](.env.example) for the complete local runtime
+configuration.
+
+## Identity and deliberate retirements
+
+Browser sign-in is GitHub application login through Auth Hub only. pckg no
+longer operates local Identity users, passwords, registration, bearer-token
+sign-in, email/SMTP delivery, reCAPTCHA, or profile-avatar uploads. Profiles
+use the GitHub identity and avatar URL supplied by Auth Hub; browser
+notifications are shown in the registry UI.
 
 ## Troubleshooting
 
-- **`database "pckgdb" already exists`**
-  - Informational in this setup; startup is idempotent.
-- **Pending EF model changes**
-  - Ensure the latest migration files in `src/Server/Migrations` are present.
-  - Rebuild with `dotnet build src/pckg.slnx`.
-- **Stale local DB state**
-  - Run `./run-podman.sh down --reset`, then `./run-podman.sh up`.
+- **The service refuses to start:** set distinct values for
+  `PCKG_AUTH_HUB_SERVICE_TOKEN` and `PCKG_SESSION_SECRET`.
+- **Stale local state:** run `./run-podman.sh down --reset`, then
+  `./run-podman.sh up`.
+- **Database connection failures:** confirm the Postgres service is healthy
+  with `./run-podman.sh ps` and that `PCKG_DATABASE_URL` has URL-safe
+  credentials when overriding the Compose defaults.

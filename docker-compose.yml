@@ -1,7 +1,4 @@
-# Local production-like runtime. The Rust service currently receives the
-# database URL for the repository cutover; Compose waits for Postgres before
-# starting pckg, but service readiness becomes database-aware only after the
-# SQLx repository is wired into the server.
+# Local production-like Rust/Bun registry runtime.
 services:
   postgres:
     image: postgres:16
@@ -33,11 +30,6 @@ services:
       PCKG_COOKIE_SECURE: ${PCKG_COOKIE_SECURE:-false}
       PCKG_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${PCKG_DB_HOST:-postgres}:${PCKG_DB_PORT:-5432}/${POSTGRES_DB:-pckgdb}
       PCKG_ARTIFACT_ROOT: ${PCKG_ARTIFACT_ROOT:-/app/packages}
-      # reCAPTCHA Enterprise v3 (board posts/comments, package reviews; always verified server-side when keys are set)
-      Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
-      Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
-      Captcha__RecaptchaEnterpriseApiKey: ${CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY:-}
-      Captcha__MinimumScore: ${CAPTCHA_RECAPTCHA_MINIMUM_SCORE:-0.5}
     expose:
       - "8082"
     volumes:

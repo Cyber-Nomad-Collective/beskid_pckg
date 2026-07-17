@@ -32,7 +32,49 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
             .FirstOrDefaultAsync(x => x.Id == 1, ct);
         var paired = !string.IsNullOrWhiteSpace(settings?.ProtectedServiceToken);
         var defaultPublicUrl = ResolvePublicUrl()?.Trim().TrimEnd('/') ?? string.Empty;
-        return new AuthHubPairingStatus(paired, defaultPublicUrl);
+        var discovery = await DiscoverAsync(ct);
+        return new AuthHubPairingStatus(
+            paired,
+            defaultPublicUrl,
+            discovery.HubAvailable,
+            discovery.AppRegistered);
+    }
+
+    private async Task<(bool HubAvailable, bool AppRegistered)> DiscoverAsync(CancellationToken ct)
+    {
+        var hubUrl = ResolveHubUrl();
+        if (hubUrl is null)
+        {
+            return (false, false);
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient(nameof(AuthHubPairingService));
+            using var health = await client.GetAsync($"{hubUrl}/api/v1/health", ct);
+            if (!health.IsSuccessStatusCode)
+            {
+                return (false, false);
+            }
+
+            using var status = await client.GetAsync(
+                $"{hubUrl}/api/v1/pairing/status?appId=pckg", ct);
+            if (!status.IsSuccessStatusCode)
+            {
+                return (true, false);
+            }
+
+            var body = await status.Content.ReadFromJsonAsync<PairingStatusResponse>(cancellationToken: ct);
+            return (true, body?.AppId is "pckg");
+        }
+        catch (HttpRequestException)
+        {
+            return (false, false);
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return (false, false);
+        }
     }
 
     public async Task<AuthHubPairingResult> CompletePairingAsync(
@@ -177,6 +219,10 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
 
     private sealed record ErrorResponse(
         [property: JsonPropertyName("error")] string? Error);
+
+    private sealed record PairingStatusResponse(
+        [property: JsonPropertyName("appId")] string? AppId,
+        [property: JsonPropertyName("paired")] bool Paired);
 
     private sealed record GitHubUserResponse(
         [property: JsonPropertyName("login")] string? Login);

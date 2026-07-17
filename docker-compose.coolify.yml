@@ -28,10 +28,6 @@ services:
       PCKG_COOKIE_SECURE: ${PCKG_COOKIE_SECURE:-true}
       PCKG_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${PCKG_DB_HOST:-postgres}:${PCKG_DB_PORT:-5432}/${POSTGRES_DB:-pckgdb}
       PCKG_ARTIFACT_ROOT: ${PCKG_ARTIFACT_ROOT:-/app/packages}
-      Captcha__RecaptchaV3SiteKey: ${CAPTCHA_RECAPTCHA_V3_SITE_KEY:-}
-      Captcha__RecaptchaEnterpriseProjectId: ${CAPTCHA_RECAPTCHA_ENTERPRISE_PROJECT_ID:-}
-      Captcha__RecaptchaEnterpriseApiKey: ${CAPTCHA_RECAPTCHA_ENTERPRISE_API_KEY:-}
-      Captcha__MinimumScore: ${CAPTCHA_RECAPTCHA_MINIMUM_SCORE:-0.5}
     expose:
       - "8082"
     volumes:

@@ -116,6 +116,7 @@ export interface CommunityPost { id: number; board_id: string; author: string; t
 export interface CommunityComment { id: number; post_id: number; author: string; content: string; parent_comment_id: number | null; score: number; }
 export interface FollowState { is_following: boolean; changed: boolean; }
 export interface VoteResult { score: number; }
+export interface PackageCommunityReview { id: string; author: string; rating: number; comment: string; createdAtUtc: string; }
 
 export class PckgApiClient {
 	private readonly fetch: typeof globalThis.fetch;
@@ -182,6 +183,8 @@ export class PckgApiClient {
 			latestDownloadUrl: details.latestVersion ? this.packageDownloadUrl(packageName, "latest") : null,
 		};
 	}
+	async listPackageCommunityReviews(packageName: string): Promise<PackageCommunityReview[]> { return this.get<PackageCommunityReview[]>(`/api/packages/${encodeURIComponent(packageName)}/community-reviews`); }
+	async createPackageCommunityReview(packageName: string, input: { rating: number; comment: string }): Promise<PackageCommunityReview> { return this.postJson<PackageCommunityReview>(`/api/packages/${encodeURIComponent(packageName)}/community-reviews`, input); }
 
 	async getPackageReadme(packageName: string, version: string): Promise<string> {
 		return this.getText(this.artifactPath(packageName, version, "readme"));
@@ -248,6 +251,10 @@ export class PckgApiClient {
 	async listBoards(): Promise<CommunityBoard[]> { return this.get<CommunityBoard[]>("/api/community/boards"); }
 	async getBoard(boardId: string): Promise<CommunityBoard> { return this.get<CommunityBoard>(`/api/community/boards/${encodeURIComponent(boardId)}`); }
 	async listBoardPosts(boardId: string): Promise<CommunityPost[]> { return this.get<CommunityPost[]>(`/api/community/boards/${encodeURIComponent(boardId)}/posts`); }
+	async setBoardLocked(boardId: string, locked: boolean): Promise<void> {
+		const response = await this.request(`/api/community/boards/${encodeURIComponent(boardId)}/moderation/lock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locked }) });
+		if (!response.ok) throw new PckgApiError(response.status);
+	}
 	async getPost(postId: number): Promise<CommunityPost> { return this.get<CommunityPost>(`/api/community/boards/posts/${postId}`); }
 	async listPostComments(postId: number): Promise<CommunityComment[]> { return this.get<CommunityComment[]>(`/api/community/boards/posts/${postId}/comments`); }
 

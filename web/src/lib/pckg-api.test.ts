@@ -249,6 +249,7 @@ describe("PckgApiClient", () => {
 		await client.listBoards();
 		await client.getBoard("general");
 		await client.listBoardPosts("general");
+		await client.setBoardLocked("general", true);
 		await client.getPost(7);
 		await client.listPostComments(7);
 		await client.togglePublisherFollow("github:42");
@@ -259,13 +260,15 @@ describe("PckgApiClient", () => {
 			"GET /api/community/boards",
 			"GET /api/community/boards/general",
 			"GET /api/community/boards/general/posts",
+			"POST /api/community/boards/general/moderation/lock",
 			"GET /api/community/boards/posts/7",
 			"GET /api/community/boards/posts/7/comments",
 			"POST /api/community/publisher-follows/github%3A42/toggle",
 			"POST /api/community/boards/posts/7/vote",
 			"POST /api/community/boards/posts/7/comments",
 		]);
-		expect(await requests[6].text()).toBe('{"value":1}');
-		expect(await requests[7].text()).toBe('{"content":"Useful package."}');
+		expect(await requests[3].text()).toBe('{"locked":true}');
+		expect(await requests[7].text()).toBe('{"value":1}');
+		expect(await requests[8].text()).toBe('{"content":"Useful package."}');
 	});
 });
