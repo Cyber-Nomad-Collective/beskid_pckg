@@ -10,6 +10,7 @@ RUN bun run build
 
 FROM rust:1.88-bookworm AS server-build
 WORKDIR /src
+COPY beskid_bsol/ ./beskid_bsol/
 COPY compiler/ ./compiler/
 WORKDIR /src/compiler
 RUN cargo build --release -p beskid_pckg_server
