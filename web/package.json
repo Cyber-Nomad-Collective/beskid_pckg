@@ -11,8 +11,8 @@
 		"sync:beskid-packages": "bash ../../scripts/sync-beskid-packages.sh pckg/web"
 	},
 	"dependencies": {
-		"@beskid/beskid-ui": "file:../../beskid_web_common/packages/beskid-ui",
-		"@beskid/ui-react": "file:../../beskid_web_common/packages/beskid-ui-react",
+		"@beskid/beskid-ui": "npm:@cyber-nomad-collective/beskid-ui@^0.2.0",
+		"@beskid/ui-react": "npm:@cyber-nomad-collective/beskid-ui-react@^0.2.0",
 		"@tanstack/react-query": "^5.100.14",
 		"@tanstack/react-router": "^1.170.8",
 		"@tailwindcss/vite": "^4.3.0",
