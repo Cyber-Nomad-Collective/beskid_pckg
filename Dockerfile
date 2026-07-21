@@ -2,8 +2,7 @@
 FROM oven/bun:1.3.14 AS web-build
 # Context is the superrepo root so file:../../beskid_web_common resolves.
 WORKDIR /src
-COPY beskid_web_common/package.json beskid_web_common/bun.lock beskid_web_common/tsconfig.base.json ./beskid_web_common/
-COPY beskid_web_common/packages ./beskid_web_common/packages
+COPY beskid_web_common ./beskid_web_common
 COPY pckg/web/package.json pckg/web/bun.lock pckg/web/.npmrc ./pckg/web/
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
@@ -39,6 +38,4 @@ ENV PCKG_WEB_ROOT=/app/web \
     PCKG_COOKIE_SECURE=true \
     ASPNETCORE_URLS=http://+:8082
 EXPOSE 8082
-# Docker creates named volumes as root. Normalize the writable mounts before
-# dropping privileges so both fresh and restored artifact volumes are writable.
 ENTRYPOINT ["/bin/sh", "-ec", "mkdir -p \"$PCKG_ARTIFACT_ROOT\" /app/data && chown -R pckg:pckg \"$PCKG_ARTIFACT_ROOT\" /app/data && exec setpriv --reuid=10001 --regid=10001 --init-groups dotnet Server.dll"]
