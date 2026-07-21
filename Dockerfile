@@ -7,6 +7,7 @@ COPY beskid_web_common/packages ./beskid_web_common/packages
 COPY pckg/web/package.json pckg/web/bun.lock pckg/web/.npmrc ./pckg/web/
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
+# Isolate Bun install cache (avoids scoped-registry ENOENT on empty default cache).
 ENV BUN_INSTALL_CACHE_DIR=/bun-cache
 # Install shared packages first so file: consumers resolve transitive deps and
 # Vite can load source exports (graph/explorer) that are not in published 0.2.8.
