@@ -1,10 +1,11 @@
 FROM oven/bun:1.3.14 AS web-build
+# Context is the superrepo root so file:../../beskid_web_common resolves.
 WORKDIR /src/pckg/web
-COPY pckg/web/package.json ./
-COPY pckg/web/.npmrc ./
+COPY pckg/web/package.json pckg/web/bun.lock pckg/web/.npmrc ./
+COPY beskid_web_common /src/beskid_web_common
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
-RUN bun install --frozen-lockfile || bun install
+RUN bun install --frozen-lockfile
 COPY pckg/web/ ./
 RUN bun run build
 
