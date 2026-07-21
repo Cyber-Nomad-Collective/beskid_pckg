@@ -2,7 +2,7 @@
 FROM oven/bun:1.3.14 AS web-build
 # Context is the superrepo root so file:../../beskid_web_common resolves.
 WORKDIR /src
-COPY beskid_web_common/package.json beskid_web_common/bun.lock ./beskid_web_common/
+COPY beskid_web_common/package.json beskid_web_common/bun.lock beskid_web_common/tsconfig.base.json ./beskid_web_common/
 COPY beskid_web_common/packages ./beskid_web_common/packages
 COPY pckg/web/package.json pckg/web/bun.lock pckg/web/.npmrc ./pckg/web/
 ARG NODE_AUTH_TOKEN
