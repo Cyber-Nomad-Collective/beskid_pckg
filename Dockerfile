@@ -30,13 +30,15 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl util-linux \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 pckg \
-    && mkdir -p /app/web /app/packages /app/data \
+    && mkdir -p /app/web /app/packages /app/data/uploads \
     && chown -R pckg:pckg /app
-COPY --from=server-build /app/publish ./
-COPY --from=web-build /src/pckg/web/dist /app/web
+# COPY after chown must re-apply ownership; otherwise uid 10001 cannot mkdir under /app.
+COPY --from=server-build --chown=pckg:pckg /app/publish ./
+COPY --from=web-build --chown=pckg:pckg /src/pckg/web/dist /app/web
 ENV PCKG_WEB_ROOT=/app/web \
     PCKG_ARTIFACT_ROOT=/app/packages \
     PCKG_COOKIE_SECURE=true \
-    ASPNETCORE_URLS=http://+:8082
+    ASPNETCORE_URLS=http://+:8082 \
+    Storage__UploadsRootPath=/app/data/uploads
 EXPOSE 8082
-ENTRYPOINT ["/bin/sh", "-ec", "mkdir -p \"$PCKG_ARTIFACT_ROOT\" /app/data && chown -R pckg:pckg \"$PCKG_ARTIFACT_ROOT\" /app/data && exec setpriv --reuid=10001 --regid=10001 --init-groups dotnet Server.dll"]
+ENTRYPOINT ["/bin/sh", "-ec", "mkdir -p \"$PCKG_ARTIFACT_ROOT\" /app/data/uploads && chown -R pckg:pckg \"$PCKG_ARTIFACT_ROOT\" /app/data && exec setpriv --reuid=10001 --regid=10001 --init-groups dotnet Server.dll"]

@@ -2,10 +2,14 @@ using System.Security.Claims;
 using FastEndpoints;
 using Microsoft.AspNetCore.Identity;
 using Server.Data;
+using Server.Services;
 
 namespace Server.Features.Users;
 
-public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> userManager, IWebHostEnvironment environment)
+public sealed class UploadProfileImageEndpoint(
+    UserManager<ApplicationUser> userManager,
+    IWebHostEnvironment environment,
+    IConfiguration configuration)
     : EndpointWithoutRequest<UploadProfileImageResponse>
 {
     private const long MaxFileSizeBytes = 10 * 1024 * 1024;
@@ -79,7 +83,7 @@ public sealed class UploadProfileImageEndpoint(UserManager<ApplicationUser> user
             };
         }
 
-        var uploadsRoot = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "profiles");
+        var uploadsRoot = Path.Combine(UploadPaths.ResolveUploadsRoot(environment, configuration), "profiles");
         Directory.CreateDirectory(uploadsRoot);
 
         var fileName = $"{userId}{extension.ToLowerInvariant()}";

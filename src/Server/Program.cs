@@ -326,7 +326,7 @@ if (useHttpsRedirection)
     app.UseHttpsRedirection();
 }
 
-var uploadsRoot = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "uploads");
+var uploadsRoot = UploadPaths.ResolveUploadsRoot(app.Environment, app.Configuration);
 Directory.CreateDirectory(uploadsRoot);
 app.UseStaticFiles(new StaticFileOptions
 {
