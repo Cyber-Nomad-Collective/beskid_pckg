@@ -1,20 +1,19 @@
 # syntax=docker/dockerfile:1.7
-FROM oven/bun:1.3.14 AS web-build
+FROM node:22.12.0-alpine AS web-build
+RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
 # Context is the superrepo root so file:../../beskid_web_common resolves.
 WORKDIR /src
 COPY beskid_web_common ./beskid_web_common
-COPY pckg/web/package.json pckg/web/bun.lock pckg/web/.npmrc ./pckg/web/
+COPY pckg/web/package.json pckg/web/pnpm-lock.yaml pckg/web/.npmrc ./pckg/web/
 ARG NODE_AUTH_TOKEN
 ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
-# Isolate Bun install cache (avoids scoped-registry ENOENT on empty default cache).
-ENV BUN_INSTALL_CACHE_DIR=/bun-cache
 # Install shared packages first so file: consumers resolve transitive deps and
 # Vite can load source exports (graph/explorer) that are not in published 0.2.8.
-RUN --mount=type=cache,target=/bun-cache bun install --cwd=/src/beskid_web_common --frozen-lockfile
-RUN --mount=type=cache,target=/bun-cache bun install --cwd=/src/pckg/web --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --dir /src/beskid_web_common --frozen-lockfile
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --dir /src/pckg/web --frozen-lockfile
 COPY pckg/web/ ./pckg/web/
 WORKDIR /src/pckg/web
-RUN bun run build
+RUN pnpm build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS server-build
 WORKDIR /src

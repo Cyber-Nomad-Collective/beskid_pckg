@@ -2,12 +2,12 @@
 	"name": "@beskid/pckg-web",
 	"private": true,
 	"type": "module",
-	"packageManager": "bun@1.3.14",
+	"packageManager": "pnpm@10.17.1",
 	"scripts": {
-		"dev": "bun --bun vite",
-		"build": "bun --bun vite build",
-		"test": "bun --bun vitest run",
-		"typecheck": "bunx tsc --noEmit",
+		"dev": "pnpm vite",
+		"build": "pnpm vite build",
+		"test": "pnpm vitest run",
+		"typecheck": "pnpm exec tsc --noEmit",
 		"sync:beskid-packages": "bash ../../scripts/sync-beskid-packages.sh pckg/web"
 	},
 	"dependencies": {
