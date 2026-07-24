@@ -4,8 +4,10 @@ FROM node:22-bookworm AS web-build
 WORKDIR /src
 COPY beskid_web_common ./beskid_web_common
 COPY pckg/web/package.json pckg/web/pnpm-lock.yaml pckg/web/pnpm-workspace.yaml pckg/web/.npmrc ./pckg/web/
+# NODE_AUTH_TOKEN stays a build ARG: it is available to the pnpm install RUN steps
+# below for .npmrc auth, but is deliberately not promoted to ENV so the registry
+# token is not baked into the web-build image config or runtime environment.
 ARG NODE_AUTH_TOKEN
-ENV NODE_AUTH_TOKEN=${NODE_AUTH_TOKEN}
 RUN npm install -g pnpm@10.17.1
 # Install shared packages first so file: consumers resolve transitive deps and
 # Vite can load source exports (graph/explorer) that are not in published 0.2.8.
