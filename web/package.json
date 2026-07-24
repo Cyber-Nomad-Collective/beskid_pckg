@@ -4,10 +4,10 @@
 	"type": "module",
 	"packageManager": "pnpm@10.17.1",
 	"scripts": {
-		"dev": "pnpm vite",
-		"build": "pnpm vite build",
-		"test": "pnpm vitest run",
-		"typecheck": "pnpm exec tsc --noEmit",
+		"dev": "vite",
+		"build": "vite build",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
 		"sync:beskid-packages": "bash ../../scripts/sync-beskid-packages.sh pckg/web"
 	},
 	"dependencies": {
