@@ -1,11 +1,21 @@
 "use client";
 
-import { LinkedAstFactsView, sampleAst, sampleFacts, sampleRepo } from "@beskid/ui-react/graph";
-import { RepoExplorerDialog, type RepoEntry } from "@beskid/ui-react/explorer";
-import { useMemo, useState } from "react";
-
+import { type RepoEntry, RepoExplorerDialog } from "@beskid/ui-react/explorer";
+import {
+	LinkedAstFactsView,
+	sampleAst,
+	sampleFacts,
+	sampleRepo,
+} from "@beskid/ui-react/graph";
 import { Button } from "@beskid/ui-react/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beskid/ui-react/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@beskid/ui-react/ui/card";
+import { useMemo, useState } from "react";
 
 export type PackageSourceEntry = {
 	path: string;
@@ -66,14 +76,19 @@ export function PackageSourceGraphPanel({
 	return (
 		<div className="space-y-4">
 			<div className="flex flex-wrap items-center gap-2">
-				<Button type="button" variant="outline" onClick={() => setExplorerOpen(true)}>
+				<Button
+					type="button"
+					variant="outline"
+					onClick={() => setExplorerOpen(true)}
+				>
 					Browse source…
 				</Button>
 				{selectedPath ? (
 					<p className="font-mono text-xs text-muted-foreground">{selectedPath}</p>
 				) : (
 					<p className="text-sm text-muted-foreground">
-						Select a `.bs` file to preview AST / facts (fixture until live models exist).
+						Select a `.bs` file to preview AST / facts (fixture until live models
+						exist).
 					</p>
 				)}
 			</div>

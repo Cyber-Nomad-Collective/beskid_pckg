@@ -24,7 +24,12 @@ export interface PackageVersion {
 export interface PackageDetails {
 	package: PackageSummary;
 	versions: PackageVersion[];
-	dependencies: Array<{ name: string; version: string | null; source: string; registry: string | null }>;
+	dependencies: Array<{
+		name: string;
+		version: string | null;
+		source: string;
+		registry: string | null;
+	}>;
 	dependentsCount: number;
 	readme: string | null;
 	latestVersion: string | null;
@@ -111,27 +116,64 @@ export interface Notification {
 	is_read: boolean;
 }
 
-export interface CommunityBoard { id: string; title: string; locked: boolean; }
-export interface CommunityPost { id: number; board_id: string; author: string; title: string; content: string; score: number; }
-export interface CommunityComment { id: number; post_id: number; author: string; content: string; parent_comment_id: number | null; score: number; }
-export interface FollowState { is_following: boolean; changed: boolean; }
-export interface VoteResult { score: number; }
-export interface PackageCommunityReview { id: string; author: string; rating: number; comment: string; createdAtUtc: string; }
+export interface CommunityBoard {
+	id: string;
+	title: string;
+	locked: boolean;
+}
+export interface CommunityPost {
+	id: number;
+	board_id: string;
+	author: string;
+	title: string;
+	content: string;
+	score: number;
+}
+export interface CommunityComment {
+	id: number;
+	post_id: number;
+	author: string;
+	content: string;
+	parent_comment_id: number | null;
+	score: number;
+}
+export interface FollowState {
+	is_following: boolean;
+	changed: boolean;
+}
+export interface VoteResult {
+	score: number;
+}
+export interface PackageCommunityReview {
+	id: string;
+	author: string;
+	rating: number;
+	comment: string;
+	createdAtUtc: string;
+}
 
 export class PckgApiClient {
 	private readonly fetch: typeof globalThis.fetch;
 	private readonly baseUrl: string;
 
-	constructor(options: { fetch?: typeof globalThis.fetch; baseUrl?: string } = {}) {
+	constructor(
+		options: { fetch?: typeof globalThis.fetch; baseUrl?: string } = {},
+	) {
 		this.fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
-		this.baseUrl = options.baseUrl ?? globalThis.location?.origin ?? "http://localhost";
+		this.baseUrl =
+			options.baseUrl ?? globalThis.location?.origin ?? "http://localhost";
 	}
 
-	async listPackages(input: SearchPackagesInput = {}): Promise<PackageSummary[]> {
+	async listPackages(
+		input: SearchPackagesInput = {},
+	): Promise<PackageSummary[]> {
 		const query = input.query?.trim();
-		if (input.owner === "me") return this.get<PackageSummary[]>("/api/packages?owner=me");
+		if (input.owner === "me")
+			return this.get<PackageSummary[]>("/api/packages?owner=me");
 		if (!query) return this.get<PackageSummary[]>("/api/packages");
-		const results = await this.get<Array<{ package: PackageSummary }>>(`/api/search?q=${encodeURIComponent(query)}`);
+		const results = await this.get<Array<{ package: PackageSummary }>>(
+			`/api/search?q=${encodeURIComponent(query)}`,
+		);
 		return results.map((result) => result.package);
 	}
 
@@ -140,19 +182,27 @@ export class PckgApiClient {
 	}
 
 	async listPublisherPackages(subject: string): Promise<PackageSummary[]> {
-		return this.get<PackageSummary[]>(`/api/publishers/${encodeURIComponent(subject)}/packages`);
+		return this.get<PackageSummary[]>(
+			`/api/publishers/${encodeURIComponent(subject)}/packages`,
+		);
 	}
 
 	async listApiKeys(): Promise<ApiKey[]> {
 		return this.get<ApiKey[]>("/api/api-keys");
 	}
 
-	async createApiKey(input: { name: string; scopes: string[] }): Promise<CreatedApiKey> {
+	async createApiKey(input: {
+		name: string;
+		scopes: string[];
+	}): Promise<CreatedApiKey> {
 		return this.postJson<CreatedApiKey>("/api/api-keys", input);
 	}
 
 	async revokeApiKey(keyId: string): Promise<void> {
-		const response = await this.request(`/api/api-keys/${encodeURIComponent(keyId)}`, { method: "DELETE" });
+		const response = await this.request(
+			`/api/api-keys/${encodeURIComponent(keyId)}`,
+			{ method: "DELETE" },
+		);
 		if (!response.ok) throw new PckgApiError(response.status);
 	}
 
@@ -160,12 +210,17 @@ export class PckgApiClient {
 		return this.get<AdminUser[]>("/api/admin/users");
 	}
 
-	async updateAdminUser(subject: string, input: UpdateAdminUserInput): Promise<AdminUser> {
-		return this.readJson<AdminUser>(await this.request(`/api/admin/users/${encodeURIComponent(subject)}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(input),
-		}));
+	async updateAdminUser(
+		subject: string,
+		input: UpdateAdminUserInput,
+	): Promise<AdminUser> {
+		return this.readJson<AdminUser>(
+			await this.request(`/api/admin/users/${encodeURIComponent(subject)}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(input),
+			}),
+		);
 	}
 
 	async listAdminPermissions(): Promise<AdminPermission[]> {
@@ -177,37 +232,82 @@ export class PckgApiClient {
 	}
 
 	async getPackage(packageName: string): Promise<PackageDetails> {
-		const details = await this.get<Omit<PackageDetails, "latestDownloadUrl">>(`/api/packages/${encodeURIComponent(packageName)}`);
+		const details = await this.get<Omit<PackageDetails, "latestDownloadUrl">>(
+			`/api/packages/${encodeURIComponent(packageName)}`,
+		);
 		return {
 			...details,
-			latestDownloadUrl: details.latestVersion ? this.packageDownloadUrl(packageName, "latest") : null,
+			latestDownloadUrl: details.latestVersion
+				? this.packageDownloadUrl(packageName, "latest")
+				: null,
 		};
 	}
-	async listPackageCommunityReviews(packageName: string): Promise<PackageCommunityReview[]> { return this.get<PackageCommunityReview[]>(`/api/packages/${encodeURIComponent(packageName)}/community-reviews`); }
-	async createPackageCommunityReview(packageName: string, input: { rating: number; comment: string }): Promise<PackageCommunityReview> { return this.postJson<PackageCommunityReview>(`/api/packages/${encodeURIComponent(packageName)}/community-reviews`, input); }
+	async listPackageCommunityReviews(
+		packageName: string,
+	): Promise<PackageCommunityReview[]> {
+		return this.get<PackageCommunityReview[]>(
+			`/api/packages/${encodeURIComponent(packageName)}/community-reviews`,
+		);
+	}
+	async createPackageCommunityReview(
+		packageName: string,
+		input: { rating: number; comment: string },
+	): Promise<PackageCommunityReview> {
+		return this.postJson<PackageCommunityReview>(
+			`/api/packages/${encodeURIComponent(packageName)}/community-reviews`,
+			input,
+		);
+	}
 
 	async getPackageReadme(packageName: string, version: string): Promise<string> {
 		return this.getText(this.artifactPath(packageName, version, "readme"));
 	}
 
-	async listPackageDocs(packageName: string, version: string): Promise<PackageBrowseEntry[]> {
-		return this.get<PackageBrowseEntry[]>(this.artifactPath(packageName, version, "docs"));
+	async listPackageDocs(
+		packageName: string,
+		version: string,
+	): Promise<PackageBrowseEntry[]> {
+		return this.get<PackageBrowseEntry[]>(
+			this.artifactPath(packageName, version, "docs"),
+		);
 	}
 
-	async getPackageDoc(packageName: string, version: string, path: string): Promise<string> {
-		return this.getText(`${this.artifactPath(packageName, version, "docs/file")}?path=${encodeURIComponent(path)}`);
+	async getPackageDoc(
+		packageName: string,
+		version: string,
+		path: string,
+	): Promise<string> {
+		return this.getText(
+			`${this.artifactPath(packageName, version, "docs/file")}?path=${encodeURIComponent(path)}`,
+		);
 	}
 
-	async getStructuredPackageDocs(packageName: string, version: string): Promise<StructuredPackageDocs> {
-		return this.get<StructuredPackageDocs>(this.artifactPath(packageName, version, "docs/structured"));
+	async getStructuredPackageDocs(
+		packageName: string,
+		version: string,
+	): Promise<StructuredPackageDocs> {
+		return this.get<StructuredPackageDocs>(
+			this.artifactPath(packageName, version, "docs/structured"),
+		);
 	}
 
-	async listPackageSource(packageName: string, version: string): Promise<PackageBrowseEntry[]> {
-		return this.get<PackageBrowseEntry[]>(this.artifactPath(packageName, version, "source/tree"));
+	async listPackageSource(
+		packageName: string,
+		version: string,
+	): Promise<PackageBrowseEntry[]> {
+		return this.get<PackageBrowseEntry[]>(
+			this.artifactPath(packageName, version, "source/tree"),
+		);
 	}
 
-	async getPackageSource(packageName: string, version: string, path: string): Promise<string> {
-		return this.getText(`${this.artifactPath(packageName, version, "source/file")}?path=${encodeURIComponent(path)}`);
+	async getPackageSource(
+		packageName: string,
+		version: string,
+		path: string,
+	): Promise<string> {
+		return this.getText(
+			`${this.artifactPath(packageName, version, "source/file")}?path=${encodeURIComponent(path)}`,
+		);
 	}
 
 	async getSession(): Promise<Session | null> {
@@ -216,64 +316,145 @@ export class PckgApiClient {
 		return this.readJson<Session>(response);
 	}
 
-	async publishPackage(input: PublishPackageInput): Promise<PublishedPackageVersion> {
+	async publishPackage(
+		input: PublishPackageInput,
+	): Promise<PublishedPackageVersion> {
 		const packageName = encodeURIComponent(input.packageName);
 		const version = input.version.trim();
-		return this.readJson<PublishedPackageVersion>(await this.request(
-			`/api/packages/${packageName}/versions/${encodeURIComponent(version)}/artifact`,
-			{ method: "POST", headers: { "Content-Type": input.artifact.type || "application/zip" }, body: input.artifact },
-		));
+		return this.readJson<PublishedPackageVersion>(
+			await this.request(
+				`/api/packages/${packageName}/versions/${encodeURIComponent(version)}/artifact`,
+				{
+					method: "POST",
+					headers: { "Content-Type": input.artifact.type || "application/zip" },
+					body: input.artifact,
+				},
+			),
+		);
 	}
 
 	async getCommunityProfile(subject: string): Promise<CommunityProfile> {
-		return this.get<CommunityProfile>(`/api/community/profiles/${encodeURIComponent(subject)}`);
+		return this.get<CommunityProfile>(
+			`/api/community/profiles/${encodeURIComponent(subject)}`,
+		);
 	}
 
-	async updateMyCommunityProfile(input: Pick<CommunityProfile, "display_name" | "bio" | "social_links">): Promise<CommunityProfile> {
-		return this.readJson<CommunityProfile>(await this.request("/api/community/profiles/me", {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ displayName: input.display_name, bio: input.bio, socialLinks: input.social_links }),
-		}));
+	async updateMyCommunityProfile(
+		input: Pick<CommunityProfile, "display_name" | "bio" | "social_links">,
+	): Promise<CommunityProfile> {
+		return this.readJson<CommunityProfile>(
+			await this.request("/api/community/profiles/me", {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					displayName: input.display_name,
+					bio: input.bio,
+					socialLinks: input.social_links,
+				}),
+			}),
+		);
 	}
 
 	async listNotifications(): Promise<Notification[]> {
 		return this.get<Notification[]>("/api/community/notifications");
 	}
 
-	async updateNotificationPreference(mode: "all" | "mentionsOnly"): Promise<void> {
-		const response = await this.request("/api/community/notification-preferences", {
-			method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }),
-		});
+	async updateNotificationPreference(
+		mode: "all" | "mentionsOnly",
+	): Promise<void> {
+		const response = await this.request(
+			"/api/community/notification-preferences",
+			{
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ mode }),
+			},
+		);
 		if (!response.ok) throw new PckgApiError(response.status);
 	}
 
-	async listBoards(): Promise<CommunityBoard[]> { return this.get<CommunityBoard[]>("/api/community/boards"); }
-	async getBoard(boardId: string): Promise<CommunityBoard> { return this.get<CommunityBoard>(`/api/community/boards/${encodeURIComponent(boardId)}`); }
-	async listBoardPosts(boardId: string): Promise<CommunityPost[]> { return this.get<CommunityPost[]>(`/api/community/boards/${encodeURIComponent(boardId)}/posts`); }
+	async listBoards(): Promise<CommunityBoard[]> {
+		return this.get<CommunityBoard[]>("/api/community/boards");
+	}
+	async getBoard(boardId: string): Promise<CommunityBoard> {
+		return this.get<CommunityBoard>(
+			`/api/community/boards/${encodeURIComponent(boardId)}`,
+		);
+	}
+	async listBoardPosts(boardId: string): Promise<CommunityPost[]> {
+		return this.get<CommunityPost[]>(
+			`/api/community/boards/${encodeURIComponent(boardId)}/posts`,
+		);
+	}
 	async setBoardLocked(boardId: string, locked: boolean): Promise<void> {
-		const response = await this.request(`/api/community/boards/${encodeURIComponent(boardId)}/moderation/lock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ locked }) });
+		const response = await this.request(
+			`/api/community/boards/${encodeURIComponent(boardId)}/moderation/lock`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ locked }),
+			},
+		);
 		if (!response.ok) throw new PckgApiError(response.status);
 	}
-	async getPost(postId: number): Promise<CommunityPost> { return this.get<CommunityPost>(`/api/community/boards/posts/${postId}`); }
-	async listPostComments(postId: number): Promise<CommunityComment[]> { return this.get<CommunityComment[]>(`/api/community/boards/posts/${postId}/comments`); }
+	async getPost(postId: number): Promise<CommunityPost> {
+		return this.get<CommunityPost>(`/api/community/boards/posts/${postId}`);
+	}
+	async listPostComments(postId: number): Promise<CommunityComment[]> {
+		return this.get<CommunityComment[]>(
+			`/api/community/boards/posts/${postId}/comments`,
+		);
+	}
 
 	async togglePublisherFollow(subject: string): Promise<FollowState> {
-		return this.readJson<FollowState>(await this.request(`/api/community/publisher-follows/${encodeURIComponent(subject)}/toggle`, { method: "POST" }));
+		return this.readJson<FollowState>(
+			await this.request(
+				`/api/community/publisher-follows/${encodeURIComponent(subject)}/toggle`,
+				{ method: "POST" },
+			),
+		);
 	}
 
-	async createPost(boardId: string, input: { title: string; content: string }): Promise<CommunityPost> {
-		return this.postJson<CommunityPost>(`/api/community/boards/${encodeURIComponent(boardId)}/posts`, input);
+	async createPost(
+		boardId: string,
+		input: { title: string; content: string },
+	): Promise<CommunityPost> {
+		return this.postJson<CommunityPost>(
+			`/api/community/boards/${encodeURIComponent(boardId)}/posts`,
+			input,
+		);
 	}
 
-	async createComment(postId: number, input: { content: string; parentCommentId?: number }): Promise<CommunityComment> {
-		return this.postJson<CommunityComment>(`/api/community/boards/posts/${postId}/comments`, input);
+	async createComment(
+		postId: number,
+		input: { content: string; parentCommentId?: number },
+	): Promise<CommunityComment> {
+		return this.postJson<CommunityComment>(
+			`/api/community/boards/posts/${postId}/comments`,
+			input,
+		);
 	}
 
-	async voteOnPost(postId: number, value: -1 | 0 | 1): Promise<VoteResult> { return this.postJson<VoteResult>(`/api/community/boards/posts/${postId}/vote`, { value }); }
-	async voteOnComment(commentId: number, value: -1 | 0 | 1): Promise<VoteResult> { return this.postJson<VoteResult>(`/api/community/boards/comments/${commentId}/vote`, { value }); }
+	async voteOnPost(postId: number, value: -1 | 0 | 1): Promise<VoteResult> {
+		return this.postJson<VoteResult>(
+			`/api/community/boards/posts/${postId}/vote`,
+			{ value },
+		);
+	}
+	async voteOnComment(
+		commentId: number,
+		value: -1 | 0 | 1,
+	): Promise<VoteResult> {
+		return this.postJson<VoteResult>(
+			`/api/community/boards/comments/${commentId}/vote`,
+			{ value },
+		);
+	}
 	async markNotificationRead(notificationId: number): Promise<void> {
-		const response = await this.request(`/api/community/notifications/${notificationId}/read`, { method: "POST" });
+		const response = await this.request(
+			`/api/community/notifications/${notificationId}/read`,
+			{ method: "POST" },
+		);
 		if (!response.ok) throw new PckgApiError(response.status);
 	}
 
@@ -292,14 +473,26 @@ export class PckgApiClient {
 	}
 
 	private async postJson<T>(path: string, body: unknown): Promise<T> {
-		return this.readJson<T>(await this.request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+		return this.readJson<T>(
+			await this.request(path, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			}),
+		);
 	}
 
 	private request(path: string, init?: RequestInit): Promise<Response> {
-		return this.fetch(new Request(`${this.baseUrl}${path}`, { ...init, credentials: "include" }));
+		return this.fetch(
+			new Request(`${this.baseUrl}${path}`, { ...init, credentials: "include" }),
+		);
 	}
 
-	private artifactPath(packageName: string, version: string, suffix: string): string {
+	private artifactPath(
+		packageName: string,
+		version: string,
+		suffix: string,
+	): string {
 		return `/api/packages/${encodeURIComponent(packageName)}/versions/${encodeURIComponent(version)}/${suffix}`;
 	}
 

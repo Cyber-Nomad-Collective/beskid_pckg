@@ -9,6 +9,8 @@ export function buildAuthHubLoginUrl(authHubUrl: string): string {
 	return url.toString();
 }
 
-export function toDashboardGuardDestination(next: string): DashboardGuardDestination {
+export function toDashboardGuardDestination(
+	next: string,
+): DashboardGuardDestination {
 	return { to: "/auth", search: { next } };
 }
