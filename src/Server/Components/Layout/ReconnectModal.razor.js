@@ -48,7 +48,7 @@ async function retry() {
 				reconnectModal.close();
 			}
 		}
-	} catch (err) {
+	} catch (_err) {
 		// We got an exception, server is currently unavailable
 		document.addEventListener(
 			"visibilitychange",

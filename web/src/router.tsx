@@ -543,7 +543,7 @@ function PackageDocumentationPage() {
 					</CardHeader>
 					<CardContent>
 						<pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-							{JSON.stringify(structured.data!.metadata, null, 2)}
+							{JSON.stringify(structured.data?.metadata, null, 2)}
 						</pre>
 					</CardContent>
 				</Card>
@@ -1214,7 +1214,7 @@ function ProfilePage() {
 	const profile = useQuery({
 		queryKey: ["community-profile", "me"],
 		enabled: Boolean(session.data),
-		queryFn: () => pckgApi.getCommunityProfile(session.data!.subject),
+		queryFn: () => pckgApi.getCommunityProfile(session.data?.subject),
 		retry: false,
 	});
 	const update = useMutation({ mutationFn: pckgApi.updateMyCommunityProfile });
