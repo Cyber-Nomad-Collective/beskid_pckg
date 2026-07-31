@@ -4,7 +4,7 @@ using Server.Services;
 
 namespace Server.Features.Admin;
 
-public sealed class ManagePermissionsEndpoint : Endpoint<ManagePermissionsRequest, ManagePermissionsResponse>
+public sealed class ManagePermissionsEndpoint : Endpoint<ManagePermissionsRequest>
 {
     public IAuthorizationService AuthService { get; set; } = default!;
 
@@ -20,6 +20,36 @@ public sealed class ManagePermissionsEndpoint : Endpoint<ManagePermissionsReques
         if (string.IsNullOrWhiteSpace(grantedByUserId))
         {
             await Send.UnauthorizedAsync(ct);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.Subject)
+            || !string.IsNullOrWhiteSpace(req.Resource)
+            || !string.IsNullOrWhiteSpace(req.Capability))
+        {
+            var resource = ReactAdminPermission.ParseResource(req.Resource);
+            if (string.IsNullOrWhiteSpace(req.Subject)
+                || string.IsNullOrWhiteSpace(req.Capability)
+                || resource is null)
+            {
+                AddError("Request must contain subject, resource in '<type>:<id>' form, and capability.");
+                await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
+                return;
+            }
+
+            await AuthService.GrantPermissionAsync(
+                req.Subject,
+                resource.Value.Type,
+                resource.Value.Id,
+                req.Capability.Trim(),
+                grantedByUserId);
+            await Send.ResponseAsync(
+                new ReactAdminPermission(
+                    req.Subject,
+                    resource.Value.Type.ToLowerInvariant() + ":" + resource.Value.Id,
+                    req.Capability.Trim()),
+                StatusCodes.Status201Created,
+                ct);
             return;
         }
 
@@ -51,12 +81,16 @@ public sealed class ManagePermissionsEndpoint : Endpoint<ManagePermissionsReques
     }
 }
 
-public sealed record ManagePermissionsRequest(
-    string Action,
-    string UserId,
-    string ResourceType,
-    string ResourceId,
-    string Permission
-);
+public sealed class ManagePermissionsRequest
+{
+    public string Action { get; init; } = string.Empty;
+    public string UserId { get; init; } = string.Empty;
+    public string ResourceType { get; init; } = string.Empty;
+    public string ResourceId { get; init; } = string.Empty;
+    public string Permission { get; init; } = string.Empty;
+    public string Subject { get; init; } = string.Empty;
+    public string Resource { get; init; } = string.Empty;
+    public string Capability { get; init; } = string.Empty;
+}
 
 public sealed record ManagePermissionsResponse(bool Success, string Message);

@@ -32,76 +32,10 @@ public sealed class CreateBoardCommentEndpoint : Endpoint<CreateBoardCommentRequ
             return;
         }
 
-        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        if (!await Captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.BoardComment, remoteIp, ct))
-        {
-            await Send.ResponseAsync(new CreateBoardCommentResponse(false, "Robot check failed. Please try again."), StatusCodes.Status400BadRequest, ct);
-            return;
-        }
-
-        var post = await Db.BoardPosts.FindAsync([postId], ct);
-        if (post is null || post.IsDeleted)
-        {
-            await Send.NotFoundAsync(ct);
-            return;
-        }
-
-        if (post.IsLocked)
-        {
-            await Send.ResponseAsync(new CreateBoardCommentResponse(false, "This post is locked."), StatusCodes.Status403Forbidden, ct);
-            return;
-        }
-
-        var linkBlock = await LinkGuard.GetBlockReasonAsync(req.Content, ct);
-        if (linkBlock is not null)
-        {
-            await Send.ResponseAsync(new CreateBoardCommentResponse(false, linkBlock), StatusCodes.Status400BadRequest, ct);
-            return;
-        }
-
-        var comment = new BoardPostCommentEntity
-        {
-            PostId = postId,
-            ParentCommentId = req.ParentCommentId,
-            AuthorUserId = userId,
-            Content = req.Content,
-            CreatedAtUtc = DateTime.UtcNow,
-            UpvoteCount = 0,
-            DownvoteCount = 0,
-            IsDeleted = false
-        };
-
-        Db.BoardPostComments.Add(comment);
-        await Db.SaveChangesAsync(ct);
-
-        await RatingService.IncrementBoardActivityAsync(userId, isPost: false);
-
-        var participantIds = await Db.BoardPostComments
-            .AsNoTracking()
-            .Where(c => c.PostId == postId && !c.IsDeleted)
-            .Select(c => c.AuthorUserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var targetUserIds = participantIds
-            .Append(post.AuthorUserId)
-            .Where(id => !string.Equals(id, userId, StringComparison.Ordinal))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        foreach (var targetUserId in targetUserIds)
-        {
-            await Notifications.PublishAsync(
-                targetUserId,
-                NotificationType.BoardThreadActivity,
-                $"New reply in: {post.Title}",
-                "Someone replied in a thread you participated in.",
-                preferenceScope: NotificationPreferenceScope.Thread,
-                preferenceScopeId: postId.ToString(),
-                ct: ct);
-        }
-
-        await Send.OkAsync(new CreateBoardCommentResponse(true, "Comment created successfully.", comment.Id), ct);
+        var result = await new BoardMutationService(Db, Captcha, LinkGuard, RatingService, Notifications).CreateCommentAsync(postId, userId, req.Content, req.ParentCommentId, req.CaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        if (result.Value is not null) { await Send.OkAsync(new CreateBoardCommentResponse(true, "Comment created successfully.", result.Value.Id), ct); return; }
+        if (result.StatusCode == StatusCodes.Status404NotFound) { await Send.NotFoundAsync(ct); return; }
+        await Send.ResponseAsync(new CreateBoardCommentResponse(false, result.Message!), result.StatusCode, ct);
     }
 }
 

@@ -1,21 +1,13 @@
 using System.Security.Cryptography.X509Certificates;
 using FastEndpoints;
 using FastEndpoints.Swagger;
-using GoogleCaptchaComponent;
-using GoogleCaptchaComponent.Configuration;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server;
-using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Scalar.AspNetCore;
-using Server.Components;
-using Server.Components.Account;
 using Server.Configuration;
 using Server.Data;
 using Server.DependencyInjection;
@@ -32,63 +24,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-var internalApiBaseAddress = builder.Configuration["HttpClient:InternalBaseAddress"];
-if (string.IsNullOrWhiteSpace(internalApiBaseAddress))
-{
-    var urlsSetting = builder.Configuration["ASPNETCORE_URLS"]
-        ?? builder.Configuration["URLS"];
-    internalApiBaseAddress = ResolveInternalBaseAddress(urlsSetting) ?? "http://127.0.0.1:8080";
-}
-
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-builder.Services.Configure<CircuitOptions>(options =>
-{
-    options.DetailedErrors = builder.Environment.IsDevelopment();
-});
 builder.Services.AddSignalR(options =>
 {
-    // Profile photo upload (up to 10 MB) crosses the circuit; default 32 KB limit drops the connection.
+    // Profile photo upload (up to 10 MB) and hub messages share this transport.
     options.MaximumReceiveMessageSize = 12 * 1024 * 1024;
 });
-builder.Services.AddSingleton<CircuitHandler, BlazorCircuitFailureLogger>();
-builder.Services.AddFluentUIComponents();
-builder.Services.AddScoped(sp =>
-{
-    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-    var httpContext = httpContextAccessor.HttpContext;
-
-    var client = new HttpClient
-    {
-        BaseAddress = new Uri(internalApiBaseAddress)
-    };
-
-    if (httpContext is not null)
-    {
-        if (httpContext.Request.Headers.TryGetValue("Cookie", out var cookie)
-            && !string.IsNullOrWhiteSpace(cookie))
-        {
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", cookie.ToString());
-        }
-
-        if (httpContext.Request.Headers.TryGetValue("Authorization", out var authorization)
-            && !string.IsNullOrWhiteSpace(authorization))
-        {
-            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authorization.ToString());
-        }
-
-        if (httpContext.Request.Headers.TryGetValue("X-API-Key", out var apiKey)
-            && !string.IsNullOrWhiteSpace(apiKey))
-        {
-            client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", apiKey.ToString());
-        }
-    }
-
-    return client;
-});
-builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddMemoryCache();
 builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument(o =>
@@ -236,13 +177,6 @@ builder.Services.AddScoped<IPckgRegistryActivityLog, PckgRegistryActivityLog>();
 builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 builder.Services.AddScoped<Server.Services.IAuthorizationService, Server.Services.AuthorizationService>();
 builder.Services.Configure<CaptchaOptions>(builder.Configuration.GetSection(CaptchaOptions.SectionName));
-var captchaBootstrap = builder.Configuration.GetSection(CaptchaOptions.SectionName).Get<CaptchaOptions>() ?? new();
-builder.Services.AddGoogleCaptcha(c =>
-{
-    c.V3SiteKey = captchaBootstrap.RecaptchaV3SiteKey ?? string.Empty;
-    c.DefaultVersion = CaptchaConfiguration.Version.V3;
-    c.DefaultTheme = CaptchaConfiguration.Theme.Light;
-});
 builder.Services.AddHttpClient(CaptchaVerificationService.RecaptchaEnterpriseHttpClientName, client =>
 {
     client.BaseAddress = new Uri("https://recaptchaenterprise.googleapis.com/");
@@ -319,7 +253,7 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseStatusCodePages();
 var useHttpsRedirection = builder.Configuration.GetValue<bool?>("Security:UseHttpsRedirection") ?? false;
 if (useHttpsRedirection)
 {
@@ -328,12 +262,14 @@ if (useHttpsRedirection)
 
 var uploadsRoot = UploadPaths.ResolveUploadsRoot(app.Environment, app.Configuration);
 Directory.CreateDirectory(uploadsRoot);
+var webRoot = app.Configuration["Pckg:WebRoot"]
+    ?? app.Environment.WebRootPath
+    ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsRoot),
     RequestPath = "/uploads"
 });
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -361,7 +297,6 @@ app.Use(async (context, next) =>
         pathValue.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
         pathValue.StartsWith("/health", StringComparison.OrdinalIgnoreCase) ||
         pathValue.StartsWith("/metrics", StringComparison.OrdinalIgnoreCase) ||
-        pathValue.StartsWith("/_framework", StringComparison.OrdinalIgnoreCase) ||
         Path.HasExtension(path);
 
     if (isBypassedPath)
@@ -379,6 +314,10 @@ app.Use(async (context, next) =>
     }
 
     await next();
+});
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(webRoot)
 });
 app.UseFastEndpoints(c => c.Endpoints.RoutePrefix = "api");
 
@@ -624,47 +563,36 @@ app.MapGet("/users/logout", (HttpContext context) =>
     return Results.Redirect(redirectTarget);
 });
 
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    .DisableAntiforgery();
+app.MapFallback(async context =>
+{
+    if (IsServerOwnedPath(context.Request.Path))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    var indexPath = Path.Combine(webRoot, "index.html");
+    if (!File.Exists(indexPath))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html; charset=utf-8";
+    await context.Response.SendFileAsync(indexPath, context.RequestAborted);
+});
 
 app.Run();
 
-static string? ResolveInternalBaseAddress(string? urlsSetting)
+static bool IsServerOwnedPath(PathString path)
 {
-    if (string.IsNullOrWhiteSpace(urlsSetting))
-    {
-        return null;
-    }
-
-    var firstUrl = urlsSetting
-        .Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-        .FirstOrDefault();
-
-    if (string.IsNullOrWhiteSpace(firstUrl))
-    {
-        return null;
-    }
-
-    var normalizedUrl = firstUrl
-        .Replace("://+:", "://127.0.0.1:", StringComparison.Ordinal)
-        .Replace("://*:", "://127.0.0.1:", StringComparison.Ordinal);
-
-    if (!Uri.TryCreate(normalizedUrl, UriKind.Absolute, out var parsed))
-    {
-        return null;
-    }
-
-    var host = parsed.Host is "0.0.0.0" or "[::]" or "::" or "+"
-        ? "127.0.0.1"
-        : parsed.Host;
-
-    var port = parsed.IsDefaultPort
-        ? (string.Equals(parsed.Scheme, "https", StringComparison.OrdinalIgnoreCase) ? 443 : 80)
-        : parsed.Port;
-
-    return $"{parsed.Scheme}://{host}:{port}";
+    return path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/metrics", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/uploads", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/scalar", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase);
 }
 
 namespace Server

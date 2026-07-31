@@ -27,7 +27,7 @@ import {
 	useParams,
 	useSearch,
 } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PackageSourceGraphPanel } from "./components/package-source-graph-panel";
 import {
@@ -138,6 +138,92 @@ const homeRoute = createRoute({
 	path: "/",
 	component: HomePage,
 });
+
+const onboardingRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/onboarding",
+	validateSearch: (search: Record<string, unknown>) => ({
+		error: typeof search.error === "string" ? search.error : "",
+	}),
+	component: OnboardingPage,
+});
+
+function OnboardingPage() {
+	const { error } = useSearch({ from: "/onboarding" });
+	const sessionCheck = useQuery({
+		queryKey: ["bootstrap-status"],
+		queryFn: pckgApi.getBootstrapStatus,
+	});
+	if (sessionCheck.isError) {
+		throw sessionCheck.error;
+	}
+	const navigate = useNavigate();
+
+	useEffect(() => {
+		if (sessionCheck.data?.hasUsers) {
+			void navigate({
+				to: "/auth",
+				search: { next: "/dashboard/packages/my" },
+			});
+		}
+	}, [sessionCheck.data?.hasUsers, navigate]);
+
+	const message = (() => {
+		switch (error) {
+			case "missing_credentials":
+				return "Display name, email, and password are required.";
+			case "missing_name":
+				return "Display name is required.";
+			case "password_mismatch":
+				return "Passwords do not match.";
+			case "create_failed":
+				return "Unable to create the administrator account.";
+			default:
+				return "";
+		}
+	})();
+
+	if (sessionCheck.isPending) {
+		return <p className="text-muted-foreground">Checking setup state…</p>;
+	}
+
+	return (
+		<section className="mx-auto max-w-2xl space-y-4">
+			<h1 className="text-3xl font-bold">Welcome</h1>
+			<p className="text-muted-foreground">
+				Create the first administrator account for this registry.
+			</p>
+			{message && <p className="text-sm text-destructive">{message}</p>}
+			<Card>
+				<CardContent className="pt-6">
+					<form method="post" action="/onboarding/create" className="space-y-3">
+						<Input
+							name="displayName"
+							required
+							placeholder="Your name"
+							type="text"
+						/>
+						<Input name="email" required placeholder="you@example.com" type="email" />
+						<Input
+							name="password"
+							required
+							placeholder="Create a strong password"
+							type="password"
+						/>
+						<Input
+							name="confirmPassword"
+							required
+							placeholder="Repeat password"
+							type="password"
+						/>
+						<Button type="submit">Create administrator</Button>
+					</form>
+				</CardContent>
+			</Card>
+		</section>
+	);
+}
+
 function HomePage() {
 	return (
 		<section className="py-12">
@@ -1094,6 +1180,133 @@ function AuthPage() {
 	);
 }
 
+const settingsAuthPairRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/settings/auth/pair",
+	validateSearch: (search: Record<string, unknown>) => ({
+		code: typeof search.code === "string" ? search.code : "",
+	}),
+	component: AuthHubPairingPage,
+});
+
+function AuthHubPairingPage() {
+	const { code: initialCode } = useSearch({ from: "/settings/auth/pair" });
+	const [code, setCode] = useState(initialCode);
+	const [publicUrl, setPublicUrl] = useState("");
+	const [statusMessage, setStatusMessage] = useState<string | null>(null);
+	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const pairStatus = useQuery({
+		queryKey: ["auth-hub-pairing-status"],
+		queryFn: pckgApi.getAuthHubPairingStatus,
+	});
+	const pair = useMutation({
+		mutationFn: (input: { code: string; publicUrl: string }) =>
+			pckgApi.pairWithAuthHub(input),
+	});
+
+	useEffect(() => {
+		if (pairStatus.data) {
+			setPublicUrl(pairStatus.data.defaultPublicUrl);
+		}
+	}, [pairStatus.data]);
+
+	useEffect(() => {
+		if (
+			!pairStatus.data ||
+			pairStatus.data.paired ||
+			pair.isPending ||
+			!code ||
+			!publicUrl
+		) {
+			return;
+		}
+		void pair.mutateAsync({ code, publicUrl });
+	}, [pairStatus.data, code, publicUrl, pair]);
+
+	if (pairStatus.isPending) {
+		return <p className="text-muted-foreground">Checking pairing state…</p>;
+	}
+	if (pairStatus.isError) throw pairStatus.error;
+
+	const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		setErrorMessage(null);
+		setStatusMessage(null);
+		pair.mutate(
+			{ code, publicUrl },
+			{
+				onSuccess: (result) => {
+					if (result.alreadyPaired) {
+						setStatusMessage("pckg is already paired with the auth hub.");
+					} else {
+						setStatusMessage("Auth hub paired successfully.");
+					}
+				},
+				onError: (error) => {
+					if (error instanceof PckgApiError && error.status === 401) {
+						setErrorMessage("Sign in as SuperAdmin to approve pairing.");
+					} else {
+						setErrorMessage(
+							(error instanceof Error ? error.message : "Pairing failed."),
+						);
+					}
+				},
+			},
+		);
+	};
+
+	if (pairStatus.data.paired) {
+		return (
+			<section className="mx-auto max-w-2xl space-y-4">
+				<h1 className="text-3xl font-bold">Auth hub pairing</h1>
+				<p className="text-muted-foreground">
+					pckg is already paired with the auth hub.
+				</p>
+			</section>
+		);
+	}
+
+	return (
+		<section className="mx-auto max-w-2xl space-y-4">
+			<h1 className="text-3xl font-bold">Auth hub pairing</h1>
+			<p className="text-muted-foreground">
+				Approve a pairing code from the auth hub admin. The service token is stored on
+				the server and never shown in the browser.
+			</p>
+            {statusMessage && <p className="text-sm text-emerald-600">{statusMessage}</p>}
+			{errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+			<Card>
+				<CardContent className="pt-6">
+					<form className="space-y-3" onSubmit={onSubmit}>
+						<label className="grid gap-2 text-sm">
+							Pairing code
+							<Input
+								name="code"
+								required
+								value={code}
+								onChange={(event) => setCode(event.target.value)}
+							/>
+						</label>
+						<label className="grid gap-2 text-sm">
+							This app public URL
+							<Input
+								name="publicUrl"
+								placeholder="https://pckg.beskid-lang.org"
+								required
+								value={publicUrl}
+								onChange={(event) => setPublicUrl(event.target.value)}
+							/>
+						</label>
+						<Button type="submit" disabled={pair.isPending}>
+							{pair.isPending ? "Approving…" : "Approve pairing"}
+						</Button>
+					</form>
+				</CardContent>
+			</Card>
+		</section>
+	);
+}
+
 const dashboardRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/dashboard",
@@ -1115,6 +1328,9 @@ function DashboardLayout() {
 					["/dashboard/packages/my", "My packages"],
 					["/dashboard/packages/upload", "Upload package"],
 					["/dashboard/admin", "Administration"],
+					["/dashboard/admin/email", "Email settings"],
+					["/dashboard/admin/registry-activity", "Registry activity"],
+					["/dashboard/admin/blocked-links", "Blocked links"],
 				].map(([to, label]) => (
 					<Link
 						key={to}
@@ -1214,7 +1430,11 @@ function ProfilePage() {
 	const profile = useQuery({
 		queryKey: ["community-profile", "me"],
 		enabled: Boolean(session.data),
-		queryFn: () => pckgApi.getCommunityProfile(session.data?.subject),
+		queryFn: () => {
+			const subject = session.data?.subject;
+			if (!subject) throw new Error("An authenticated session is required to load a profile.");
+			return pckgApi.getCommunityProfile(subject);
+		},
 		retry: false,
 	});
 	const update = useMutation({ mutationFn: pckgApi.updateMyCommunityProfile });
@@ -1521,6 +1741,269 @@ function ApiKeysPage() {
 		</section>
 	);
 }
+const adminEmailRoute = createRoute({
+	getParentRoute: () => dashboardRoute,
+	path: "/admin/email",
+	component: AdminEmailPage,
+});
+const adminRegistryActivityRoute = createRoute({
+	getParentRoute: () => dashboardRoute,
+	path: "/admin/registry-activity",
+	component: AdminRegistryActivityPage,
+});
+const adminBlockedLinksRoute = createRoute({
+	getParentRoute: () => dashboardRoute,
+	path: "/admin/blocked-links",
+	component: AdminBlockedLinksPage,
+});
+
+function AdminEmailPage() {
+	const queryClient = useQueryClient();
+	const settingsQuery = useQuery({
+		queryKey: ["admin-email-settings"],
+		queryFn: pckgApi.getEmailSettings,
+	});
+	const update = useMutation({
+		mutationFn: pckgApi.updateEmailSettings,
+		onSuccess: () =>
+			void queryClient.invalidateQueries({ queryKey: ["admin-email-settings"] }),
+	});
+	if (settingsQuery.isPending) {
+		return <p className="text-muted-foreground">Loading email settings…</p>;
+	}
+	if (settingsQuery.isError) throw settingsQuery.error;
+	const settings = settingsQuery.data;
+	const submit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget);
+		update.mutate({
+			smtpHost: String(form.get("smtpHost") ?? "").trim() || null,
+			smtpPort: Number(form.get("smtpPort")),
+			enableSsl: form.get("enableSsl") === "on",
+			username: String(form.get("username") ?? "").trim() || null,
+			password: String(form.get("password") ?? "").trim() || null,
+			fromEmail: String(form.get("fromEmail") ?? "").trim(),
+			fromName: String(form.get("fromName") ?? "").trim(),
+		});
+	};
+
+	return (
+		<section className="space-y-6">
+			<header>
+				<h1 className="text-3xl font-bold">Email settings</h1>
+				<p className="mt-2 text-muted-foreground">
+					Manage SMTP settings used for notification and account flows.
+				</p>
+			</header>
+			<Card>
+				<CardContent className="pt-6">
+					<form className="space-y-4" onSubmit={submit}>
+						<label className="grid gap-2 text-sm font-medium">
+							SMTP host
+							<Input name="smtpHost" required defaultValue={settings.smtpHost ?? ""} />
+						</label>
+						<label className="grid gap-2 text-sm font-medium">
+							SMTP port
+							<Input
+								name="smtpPort"
+								type="number"
+								defaultValue={settings.smtpPort}
+							/>
+						</label>
+						<label className="flex items-center gap-2 text-sm">
+							<input name="enableSsl" type="checkbox" defaultChecked={settings.enableSsl} />
+							Use TLS
+						</label>
+						<label className="grid gap-2 text-sm font-medium">
+							Username
+							<Input name="username" defaultValue={settings.username ?? ""} />
+						</label>
+						<label className="grid gap-2 text-sm font-medium">
+							Password
+							<Input
+								name="password"
+								type="password"
+								placeholder="Update password only when changed"
+								defaultValue={settings.password ?? ""}
+							/>
+						</label>
+						<label className="grid gap-2 text-sm font-medium">
+							From email
+							<Input name="fromEmail" required defaultValue={settings.fromEmail} />
+						</label>
+						<label className="grid gap-2 text-sm font-medium">
+							From name
+							<Input name="fromName" required defaultValue={settings.fromName} />
+						</label>
+						{update.isError && (
+							<p className="text-sm text-destructive">
+								Could not save email settings.
+							</p>
+						)}
+						<Button type="submit" disabled={update.isPending}>
+							{update.isPending ? "Saving…" : "Save email settings"}
+						</Button>
+					</form>
+				</CardContent>
+			</Card>
+		</section>
+	);
+}
+
+function AdminRegistryActivityPage() {
+	const activity = useQuery({
+		queryKey: ["admin-registry-activity"],
+		queryFn: () => pckgApi.listRegistryActivity(200),
+	});
+	if (activity.isPending) {
+		return <p className="text-muted-foreground">Loading registry activity…</p>;
+	}
+	if (activity.isError) throw activity.error;
+	return (
+		<section className="space-y-6">
+			<header>
+				<h1 className="text-3xl font-bold">Registry activity</h1>
+				<p className="mt-2 text-muted-foreground">
+					Recent package registry actions, including publish and moderation events.
+				</p>
+			</header>
+			<div className="space-y-3">
+				{activity.data.length === 0 ? (
+					<Card>
+						<CardContent className="py-5 text-muted-foreground">
+							No recent registry activity.
+						</CardContent>
+					</Card>
+				) : (
+					activity.data.map((item) => (
+						<Card
+							key={`${item.traceId || "activity"}-${item.timestampUtc}`}
+						>
+							<CardContent className="py-4 text-sm">
+								<div className="flex flex-wrap justify-between gap-2">
+									<span>{new Date(item.timestampUtc).toLocaleString()}</span>
+									<span className="rounded bg-muted px-2 py-0.5 text-xs">
+										{item.severity}
+									</span>
+								</div>
+								<p className="mt-2 font-medium">{item.action}</p>
+								<p>{item.message}</p>
+								{item.packageName && (
+									<p className="mt-2 text-muted-foreground">
+										{item.packageName}
+										{item.version ? ` ${item.version}` : ""}
+									</p>
+								)}
+							</CardContent>
+						</Card>
+					))
+				)}
+			</div>
+		</section>
+	);
+}
+
+function AdminBlockedLinksPage() {
+	const queryClient = useQueryClient();
+	const blocked = useQuery({
+		queryKey: ["admin-blocked-links"],
+		queryFn: pckgApi.listBlockedLinks,
+	});
+	const add = useMutation({
+		mutationFn: pckgApi.addBlockedLink,
+		onSuccess: () =>
+			void queryClient.invalidateQueries({ queryKey: ["admin-blocked-links"] }),
+	});
+	const remove = useMutation({
+		mutationFn: pckgApi.deleteBlockedLink,
+		onSuccess: () =>
+			void queryClient.invalidateQueries({ queryKey: ["admin-blocked-links"] }),
+	});
+	if (blocked.isPending) {
+		return <p className="text-muted-foreground">Loading blocked links…</p>;
+	}
+	if (blocked.isError) throw blocked.error;
+
+	const submit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const form = new FormData(event.currentTarget);
+		const pattern = String(form.get("pattern") ?? "").trim();
+		const note = String(form.get("note") ?? "").trim();
+		add.mutate({ pattern, note: note || undefined });
+		event.currentTarget.reset();
+	};
+
+	return (
+		<section className="space-y-6">
+			<header>
+				<h1 className="text-3xl font-bold">Blocked links</h1>
+				<p className="mt-2 text-muted-foreground">
+					Store link patterns blocked from outgoing moderation actions.
+				</p>
+			</header>
+			<Card>
+				<CardContent className="pt-6">
+					<form className="grid gap-3" onSubmit={submit}>
+						<label className="grid gap-2 text-sm font-medium">
+							Pattern
+							<Input
+								name="pattern"
+								required
+								placeholder="https://bad.example/*"
+							/>
+						</label>
+						<textarea
+							name="note"
+							className="min-h-20 rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+							placeholder="Optional note"
+						/>
+						<Button type="submit" disabled={add.isPending}>
+							{add.isPending ? "Adding…" : "Add pattern"}
+						</Button>
+					</form>
+					{add.isError && (
+						<p className="mt-3 text-sm text-destructive">
+							Could not add this blocked link.
+						</p>
+					)}
+				</CardContent>
+			</Card>
+			<div className="space-y-3">
+				{blocked.data.length === 0 ? (
+					<Card>
+						<CardContent className="py-6 text-muted-foreground">
+							No blocked link patterns.
+						</CardContent>
+					</Card>
+				) : (
+					blocked.data.map((link) => (
+						<Card key={link.id}>
+							<CardContent className="flex flex-wrap gap-2 py-4">
+								<div className="flex-1">
+									<code className="break-all">{link.pattern}</code>
+									{link.note ? (
+										<p className="mt-1 text-sm text-muted-foreground">
+											{link.note}
+										</p>
+									) : null}
+								</div>
+								<Button
+									size="sm"
+									variant="outline"
+									disabled={remove.isPending}
+									onClick={() => remove.mutate(link.id)}
+								>
+									Delete
+								</Button>
+							</CardContent>
+						</Card>
+					))
+				)}
+			</div>
+		</section>
+	);
+}
+
 const myPackagesRoute = createRoute({
 	getParentRoute: () => dashboardRoute,
 	path: "/packages/my",
@@ -1906,6 +2389,7 @@ function AdminUsersPage() {
 
 export const clientRoutePaths = [
 	"/",
+	"/onboarding",
 	"/packages",
 	"/packages/$packageName",
 	"/packages/$packageName/docs",
@@ -1915,6 +2399,7 @@ export const clientRoutePaths = [
 	"/topics/$topic",
 	"/board/post/$postId",
 	"/auth",
+	"/settings/auth/pair",
 	"/dashboard/profile",
 	"/dashboard/notifications",
 	"/dashboard/api-keys",
@@ -1922,10 +2407,14 @@ export const clientRoutePaths = [
 	"/dashboard/packages/upload",
 	"/dashboard/admin",
 	"/dashboard/admin/users",
+	"/dashboard/admin/email",
+	"/dashboard/admin/registry-activity",
+	"/dashboard/admin/blocked-links",
 	"/dashboard/admin/boards",
 ] as const;
 const routeTree = rootRoute.addChildren([
 	homeRoute,
+	onboardingRoute,
 	packagesRoute,
 	packageRoute,
 	packageDocsRoute,
@@ -1935,6 +2424,7 @@ const routeTree = rootRoute.addChildren([
 	topicRoute,
 	boardPostRoute,
 	authRoute,
+	settingsAuthPairRoute,
 	dashboardRoute.addChildren([
 		profileRoute,
 		notificationsRoute,
@@ -1942,6 +2432,9 @@ const routeTree = rootRoute.addChildren([
 		myPackagesRoute,
 		packageUploadRoute,
 		adminRoute,
+		adminEmailRoute,
+		adminRegistryActivityRoute,
+		adminBlockedLinksRoute,
 		adminUsersRoute,
 		boardModerationRoute,
 	]),

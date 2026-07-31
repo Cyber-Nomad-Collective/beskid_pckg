@@ -62,6 +62,76 @@ export interface PublishedPackageVersion {
 	version: string;
 }
 
+export interface BootstrapStatus {
+	hasUsers: boolean;
+}
+
+export interface AuthHubPairingStatus {
+	paired: boolean;
+	defaultPublicUrl: string;
+	hubAvailable: boolean;
+	appRegistered: boolean;
+}
+
+export interface PairAuthHubInput {
+	code: string;
+	publicUrl: string;
+}
+
+export interface PairAuthHubResult {
+	ok: boolean;
+	alreadyPaired: boolean;
+}
+
+export interface EmailSettings {
+	smtpHost: string | null;
+	smtpPort: number;
+	enableSsl: boolean;
+	username: string | null;
+	password: string | null;
+	fromEmail: string;
+	fromName: string;
+}
+
+export interface EmailSettingsUpdate {
+	smtpHost: string | null;
+	smtpPort: number;
+	enableSsl: boolean;
+	username: string | null;
+	password: string | null;
+	fromEmail: string;
+	fromName: string;
+}
+
+export interface RegistryActivityEntry {
+	timestampUtc: string;
+	severity: string;
+	action: string;
+	message: string;
+	traceId: string | null;
+	userId: string | null;
+	packageName: string | null;
+	version: string | null;
+}
+
+export interface BlockedLink {
+	id: string;
+	pattern: string;
+	note: string | null;
+	createdAtUtc: string;
+}
+
+export interface AddBlockedLinkInput {
+	pattern: string;
+	note?: string;
+}
+
+export interface AddBlockedLinkResult {
+	success: boolean;
+	message: string;
+	item: BlockedLink | null;
+}
+
 export interface SearchPackagesInput {
 	query?: string;
 	owner?: "me";
@@ -107,7 +177,7 @@ export interface CommunityProfile {
 }
 
 export interface Notification {
-	id: number;
+	id: string;
 	recipient: string;
 	scope: string;
 	actor: string;
@@ -339,6 +409,59 @@ export class PckgApiClient {
 		);
 	}
 
+	async getBootstrapStatus(): Promise<BootstrapStatus> {
+		return this.get<BootstrapStatus>("/users/bootstrap-status");
+	}
+
+	async getAuthHubPairingStatus(): Promise<AuthHubPairingStatus> {
+		return this.get<AuthHubPairingStatus>("/api/auth/hub/pairing-status");
+	}
+
+	async pairWithAuthHub(input: PairAuthHubInput): Promise<PairAuthHubResult> {
+		return this.readJson<PairAuthHubResult>(
+			await this.request("/api/auth/hub/pair", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(input),
+			}),
+		);
+	}
+
+	async getEmailSettings(): Promise<EmailSettings> {
+		return this.get<EmailSettings>("/api/admin/email-settings");
+	}
+
+	async updateEmailSettings(input: EmailSettingsUpdate): Promise<void> {
+		const response = await this.request("/api/admin/email-settings", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(input),
+		});
+		if (!response.ok) throw new PckgApiError(response.status);
+	}
+
+	async listRegistryActivity(take = 200): Promise<RegistryActivityEntry[]> {
+		return this.get<RegistryActivityEntry[]>(
+			`/api/admin/registry-activity?take=${encodeURIComponent(String(take))}`,
+		);
+	}
+
+	async listBlockedLinks(): Promise<BlockedLink[]> {
+		return this.get<BlockedLink[]>("/api/admin/blocked-links");
+	}
+
+	async addBlockedLink(input: AddBlockedLinkInput): Promise<AddBlockedLinkResult> {
+		return this.postJson<AddBlockedLinkResult>("/api/admin/blocked-links", input);
+	}
+
+	async deleteBlockedLink(id: string): Promise<void> {
+		const response = await this.request(
+			`/api/admin/blocked-links/${encodeURIComponent(id)}`,
+			{ method: "DELETE" },
+		);
+		if (!response.ok) throw new PckgApiError(response.status);
+	}
+
 	async updateMyCommunityProfile(
 		input: Pick<CommunityProfile, "display_name" | "bio" | "social_links">,
 	): Promise<CommunityProfile> {
@@ -450,7 +573,7 @@ export class PckgApiClient {
 			{ value },
 		);
 	}
-	async markNotificationRead(notificationId: number): Promise<void> {
+	async markNotificationRead(notificationId: string): Promise<void> {
 		const response = await this.request(
 			`/api/community/notifications/${notificationId}/read`,
 			{ method: "POST" },

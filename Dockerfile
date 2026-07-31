@@ -23,7 +23,13 @@ COPY pckg/src/Server/Server.csproj ./src/Server/
 COPY pckg/src/pckg.ServiceDefaults/pckg.ServiceDefaults.csproj ./src/pckg.ServiceDefaults/
 RUN dotnet restore src/Server/Server.csproj
 COPY pckg/src/ ./src/
-RUN dotnet publish src/Server/Server.csproj --configuration Release --output /app/publish --no-restore
+# Re-evaluate restore against the complete source graph before publishing. The
+# cacheable project-only restore above cannot materialize every analyzer used
+# by the full server build.
+RUN dotnet publish src/Server/Server.csproj --configuration Release --output /app/publish
+# The browser authority is the Vite distribution copied below. Do not carry
+# the retired Blazor static payload into the runtime image.
+RUN rm -rf /app/publish/wwwroot
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
@@ -31,13 +37,12 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl util-linux \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 pckg \
-    && mkdir -p /app/web /app/packages /app/data/uploads \
+    && mkdir -p /app/wwwroot /app/packages /app/data/uploads \
     && chown -R pckg:pckg /app
 # COPY after chown must re-apply ownership; otherwise uid 10001 cannot mkdir under /app.
 COPY --from=server-build --chown=pckg:pckg /app/publish ./
-COPY --from=web-build --chown=pckg:pckg /src/pckg/web/dist /app/web
-ENV PCKG_WEB_ROOT=/app/web \
-    PCKG_ARTIFACT_ROOT=/app/packages \
+COPY --from=web-build --chown=pckg:pckg /src/pckg/web/dist/ /app/wwwroot/
+ENV PCKG_ARTIFACT_ROOT=/app/packages \
     PCKG_COOKIE_SECURE=true \
     ASPNETCORE_URLS=http://+:8082 \
     Storage__UploadsRootPath=/app/data/uploads
