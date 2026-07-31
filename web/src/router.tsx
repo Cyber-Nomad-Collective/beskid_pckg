@@ -42,7 +42,7 @@ export interface RouterContext {
 
 function AppShell() {
 	return (
-		<div className="min-h-screen bg-background text-foreground">
+		<div className="min-h-screen">
 			<header className="border-b border-border">
 				<nav
 					className="mx-auto flex max-w-6xl items-center gap-5 px-5 py-3"
