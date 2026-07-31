@@ -152,7 +152,7 @@ function OnboardingPage() {
 	const { error } = useSearch({ from: "/onboarding" });
 	const sessionCheck = useQuery({
 		queryKey: ["bootstrap-status"],
-		queryFn: pckgApi.getBootstrapStatus,
+		queryFn: () => pckgApi.getBootstrapStatus(),
 	});
 	if (sessionCheck.isError) {
 		throw sessionCheck.error;
@@ -727,7 +727,7 @@ const publishersRoute = createRoute({
 function PublishersPage() {
 	const publishers = useQuery({
 		queryKey: ["publishers"],
-		queryFn: pckgApi.listPublishers,
+		queryFn: () => pckgApi.listPublishers(),
 	});
 	if (publishers.isPending)
 		return <p className="text-muted-foreground">Loading publishers…</p>;
@@ -900,7 +900,7 @@ const topicsRoute = createRoute({
 function TopicsPage() {
 	const boards = useQuery({
 		queryKey: ["community-boards"],
-		queryFn: pckgApi.listBoards,
+		queryFn: () => pckgApi.listBoards(),
 	});
 	if (boards.isPending)
 		return <p className="text-muted-foreground">Loading community boards…</p>;
@@ -1197,7 +1197,7 @@ function AuthHubPairingPage() {
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const pairStatus = useQuery({
 		queryKey: ["auth-hub-pairing-status"],
-		queryFn: pckgApi.getAuthHubPairingStatus,
+		queryFn: () => pckgApi.getAuthHubPairingStatus(),
 	});
 	const pair = useMutation({
 		mutationFn: (input: { code: string; publicUrl: string }) =>
@@ -1425,7 +1425,7 @@ const profileRoute = createRoute({
 function ProfilePage() {
 	const session = useQuery({
 		queryKey: ["session"],
-		queryFn: pckgApi.getSession,
+		queryFn: () => pckgApi.getSession(),
 	});
 	const profile = useQuery({
 		queryKey: ["community-profile", "me"],
@@ -1523,7 +1523,7 @@ function NotificationsPage() {
 	const queryClient = useQueryClient();
 	const notifications = useQuery({
 		queryKey: ["notifications"],
-		queryFn: pckgApi.listNotifications,
+		queryFn: () => pckgApi.listNotifications(),
 	});
 	const preference = useMutation({
 		mutationFn: pckgApi.updateNotificationPreference,
@@ -1615,7 +1615,7 @@ function ApiKeysPage() {
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
 	const keys = useQuery({
 		queryKey: ["api-keys"],
-		queryFn: pckgApi.listApiKeys,
+		queryFn: () => pckgApi.listApiKeys(),
 	});
 	const create = useMutation({
 		mutationFn: (input: { name: string; scopes: string[] }) =>
@@ -1761,7 +1761,7 @@ function AdminEmailPage() {
 	const queryClient = useQueryClient();
 	const settingsQuery = useQuery({
 		queryKey: ["admin-email-settings"],
-		queryFn: pckgApi.getEmailSettings,
+		queryFn: () => pckgApi.getEmailSettings(),
 	});
 	const update = useMutation({
 		mutationFn: pckgApi.updateEmailSettings,
@@ -1907,7 +1907,7 @@ function AdminBlockedLinksPage() {
 	const queryClient = useQueryClient();
 	const blocked = useQuery({
 		queryKey: ["admin-blocked-links"],
-		queryFn: pckgApi.listBlockedLinks,
+		queryFn: () => pckgApi.listBlockedLinks(),
 	});
 	const add = useMutation({
 		mutationFn: pckgApi.addBlockedLink,
@@ -2085,11 +2085,11 @@ function AdminOverviewPage() {
 	const queryClient = useQueryClient();
 	const users = useQuery({
 		queryKey: ["admin-users"],
-		queryFn: pckgApi.listAdminUsers,
+		queryFn: () => pckgApi.listAdminUsers(),
 	});
 	const permissions = useQuery({
 		queryKey: ["admin-permissions"],
-		queryFn: pckgApi.listAdminPermissions,
+		queryFn: () => pckgApi.listAdminPermissions(),
 	});
 	const grant = useMutation({
 		mutationFn: pckgApi.grantAdminPermission,
@@ -2232,7 +2232,7 @@ function BoardModerationPage() {
 	const queryClient = useQueryClient();
 	const boards = useQuery({
 		queryKey: ["community-boards"],
-		queryFn: pckgApi.listBoards,
+		queryFn: () => pckgApi.listBoards(),
 	});
 	const setLocked = useMutation({
 		mutationFn: ({ id, locked }: { id: string; locked: boolean }) =>
@@ -2290,7 +2290,7 @@ function AdminUsersPage() {
 	const queryClient = useQueryClient();
 	const users = useQuery({
 		queryKey: ["admin-users"],
-		queryFn: pckgApi.listAdminUsers,
+		queryFn: () => pckgApi.listAdminUsers(),
 	});
 	const update = useMutation({
 		mutationFn: ({
