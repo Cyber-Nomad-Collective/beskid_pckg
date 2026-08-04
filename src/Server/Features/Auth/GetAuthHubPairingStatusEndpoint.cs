@@ -8,7 +8,7 @@ public sealed class GetAuthHubPairingStatusEndpoint(IAuthHubPairingService pairi
 {
     public override void Configure()
     {
-        Get("/api/auth/hub/pairing-status");
+        Get("/auth/hub/pairing-status");
         AllowAnonymous();
         Summary(s => s.Summary = "Get auth hub pairing status for the pairing page.");
     }

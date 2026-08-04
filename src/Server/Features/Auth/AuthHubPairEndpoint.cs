@@ -15,7 +15,7 @@ public sealed class AuthHubPairEndpoint : Endpoint<AuthHubPairRequest>
 
     public override void Configure()
     {
-        Post("/api/auth/hub/pair");
+        Post("/auth/hub/pair");
         Roles("SuperAdmin");
     }
 

@@ -6,4 +6,5 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Serve Auth Hub pairing status and approval endpoints under the configured single `/api` prefix.
 - Publish the repository's .NET 10 Server application in the pckg container instead of a non-existent compiler Rust binary.
