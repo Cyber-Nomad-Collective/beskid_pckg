@@ -1,8 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { PckgApiClient } from "./pckg-api";
 
 describe("PckgApiClient", () => {
+	it("keeps canonical notification GUIDs as string read-state identifiers", async () => {
+		const client = new PckgApiClient({
+			fetch: async () =>
+				Response.json([
+					{
+						id: "9e22935b-8f79-48bd-a53f-bfce2e7e7ad6",
+						recipient: "github:42",
+						scope: "System",
+						actor: "Registry",
+						post_id: null,
+						comment_id: null,
+						is_read: false,
+					},
+				]),
+		});
+
+		const [notification] = await client.listNotifications();
+		expectTypeOf(notification.id).toEqualTypeOf<string>();
+		expect(notification.id).toBe("9e22935b-8f79-48bd-a53f-bfce2e7e7ad6");
+	});
+
 	it("uses the registry search endpoint for a package query", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({
@@ -238,6 +259,117 @@ describe("PckgApiClient", () => {
 		expect(await requests[3].text()).toBe(
 			'{"subject":"github:42","resource":"package:beskid.http","capability":"moderate"}',
 		);
+	});
+
+	it("supports pairing and admin operational endpoint contracts", async () => {
+		const requests: Request[] = [];
+		const client = new PckgApiClient({
+			fetch: async (request) => {
+				const captured = new Request(request);
+				requests.push(captured);
+				if (captured.url.includes("/auth/hub/pairing-status"))
+					return Response.json({
+						paired: false,
+						defaultPublicUrl: "https://pckg.test",
+						hubAvailable: true,
+						appRegistered: true,
+					});
+				if (captured.url.includes("/auth/hub/pair"))
+					return Response.json({ ok: true, alreadyPaired: false });
+				if (captured.url.includes("/admin/email-settings"))
+					return captured.method === "POST"
+						? new Response(null, { status: 200 })
+						: Response.json({
+							smtpHost: "smtp.example.test",
+							smtpPort: 587,
+							enableSsl: true,
+							username: "noreply",
+							password: "********",
+							fromEmail: "no-reply@beskid-lang.org",
+							fromName: "Beskid Pckg",
+						});
+				if (captured.url.includes("/admin/registry-activity"))
+					return Response.json([
+						{
+							timestampUtc: "2026-07-27T00:00:00Z",
+							severity: "Info",
+							action: "publish",
+							message: "Published package",
+							traceId: null,
+							userId: "github:42",
+							packageName: "beskid.http",
+							version: "1.0.0",
+						},
+					]);
+				if (captured.url.includes("/admin/blocked-links"))
+					return captured.method === "POST"
+						? Response.json(
+							{
+								success: true,
+								message: "added",
+								item: {
+									id: "111",
+									pattern: "https://bad.example/*",
+									note: "test",
+									createdAtUtc: "2026-07-27T00:00:00Z",
+								},
+							},
+							{ status: 200 },
+						)
+						: Response.json([
+							{
+								id: "111",
+								pattern: "https://bad.example/*",
+								note: "test",
+								createdAtUtc: "2026-07-27T00:00:00Z",
+							},
+						]);
+				if (captured.url.endsWith("/users/bootstrap-status"))
+					return Response.json({ hasUsers: true });
+				if (captured.method === "DELETE")
+					return new Response(null, { status: 204 });
+				return Response.json({});
+			},
+		});
+
+		await expect(client.getAuthHubPairingStatus()).resolves.toMatchObject({
+			paired: false,
+		});
+		await expect(client.pairWithAuthHub({ code: "code", publicUrl: "https://pckg.test" })).resolves.toMatchObject({
+			ok: true,
+		});
+		await expect(
+			client.getEmailSettings(),
+		).resolves.toMatchObject({ smtpHost: "smtp.example.test" });
+		await expect(client.updateEmailSettings({
+			smtpHost: "smtp.example.test",
+			smtpPort: 587,
+			enableSsl: true,
+			username: "noreply",
+			password: "secret",
+			fromEmail: "no-reply@beskid-lang.org",
+			fromName: "Beskid",
+		})).resolves.toBeUndefined();
+		await expect(client.getBootstrapStatus()).resolves.toEqual({ hasUsers: true });
+		await expect(client.listRegistryActivity(50)).resolves.toHaveLength(1);
+		await expect(
+			client.addBlockedLink({ pattern: "https://bad.example/*", note: "test" }),
+		).resolves.toMatchObject({ success: true });
+		await expect(client.deleteBlockedLink("111")).resolves.toBeUndefined();
+
+		expect(
+			requests.map((request) => `${request.method} ${new URL(request.url, "https://pckg.test").pathname}`),
+		).toEqual([
+			"GET /api/auth/hub/pairing-status",
+			"POST /api/auth/hub/pair",
+			"GET /api/admin/email-settings",
+			"POST /api/admin/email-settings",
+			"GET /users/bootstrap-status",
+			"GET /api/admin/registry-activity",
+			"POST /api/admin/blocked-links",
+			"DELETE /api/admin/blocked-links/111",
+		]);
+		expect(requests.every((request) => request.credentials === "include")).toBe(true);
 	});
 
 	it("loads package details with metadata and a latest download URL", async () => {

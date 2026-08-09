@@ -23,16 +23,21 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
     private readonly string _artifactRoot;
     private readonly string _dataProtectionKeysPath;
     private readonly string _inMemoryDatabaseName;
+    private readonly string _webRoot;
 
     public TestApplicationFactory()
     {
         _tempRoot = Path.Combine(Path.GetTempPath(), "pckg_server_tests", Guid.NewGuid().ToString("N"));
         _artifactRoot = Path.Combine(_tempRoot, "artifacts");
         _dataProtectionKeysPath = Path.Combine(_tempRoot, "data-protection-keys");
+        _webRoot = Path.Combine(_tempRoot, "web");
         _inMemoryDatabaseName = $"pckg_integration_tests_{Guid.NewGuid():N}";
         Directory.CreateDirectory(_tempRoot);
         Directory.CreateDirectory(_artifactRoot);
         Directory.CreateDirectory(_dataProtectionKeysPath);
+        Directory.CreateDirectory(Path.Combine(_webRoot, "assets"));
+        File.WriteAllText(Path.Combine(_webRoot, "index.html"), "<!doctype html><html><body><main id=\"pckg-react-root\">Pckg React shell</main><script type=\"module\" src=\"/assets/app.js\"></script></body></html>");
+        File.WriteAllText(Path.Combine(_webRoot, "assets", "app.js"), "console.log('pckg-react-shell');");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -41,6 +46,7 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>, IAs
         // Must apply before Program.cs reads configuration (ConfigureAppConfiguration runs too late for top-level statements).
         builder.UseSetting("Security:PersistDataProtectionKeysToDatabase", "false");
         builder.UseSetting("Security:DataProtectionKeysPath", _dataProtectionKeysPath);
+        builder.UseSetting("Pckg:WebRoot", _webRoot);
 
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {

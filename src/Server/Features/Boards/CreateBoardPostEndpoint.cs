@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FastEndpoints;
 using Server.Data;
 using Server.Services;
+using Server.Services.Notifications;
 
 namespace Server.Features.Boards;
 
@@ -11,6 +12,7 @@ public sealed class CreateBoardPostEndpoint : Endpoint<CreateBoardPostRequest, C
     public IUserRatingService RatingService { get; set; } = default!;
     public ICaptchaVerificationService Captcha { get; set; } = default!;
     public ILinkContentGuard LinkGuard { get; set; } = default!;
+    public INotificationService Notifications { get; set; } = default!;
 
     public override void Configure()
     {
@@ -29,55 +31,10 @@ public sealed class CreateBoardPostEndpoint : Endpoint<CreateBoardPostRequest, C
             return;
         }
 
-        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        if (!await Captcha.IsHumanAsync(req.CaptchaToken, CaptchaActions.BoardPost, remoteIp, ct))
-        {
-            await Send.ResponseAsync(new CreateBoardPostResponse(false, "Robot check failed. Please try again."), StatusCodes.Status400BadRequest, ct);
-            return;
-        }
-
-        var board = await Db.Boards.FindAsync([boardId], ct);
-        if (board is null)
-        {
-            await Send.NotFoundAsync(ct);
-            return;
-        }
-
-        if (board.IsLocked)
-        {
-            await Send.ResponseAsync(new CreateBoardPostResponse(false, "This board is locked."), StatusCodes.Status403Forbidden, ct);
-            return;
-        }
-
-        var combined = $"{req.Title}\n{req.Content}";
-        var linkBlock = await LinkGuard.GetBlockReasonAsync(combined, ct);
-        if (linkBlock is not null)
-        {
-            await Send.ResponseAsync(new CreateBoardPostResponse(false, linkBlock), StatusCodes.Status400BadRequest, ct);
-            return;
-        }
-
-        var post = new BoardPostEntity
-        {
-            BoardId = boardId,
-            AuthorUserId = userId,
-            Title = req.Title,
-            Content = req.Content,
-            PostType = req.PostType,
-            CreatedAtUtc = DateTime.UtcNow,
-            UpvoteCount = 0,
-            DownvoteCount = 0,
-            IsPinned = false,
-            IsLocked = false,
-            IsDeleted = false
-        };
-
-        Db.BoardPosts.Add(post);
-        await Db.SaveChangesAsync(ct);
-
-        await RatingService.IncrementBoardActivityAsync(userId, isPost: true);
-
-        await Send.OkAsync(new CreateBoardPostResponse(true, "Post created successfully.", post.Id), ct);
+        var result = await new BoardMutationService(Db, Captcha, LinkGuard, RatingService, Notifications).CreatePostAsync(boardId, userId, req.Title, req.Content, req.PostType, req.CaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        if (result.Value is not null) { await Send.OkAsync(new CreateBoardPostResponse(true, "Post created successfully.", result.Value.Id), ct); return; }
+        if (result.StatusCode == StatusCodes.Status404NotFound) { await Send.NotFoundAsync(ct); return; }
+        await Send.ResponseAsync(new CreateBoardPostResponse(false, result.Message!), result.StatusCode, ct);
     }
 }
 

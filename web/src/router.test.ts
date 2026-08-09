@@ -16,6 +16,8 @@ describe("pckg browser routes", () => {
 				"/topics",
 				"/topics/$topic",
 				"/board/post/$postId",
+				"/onboarding",
+				"/settings/auth/pair",
 			]),
 		);
 	});
@@ -32,6 +34,9 @@ describe("pckg browser routes", () => {
 				"/dashboard/packages/upload",
 				"/dashboard/admin",
 				"/dashboard/admin/users",
+				"/dashboard/admin/email",
+				"/dashboard/admin/registry-activity",
+				"/dashboard/admin/blocked-links",
 			]),
 		);
 	});
@@ -40,9 +45,6 @@ describe("pckg browser routes", () => {
 		expect(clientRoutePaths).not.toEqual(
 			expect.arrayContaining([
 				"/dashboard/packages/all",
-				"/dashboard/admin/email",
-				"/dashboard/admin/registry-activity",
-				"/dashboard/admin/blocked-links",
 			]),
 		);
 	});

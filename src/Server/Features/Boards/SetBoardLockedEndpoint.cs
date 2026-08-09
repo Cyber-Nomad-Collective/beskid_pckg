@@ -28,21 +28,17 @@ public sealed class SetBoardLockedEndpoint(
         }
 
         var boardId = Route<int>("boardId");
-        var board = await db.Boards.FirstOrDefaultAsync(b => b.Id == boardId, ct);
-        if (board is null)
+        var result = await BoardMutationService.SetBoardLockedAsync(db, boardId, userId, req.Locked, authorization, ct);
+        if (result.Value is null && result.StatusCode == StatusCodes.Status404NotFound)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
-
-        if (!await authorization.CanModerateBoardAsync(userId, boardId))
+        if (result.Value is null)
         {
             await Send.ResponseAsync(new SetBoardLockedResponse(false, "You cannot change lock state for this board."), StatusCodes.Status403Forbidden, ct);
             return;
         }
-
-        board.IsLocked = req.Locked;
-        await db.SaveChangesAsync(ct);
 
         await Send.OkAsync(new SetBoardLockedResponse(true, req.Locked ? "Board locked." : "Board unlocked."), ct);
     }
