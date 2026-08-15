@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -80,6 +82,8 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
     public async Task<AuthHubPairingResult> CompletePairingAsync(
         string code,
         string publicUrl,
+        string? approverLogin,
+        bool force,
         CancellationToken ct = default)
     {
         code = code.Trim();
@@ -89,7 +93,7 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
             return new AuthHubPairingResult(false, "Pairing code and public URL are required.");
         }
 
-        if (await IsPairedAsync(ct))
+        if (!force && await IsPairedAsync(ct))
         {
             return new AuthHubPairingResult(true, AlreadyPaired: true);
         }
@@ -100,7 +104,12 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
             return new AuthHubPairingResult(false, "AUTH_HUB_PUBLIC_URL is not configured.");
         }
 
-        var approverLogin = await ResolveApproverLoginAsync(ct);
+        approverLogin = approverLogin?.Trim();
+        if (string.IsNullOrWhiteSpace(approverLogin))
+        {
+            approverLogin = await ResolveApproverLoginAsync(ct);
+        }
+
         if (approverLogin is null)
         {
             return new AuthHubPairingResult(
@@ -135,6 +144,45 @@ public sealed class AuthHubPairingService : IAuthHubPairingService
         var settings = await _db.AuthHubSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == 1, ct);
         return !string.IsNullOrWhiteSpace(settings?.ProtectedServiceToken);
+    }
+
+    public async Task<bool> IsServiceTokenMatchAsync(string token, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var settings = await _db.AuthHubSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == 1, ct);
+        if (string.IsNullOrWhiteSpace(settings?.ProtectedServiceToken))
+        {
+            return false;
+        }
+
+        string stored;
+        try
+        {
+            stored = _protector.Unprotect(settings.ProtectedServiceToken).Trim();
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(stored))
+        {
+            return false;
+        }
+
+        var storedBytes = Encoding.UTF8.GetBytes(stored);
+        var tokenBytes = Encoding.UTF8.GetBytes(token.Trim());
+        if (storedBytes.Length != tokenBytes.Length)
+        {
+            return false;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(storedBytes, tokenBytes);
     }
 
     private string? ResolveHubUrl()
