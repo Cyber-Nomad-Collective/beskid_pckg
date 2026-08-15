@@ -15,5 +15,9 @@ public interface IAuthHubPairingService
     Task<AuthHubPairingResult> CompletePairingAsync(
         string code,
         string publicUrl,
+        string? approverLogin = null,
+        bool force = false,
         CancellationToken ct = default);
+
+    Task<bool> IsServiceTokenMatchAsync(string token, CancellationToken ct = default);
 }
