@@ -7,6 +7,9 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Replace the retired .NET container with a root-context Rust registry image that bundles the pckg web client, preserves the `/app/packages` Compose volume contract, and drops to `pckg` after root-only volume initialization.
+- Document seed-derived canonical `PCKG_DATABASE_URL` deployment and
+  no-session bearer publication; browser management remains fail-closed
+  pending trusted forward-auth.
 
 ### Fixed
 
