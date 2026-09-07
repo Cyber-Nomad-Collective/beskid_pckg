@@ -14,20 +14,23 @@ browser-session authentication.
 - Publication: active pckg bearer API keys; browser session routes require a
   separately deployed, trusted forward-auth boundary
 
-The legacy .NET registry is disposable and has been retired. This Rust-backed
-registry starts as a fresh store for corelib, templates, and future packages:
-do not import legacy registry rows or artifacts. The Rust service is the sole
-runtime, and no cutover procedure is supported from `pckg/`.
+The Rust service is the sole registry runtime. It starts from a fresh store for
+corelib, templates, and future packages; no legacy backend, migration utility,
+or compatibility publication path is shipped from `pckg/`.
 
 ## Local Compose
 
-The local Compose stack (`docker-compose.yml`, `run-podman.sh`) was removed
-with the legacy backend. Build the Rust registry image from the repository
-root so it can include both `beskid_web_common` and `compiler`:
+Build the Rust registry image from the repository root so it can include both
+`beskid_web_common` and `compiler`:
 
 ```bash
 docker build -f pckg/Dockerfile -t beskid-pckg .
 ```
+
+For a disposable local registry and PostgreSQL instance, copy `.env.example`
+to `.env` and run `docker compose -f pckg/docker-compose.yml up --build` from
+the repository root. The local reference stack uses `SHELL_AUTH_MODE=mock`;
+never use mock authentication in a deployed environment.
 
 The image preserves the established Compose contract: it listens on `8082`,
 serves the bundled client from `/app/web`, and uses the mountable

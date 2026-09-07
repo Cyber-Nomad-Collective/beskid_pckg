@@ -1,11 +1,14 @@
 # Coolify: pckg registry
 
-pckg runs as **`pckg`** + **`postgres`** services in the platform compose stack (Compose profile `pckg`).
+pckg runs as **`pckg`** + **`postgres`** services in the platform Compose stack
+(profile `pckg`). GitHub Actions in the root repository builds the Rust-server
+image, publishes it to GHCR, renders the digest-pinned Compose manifest, and
+applies that manifest to Coolify.
 
-| Environment | Branch | Image tag |
-|-------------|--------|-----------|
-| production | `main` | `main` |
-| staging | `stg` (phase 2) | `staging` |
+| Environment | Deployment source | Image reference |
+|-------------|-------------------|-----------------|
+| staging | root `platform-delivery.yml` | immutable `sha-<root commit>` tag rendered to a digest |
+| production | promoted root release | the same verified digest promoted by the delivery workflow |
 
 ## Compose entry
 
@@ -19,21 +22,20 @@ Enable in production: set `compose_profiles` to `pckg` in `beskid_infra/config/c
 
 ## Runtime secrets
 
-Store the pckg service token, session secret, and database password at
-`secret/beskid/production/pckg`. Auth Hub provisions the paired service token;
-pckg accepts GitHub-authenticated browser sessions only through that token and
-never stores a GitHub OAuth token or local password.
+Store the database inputs at `secret/beskid/production/pckg`. The deployment
+renderer supplies one canonical URL-encoded `PCKG_DATABASE_URL`; the service
+does not assemble credentials from legacy application settings.
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `PCKG_AUTH_HUB_SERVICE_TOKEN` | yes | Paired service token issued by Auth Hub for pckg |
-| `PCKG_SESSION_SECRET` | yes | Separate 32+ character pckg browser-session signing secret |
 | `POSTGRES_PASSWORD` | yes | Password used in the PostgreSQL connection URL |
-| `PCKG_COOKIE_SECURE` | yes in production | Keep `true` for HTTPS deployments |
-| `PCKG_ADMIN_BOOTSTRAP_SUBJECT` | one-time optional | Auth Hub GitHub subject granted the initial pckg superadmin role |
+| `PCKG_DATABASE_URL` | yes | Canonical URL rendered from the environment's PostgreSQL secret |
+| `PCKG_ARTIFACT_ROOT` | yes | Persistent artifact volume; normally `/app/packages` |
 
-Configure the Auth Hub application and its pckg service token before deploying;
-see [site/auth/COOLIFY.md](../site/auth/COOLIFY.md) for the hub deployment.
+Browser administration remains fail-closed when `SHELL_AUTH_MODE` is unset.
+Enabling `authelia` requires a trusted proxy that strips client `Remote-*`
+headers, completes forward authentication, and injects the verified identity.
+CLI publication continues through pckg-owned bearer keys stored in PostgreSQL.
 
 ## Health
 

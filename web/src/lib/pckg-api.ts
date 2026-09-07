@@ -48,59 +48,9 @@ export interface StructuredPackageDocs {
 
 export interface Session {
 	subject: string;
-	githubLogin: string;
-	hubSessionId: string;
-}
-
-export interface PublishPackageInput {
-	packageName: string;
-	version: string;
-	artifact: File;
-}
-
-export interface PublishedPackageVersion {
-	version: string;
-}
-
-export interface BootstrapStatus {
-	hasUsers: boolean;
-}
-
-export interface AuthHubPairingStatus {
-	paired: boolean;
-	defaultPublicUrl: string;
-	hubAvailable: boolean;
-	appRegistered: boolean;
-}
-
-export interface PairAuthHubInput {
-	code: string;
-	publicUrl: string;
-}
-
-export interface PairAuthHubResult {
-	ok: boolean;
-	alreadyPaired: boolean;
-}
-
-export interface EmailSettings {
-	smtpHost: string | null;
-	smtpPort: number;
-	enableSsl: boolean;
-	username: string | null;
-	password: string | null;
-	fromEmail: string;
-	fromName: string;
-}
-
-export interface EmailSettingsUpdate {
-	smtpHost: string | null;
-	smtpPort: number;
-	enableSsl: boolean;
-	username: string | null;
-	password: string | null;
-	fromEmail: string;
-	fromName: string;
+	email: string | null;
+	displayName: string | null;
+	groups: string[];
 }
 
 export interface RegistryActivityEntry {
@@ -153,13 +103,11 @@ export interface CreatedApiKey {
 
 export interface AdminUser {
 	subject: string;
-	githubLogin: string;
-	roles: string[];
+	displayName: string;
 	publisherVerified: boolean;
 }
 
 export interface UpdateAdminUserInput {
-	roles: string[];
 	publisherVerified: boolean;
 }
 
@@ -169,50 +117,11 @@ export interface AdminPermission {
 	capability: string;
 }
 
-export interface CommunityProfile {
+export interface PublisherSummary {
 	subject: string;
-	display_name: string;
-	bio: string;
-	social_links: string[];
-}
-
-export interface Notification {
-	id: string;
-	recipient: string;
-	scope: string;
-	actor: string;
-	post_id: number | null;
-	comment_id: number | null;
-	is_read: boolean;
-}
-
-export interface CommunityBoard {
-	id: string;
-	title: string;
-	locked: boolean;
-}
-export interface CommunityPost {
-	id: number;
-	board_id: string;
-	author: string;
-	title: string;
-	content: string;
-	score: number;
-}
-export interface CommunityComment {
-	id: number;
-	post_id: number;
-	author: string;
-	content: string;
-	parent_comment_id: number | null;
-	score: number;
-}
-export interface FollowState {
-	is_following: boolean;
-	changed: boolean;
-}
-export interface VoteResult {
-	score: number;
+	displayName: string;
+	isPublisherVerified: boolean;
+	packageCount: number;
 }
 export interface PackageCommunityReview {
 	id: string;
@@ -247,8 +156,8 @@ export class PckgApiClient {
 		return results.map((result) => result.package);
 	}
 
-	async listPublishers(): Promise<CommunityProfile[]> {
-		return this.get<CommunityProfile[]>("/api/publishers");
+	async listPublishers(): Promise<PublisherSummary[]> {
+		return this.get<PublisherSummary[]>("/api/publishers");
 	}
 
 	async listPublisherPackages(subject: string): Promise<PackageSummary[]> {
@@ -386,60 +295,6 @@ export class PckgApiClient {
 		return this.readJson<Session>(response);
 	}
 
-	async publishPackage(
-		input: PublishPackageInput,
-	): Promise<PublishedPackageVersion> {
-		const packageName = encodeURIComponent(input.packageName);
-		const version = input.version.trim();
-		return this.readJson<PublishedPackageVersion>(
-			await this.request(
-				`/api/packages/${packageName}/versions/${encodeURIComponent(version)}/artifact`,
-				{
-					method: "POST",
-					headers: { "Content-Type": input.artifact.type || "application/zip" },
-					body: input.artifact,
-				},
-			),
-		);
-	}
-
-	async getCommunityProfile(subject: string): Promise<CommunityProfile> {
-		return this.get<CommunityProfile>(
-			`/api/community/profiles/${encodeURIComponent(subject)}`,
-		);
-	}
-
-	async getBootstrapStatus(): Promise<BootstrapStatus> {
-		return this.get<BootstrapStatus>("/users/bootstrap-status");
-	}
-
-	async getAuthHubPairingStatus(): Promise<AuthHubPairingStatus> {
-		return this.get<AuthHubPairingStatus>("/api/auth/hub/pairing-status");
-	}
-
-	async pairWithAuthHub(input: PairAuthHubInput): Promise<PairAuthHubResult> {
-		return this.readJson<PairAuthHubResult>(
-			await this.request("/api/auth/hub/pair", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(input),
-			}),
-		);
-	}
-
-	async getEmailSettings(): Promise<EmailSettings> {
-		return this.get<EmailSettings>("/api/admin/email-settings");
-	}
-
-	async updateEmailSettings(input: EmailSettingsUpdate): Promise<void> {
-		const response = await this.request("/api/admin/email-settings", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(input),
-		});
-		if (!response.ok) throw new PckgApiError(response.status);
-	}
-
 	async listRegistryActivity(take = 200): Promise<RegistryActivityEntry[]> {
 		return this.get<RegistryActivityEntry[]>(
 			`/api/admin/registry-activity?take=${encodeURIComponent(String(take))}`,
@@ -450,7 +305,9 @@ export class PckgApiClient {
 		return this.get<BlockedLink[]>("/api/admin/blocked-links");
 	}
 
-	async addBlockedLink(input: AddBlockedLinkInput): Promise<AddBlockedLinkResult> {
+	async addBlockedLink(
+		input: AddBlockedLinkInput,
+	): Promise<AddBlockedLinkResult> {
 		return this.postJson<AddBlockedLinkResult>("/api/admin/blocked-links", input);
 	}
 
@@ -458,125 +315,6 @@ export class PckgApiClient {
 		const response = await this.request(
 			`/api/admin/blocked-links/${encodeURIComponent(id)}`,
 			{ method: "DELETE" },
-		);
-		if (!response.ok) throw new PckgApiError(response.status);
-	}
-
-	async updateMyCommunityProfile(
-		input: Pick<CommunityProfile, "display_name" | "bio" | "social_links">,
-	): Promise<CommunityProfile> {
-		return this.readJson<CommunityProfile>(
-			await this.request("/api/community/profiles/me", {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					displayName: input.display_name,
-					bio: input.bio,
-					socialLinks: input.social_links,
-				}),
-			}),
-		);
-	}
-
-	async listNotifications(): Promise<Notification[]> {
-		return this.get<Notification[]>("/api/community/notifications");
-	}
-
-	async updateNotificationPreference(
-		mode: "all" | "mentionsOnly",
-	): Promise<void> {
-		const response = await this.request(
-			"/api/community/notification-preferences",
-			{
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ mode }),
-			},
-		);
-		if (!response.ok) throw new PckgApiError(response.status);
-	}
-
-	async listBoards(): Promise<CommunityBoard[]> {
-		return this.get<CommunityBoard[]>("/api/community/boards");
-	}
-	async getBoard(boardId: string): Promise<CommunityBoard> {
-		return this.get<CommunityBoard>(
-			`/api/community/boards/${encodeURIComponent(boardId)}`,
-		);
-	}
-	async listBoardPosts(boardId: string): Promise<CommunityPost[]> {
-		return this.get<CommunityPost[]>(
-			`/api/community/boards/${encodeURIComponent(boardId)}/posts`,
-		);
-	}
-	async setBoardLocked(boardId: string, locked: boolean): Promise<void> {
-		const response = await this.request(
-			`/api/community/boards/${encodeURIComponent(boardId)}/moderation/lock`,
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ locked }),
-			},
-		);
-		if (!response.ok) throw new PckgApiError(response.status);
-	}
-	async getPost(postId: number): Promise<CommunityPost> {
-		return this.get<CommunityPost>(`/api/community/boards/posts/${postId}`);
-	}
-	async listPostComments(postId: number): Promise<CommunityComment[]> {
-		return this.get<CommunityComment[]>(
-			`/api/community/boards/posts/${postId}/comments`,
-		);
-	}
-
-	async togglePublisherFollow(subject: string): Promise<FollowState> {
-		return this.readJson<FollowState>(
-			await this.request(
-				`/api/community/publisher-follows/${encodeURIComponent(subject)}/toggle`,
-				{ method: "POST" },
-			),
-		);
-	}
-
-	async createPost(
-		boardId: string,
-		input: { title: string; content: string },
-	): Promise<CommunityPost> {
-		return this.postJson<CommunityPost>(
-			`/api/community/boards/${encodeURIComponent(boardId)}/posts`,
-			input,
-		);
-	}
-
-	async createComment(
-		postId: number,
-		input: { content: string; parentCommentId?: number },
-	): Promise<CommunityComment> {
-		return this.postJson<CommunityComment>(
-			`/api/community/boards/posts/${postId}/comments`,
-			input,
-		);
-	}
-
-	async voteOnPost(postId: number, value: -1 | 0 | 1): Promise<VoteResult> {
-		return this.postJson<VoteResult>(
-			`/api/community/boards/posts/${postId}/vote`,
-			{ value },
-		);
-	}
-	async voteOnComment(
-		commentId: number,
-		value: -1 | 0 | 1,
-	): Promise<VoteResult> {
-		return this.postJson<VoteResult>(
-			`/api/community/boards/comments/${commentId}/vote`,
-			{ value },
-		);
-	}
-	async markNotificationRead(notificationId: string): Promise<void> {
-		const response = await this.request(
-			`/api/community/notifications/${notificationId}/read`,
-			{ method: "POST" },
 		);
 		if (!response.ok) throw new PckgApiError(response.status);
 	}

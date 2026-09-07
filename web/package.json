@@ -7,7 +7,8 @@
 		"dev": "vite",
 		"build": "vite build",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit",
+		"test:shared-ui-types": "tsc --noEmit -p tsconfig.shared-ui-types.json",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.shared-ui-types.json",
 		"sync:beskid-packages": "bash ../../scripts/sync-beskid-packages.sh pckg/web"
 	},
 	"dependencies": {

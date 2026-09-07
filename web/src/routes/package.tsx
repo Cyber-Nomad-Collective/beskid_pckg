@@ -19,8 +19,7 @@ import {
 import { useState } from "react";
 
 import { PackageSourceGraphPanel } from "../components/package-source-graph-panel";
-import { toDashboardGuardDestination } from "../lib/auth-navigation";
-import { PckgApiError, pckgApi } from "../lib/pckg-api";
+import { pckgApi } from "../lib/pckg-api";
 import { dashboardRoute } from "./dashboard";
 import { rootRoute } from "./shared";
 
@@ -496,77 +495,6 @@ function PackageDocumentationPage() {
 	);
 }
 
-export const packageUploadRoute = createRoute({
-	getParentRoute: () => dashboardRoute,
-	path: "/packages/upload",
-	component: PackageUploadPage,
-});
-function PackageUploadPage() {
-	const navigate = useNavigate();
-	const publish = useMutation({ mutationFn: pckgApi.publishPackage });
-	const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const form = new FormData(event.currentTarget);
-		const artifact = form.get("artifact");
-		if (!(artifact instanceof File) || artifact.size === 0) return;
-		try {
-			await publish.mutateAsync({
-				packageName: String(form.get("packageName") ?? "").trim(),
-				version: String(form.get("version") ?? "").trim(),
-				artifact,
-			});
-			await navigate({ to: "/dashboard/packages/my" });
-		} catch (error) {
-			if (error instanceof PckgApiError && error.status === 401)
-				await navigate(toDashboardGuardDestination("/dashboard/packages/upload"));
-		}
-	};
-	return (
-		<section className="max-w-2xl space-y-6">
-			<header>
-				<h1 className="text-3xl font-bold">Upload package</h1>
-				<p className="mt-2 text-muted-foreground">
-					Publish a signed `.bpk` archive to an existing package. The registry
-					derives and verifies its checksum.
-				</p>
-			</header>
-			<Card>
-				<CardContent className="pt-6">
-					<form className="space-y-4" onSubmit={submit}>
-						<label className="grid gap-2 text-sm font-medium">
-							Package name
-							<Input name="packageName" required placeholder="beskid.http" />
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							Version
-							<Input name="version" required placeholder="1.2.3" />
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							Package archive
-							<Input
-								name="artifact"
-								type="file"
-								accept=".bpk,application/zip"
-								required
-							/>
-						</label>
-						{publish.isError && (
-							<p className="text-sm text-destructive">
-								{publish.error instanceof PckgApiError && publish.error.status === 401
-									? "Your Auth Hub session has expired. Sign in and try again."
-									: "The package could not be published. Check its archive and version."}
-							</p>
-						)}
-						<Button type="submit" disabled={publish.isPending}>
-							{publish.isPending ? "Publishing…" : "Publish package"}
-						</Button>
-					</form>
-				</CardContent>
-			</Card>
-		</section>
-	);
-}
-
 export const myPackagesRoute = createRoute({
 	getParentRoute: () => dashboardRoute,
 	path: "/packages/my",
@@ -586,12 +514,9 @@ function MyPackagesPage() {
 				<div>
 					<h1 className="text-3xl font-bold">My packages</h1>
 					<p className="mt-2 text-muted-foreground">
-						Packages owned by your GitHub-backed Auth Hub subject.
+						Packages owned by your authenticated registry subject.
 					</p>
 				</div>
-				<Link to="/dashboard/packages/upload" className={buttonVariants()}>
-					Upload package
-				</Link>
 			</header>
 			<div className="grid gap-4 md:grid-cols-2">
 				{packages.data.length === 0 ? (

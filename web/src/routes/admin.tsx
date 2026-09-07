@@ -13,11 +13,6 @@ import { createRoute, Link } from "@tanstack/react-router";
 import { PckgApiError, pckgApi } from "../lib/pckg-api";
 import { dashboardRoute } from "./dashboard";
 
-export const adminEmailRoute = createRoute({
-	getParentRoute: () => dashboardRoute,
-	path: "/admin/email",
-	component: AdminEmailPage,
-});
 export const adminRegistryActivityRoute = createRoute({
 	getParentRoute: () => dashboardRoute,
 	path: "/admin/registry-activity",
@@ -28,99 +23,6 @@ export const adminBlockedLinksRoute = createRoute({
 	path: "/admin/blocked-links",
 	component: AdminBlockedLinksPage,
 });
-
-function AdminEmailPage() {
-	const queryClient = useQueryClient();
-	const settingsQuery = useQuery({
-		queryKey: ["admin-email-settings"],
-		queryFn: () => pckgApi.getEmailSettings(),
-	});
-	const update = useMutation({
-		mutationFn: pckgApi.updateEmailSettings,
-		onSuccess: () =>
-			void queryClient.invalidateQueries({ queryKey: ["admin-email-settings"] }),
-	});
-	if (settingsQuery.isPending) {
-		return <p className="text-muted-foreground">Loading email settings…</p>;
-	}
-	if (settingsQuery.isError) throw settingsQuery.error;
-	const settings = settingsQuery.data;
-	const submit = (event: React.FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const form = new FormData(event.currentTarget);
-		update.mutate({
-			smtpHost: String(form.get("smtpHost") ?? "").trim() || null,
-			smtpPort: Number(form.get("smtpPort")),
-			enableSsl: form.get("enableSsl") === "on",
-			username: String(form.get("username") ?? "").trim() || null,
-			password: String(form.get("password") ?? "").trim() || null,
-			fromEmail: String(form.get("fromEmail") ?? "").trim(),
-			fromName: String(form.get("fromName") ?? "").trim(),
-		});
-	};
-
-	return (
-		<section className="space-y-6">
-			<header>
-				<h1 className="text-3xl font-bold">Email settings</h1>
-				<p className="mt-2 text-muted-foreground">
-					Manage SMTP settings used for notification and account flows.
-				</p>
-			</header>
-			<Card>
-				<CardContent className="pt-6">
-					<form className="space-y-4" onSubmit={submit}>
-						<label className="grid gap-2 text-sm font-medium">
-							SMTP host
-							<Input name="smtpHost" required defaultValue={settings.smtpHost ?? ""} />
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							SMTP port
-							<Input name="smtpPort" type="number" defaultValue={settings.smtpPort} />
-						</label>
-						<label className="flex items-center gap-2 text-sm">
-							<input
-								name="enableSsl"
-								type="checkbox"
-								defaultChecked={settings.enableSsl}
-							/>
-							Use TLS
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							Username
-							<Input name="username" defaultValue={settings.username ?? ""} />
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							Password
-							<Input
-								name="password"
-								type="password"
-								placeholder="Update password only when changed"
-								defaultValue={settings.password ?? ""}
-							/>
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							From email
-							<Input name="fromEmail" required defaultValue={settings.fromEmail} />
-						</label>
-						<label className="grid gap-2 text-sm font-medium">
-							From name
-							<Input name="fromName" required defaultValue={settings.fromName} />
-						</label>
-						{update.isError && (
-							<p className="text-sm text-destructive">
-								Could not save email settings.
-							</p>
-						)}
-						<Button type="submit" disabled={update.isPending}>
-							{update.isPending ? "Saving…" : "Save email settings"}
-						</Button>
-					</form>
-				</CardContent>
-			</Card>
-		</section>
-	);
-}
 
 function AdminRegistryActivityPage() {
 	const activity = useQuery({
@@ -180,12 +82,13 @@ function AdminBlockedLinksPage() {
 		queryFn: () => pckgApi.listBlockedLinks(),
 	});
 	const add = useMutation({
-		mutationFn: pckgApi.addBlockedLink,
+		mutationFn: (input: { pattern: string; note?: string }) =>
+			pckgApi.addBlockedLink(input),
 		onSuccess: () =>
 			void queryClient.invalidateQueries({ queryKey: ["admin-blocked-links"] }),
 	});
 	const remove = useMutation({
-		mutationFn: pckgApi.deleteBlockedLink,
+		mutationFn: (id: string) => pckgApi.deleteBlockedLink(id),
 		onSuccess: () =>
 			void queryClient.invalidateQueries({ queryKey: ["admin-blocked-links"] }),
 	});
@@ -214,9 +117,17 @@ function AdminBlockedLinksPage() {
 			<Card>
 				<CardContent className="pt-6">
 					<form className="grid gap-3" onSubmit={submit}>
-						<label className="grid gap-2 text-sm font-medium">
+						<label
+							htmlFor="blocked-link-pattern"
+							className="grid gap-2 text-sm font-medium"
+						>
 							Pattern
-							<Input name="pattern" required placeholder="https://bad.example/*" />
+							<Input
+								id="blocked-link-pattern"
+								name="pattern"
+								required
+								placeholder="https://bad.example/*"
+							/>
 						</label>
 						<textarea
 							name="note"
@@ -272,9 +183,9 @@ function adminErrorMessage(error: unknown): string {
 	if (!(error instanceof PckgApiError))
 		return "The registry could not complete this administrative request.";
 	if (error.status === 401)
-		return "Your Auth Hub session has expired. Sign in again to continue.";
+		return "Your browser session has expired. Sign in again to continue.";
 	if (error.status === 403)
-		return "Your GitHub-backed account does not have permission to administer the registry.";
+		return "Your account does not have permission to administer the registry.";
 	if (error.status === 404)
 		return "The requested administrative record no longer exists.";
 	return "The registry could not complete this administrative request.";
@@ -296,7 +207,11 @@ function AdminOverviewPage() {
 		queryFn: () => pckgApi.listAdminPermissions(),
 	});
 	const grant = useMutation({
-		mutationFn: pckgApi.grantAdminPermission,
+		mutationFn: (input: {
+			subject: string;
+			resource: string;
+			capability: string;
+		}) => pckgApi.grantAdminPermission(input),
 		onSuccess: () =>
 			void queryClient.invalidateQueries({ queryKey: ["admin-permissions"] }),
 	});
@@ -318,8 +233,7 @@ function AdminOverviewPage() {
 			<header>
 				<h1 className="text-3xl font-bold">Administration</h1>
 				<p className="mt-2 text-muted-foreground">
-					Manage GitHub-subject registry roles, publisher verification, and narrowly
-					scoped resource permissions.
+					Manage publisher verification and narrowly scoped registry permissions.
 				</p>
 			</header>
 			<div className="grid gap-4 sm:grid-cols-2">
@@ -327,8 +241,7 @@ function AdminOverviewPage() {
 					<CardHeader>
 						<CardTitle>{users.data.length} users</CardTitle>
 						<CardDescription>
-							Roles and publisher verification are managed by immutable GitHub
-							subjects.
+							Publisher verification is stored against immutable identity subjects.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -427,69 +340,6 @@ export const adminUsersRoute = createRoute({
 	path: "/admin/users",
 	component: AdminUsersPage,
 });
-export const boardModerationRoute = createRoute({
-	getParentRoute: () => dashboardRoute,
-	path: "/admin/boards",
-	component: BoardModerationPage,
-});
-function BoardModerationPage() {
-	const queryClient = useQueryClient();
-	const boards = useQuery({
-		queryKey: ["community-boards"],
-		queryFn: () => pckgApi.listBoards(),
-	});
-	const setLocked = useMutation({
-		mutationFn: ({ id, locked }: { id: string; locked: boolean }) =>
-			pckgApi.setBoardLocked(id, locked),
-		onSuccess: () =>
-			void queryClient.invalidateQueries({ queryKey: ["community-boards"] }),
-	});
-	if (boards.isPending)
-		return <p className="text-muted-foreground">Loading boards…</p>;
-	if (boards.isError) throw boards.error;
-	return (
-		<section className="max-w-3xl space-y-6">
-			<header>
-				<h1 className="text-3xl font-bold">Board moderation</h1>
-				<p className="mt-2 text-muted-foreground">
-					Lock a board to pause new discussions. The registry enforces your moderator
-					or delegated board permission.
-				</p>
-			</header>
-			<div className="space-y-3">
-				{boards.data.map((board) => (
-					<Card key={board.id}>
-						<CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-							<div>
-								<p className="font-medium">{board.title}</p>
-								<p className="text-sm text-muted-foreground">
-									{board.locked
-										? "Locked — members cannot post."
-										: "Open for discussion."}
-								</p>
-							</div>
-							<Button
-								variant="outline"
-								disabled={setLocked.isPending}
-								onClick={() =>
-									setLocked.mutate({ id: board.id, locked: !board.locked })
-								}
-							>
-								{board.locked ? "Unlock board" : "Lock board"}
-							</Button>
-						</CardContent>
-					</Card>
-				))}
-			</div>
-			{setLocked.isError && (
-				<p className="text-sm text-destructive">
-					You do not have permission to change this board, or the registry could not
-					save it.
-				</p>
-			)}
-		</section>
-	);
-}
 function AdminUsersPage() {
 	const queryClient = useQueryClient();
 	const users = useQuery({
@@ -499,13 +349,11 @@ function AdminUsersPage() {
 	const update = useMutation({
 		mutationFn: ({
 			subject,
-			roles,
 			publisherVerified,
 		}: {
 			subject: string;
-			roles: string[];
 			publisherVerified: boolean;
-		}) => pckgApi.updateAdminUser(subject, { roles, publisherVerified }),
+		}) => pckgApi.updateAdminUser(subject, { publisherVerified }),
 		onSuccess: () =>
 			void queryClient.invalidateQueries({ queryKey: ["admin-users"] }),
 	});
@@ -515,10 +363,10 @@ function AdminUsersPage() {
 	return (
 		<section className="max-w-4xl space-y-6">
 			<header>
-				<h1 className="text-3xl font-bold">Users and roles</h1>
+				<h1 className="text-3xl font-bold">Publisher verification</h1>
 				<p className="mt-2 text-muted-foreground">
-					Changes apply to the GitHub subject shown for each account. Email addresses
-					and local passwords are never used.
+					Verification is stored against the immutable subject shown for each
+					publisher.
 				</p>
 			</header>
 			{users.data.length === 0 ? (
@@ -532,7 +380,7 @@ function AdminUsersPage() {
 					{users.data.map((user) => (
 						<Card key={user.subject}>
 							<CardHeader>
-								<CardTitle>{user.githubLogin}</CardTitle>
+								<CardTitle>{user.displayName}</CardTitle>
 								<CardDescription>
 									<code>{user.subject}</code>
 								</CardDescription>
@@ -545,25 +393,12 @@ function AdminUsersPage() {
 										const form = new FormData(event.currentTarget);
 										update.mutate({
 											subject: user.subject,
-											roles: ["Member", "Moderator", "SuperAdmin"].filter(
-												(role) => form.get(role) === "on",
-											),
 											publisherVerified: form.get("publisherVerified") === "on",
 										});
 									}}
 								>
 									<fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-										<legend className="mb-2 text-sm font-medium">Roles</legend>
-										{["Member", "Moderator", "SuperAdmin"].map((role) => (
-											<label key={role} className="flex items-center gap-2 text-sm">
-												<input
-													name={role}
-													type="checkbox"
-													defaultChecked={user.roles.includes(role)}
-												/>
-												{role}
-											</label>
-										))}
+										<legend className="mb-2 text-sm font-medium">Registry status</legend>
 										<label className="flex items-center gap-2 text-sm">
 											<input
 												name="publisherVerified"

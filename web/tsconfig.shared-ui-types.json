@@ -1,0 +1,4 @@
+{
+	"extends": "./tsconfig.json",
+	"include": ["type-contracts/shared-ui-graph.ts"]
+}

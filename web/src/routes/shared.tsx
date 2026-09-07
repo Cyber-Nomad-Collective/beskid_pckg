@@ -38,12 +38,6 @@ function AppShell() {
 						Packages
 					</Link>
 					<Link
-						to="/topics"
-						className="text-sm text-muted-foreground hover:text-foreground"
-					>
-						Community
-					</Link>
-					<Link
 						to="/publishers"
 						className="text-sm text-muted-foreground hover:text-foreground"
 					>

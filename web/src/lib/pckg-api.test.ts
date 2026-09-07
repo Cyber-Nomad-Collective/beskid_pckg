@@ -1,29 +1,8 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { PckgApiClient } from "./pckg-api";
 
 describe("PckgApiClient", () => {
-	it("keeps canonical notification GUIDs as string read-state identifiers", async () => {
-		const client = new PckgApiClient({
-			fetch: async () =>
-				Response.json([
-					{
-						id: "9e22935b-8f79-48bd-a53f-bfce2e7e7ad6",
-						recipient: "github:42",
-						scope: "System",
-						actor: "Registry",
-						post_id: null,
-						comment_id: null,
-						is_read: false,
-					},
-				]),
-		});
-
-		const [notification] = await client.listNotifications();
-		expectTypeOf(notification.id).toEqualTypeOf<string>();
-		expect(notification.id).toBe("9e22935b-8f79-48bd-a53f-bfce2e7e7ad6");
-	});
-
 	it("uses the registry search endpoint for a package query", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({
@@ -85,16 +64,16 @@ describe("PckgApiClient", () => {
 					: Response.json([
 							{
 								subject: "github:42",
-								display_name: "Ada",
-								bio: "Compiler author",
-								social_links: [],
+								displayName: "github:42",
+								isPublisherVerified: true,
+								packageCount: 1,
 							},
 						]);
 			},
 		});
 
 		await expect(client.listPublishers()).resolves.toMatchObject([
-			{ subject: "github:42", display_name: "Ada" },
+			{ subject: "github:42", displayName: "github:42", packageCount: 1 },
 		]);
 		await expect(
 			client.listPublisherPackages("github:42"),
@@ -188,7 +167,7 @@ describe("PckgApiClient", () => {
 				if (captured.method === "PATCH")
 					return Response.json({
 						subject: "github:42",
-						roles: ["Moderator"],
+						displayName: "github:42",
 						publisherVerified: true,
 					});
 				if (captured.method === "POST")
@@ -211,8 +190,7 @@ describe("PckgApiClient", () => {
 				return Response.json([
 					{
 						subject: "github:42",
-						githubLogin: "ada",
-						roles: ["Member"],
+						displayName: "github:42",
 						publisherVerified: false,
 					},
 				]);
@@ -220,11 +198,10 @@ describe("PckgApiClient", () => {
 		});
 
 		await expect(client.listAdminUsers()).resolves.toMatchObject([
-			{ subject: "github:42", githubLogin: "ada" },
+			{ subject: "github:42", displayName: "github:42" },
 		]);
 		await expect(
 			client.updateAdminUser("github:42", {
-				roles: ["Moderator"],
 				publisherVerified: true,
 			}),
 		).resolves.toMatchObject({ publisherVerified: true });
@@ -253,41 +230,18 @@ describe("PckgApiClient", () => {
 		expect(requests.every((request) => request.credentials === "include")).toBe(
 			true,
 		);
-		expect(await requests[1].text()).toBe(
-			'{"roles":["Moderator"],"publisherVerified":true}',
-		);
+		expect(await requests[1].text()).toBe('{"publisherVerified":true}');
 		expect(await requests[3].text()).toBe(
 			'{"subject":"github:42","resource":"package:beskid.http","capability":"moderate"}',
 		);
 	});
 
-	it("supports pairing and admin operational endpoint contracts", async () => {
+	it("uses the implemented admin operational endpoint contracts", async () => {
 		const requests: Request[] = [];
 		const client = new PckgApiClient({
 			fetch: async (request) => {
 				const captured = new Request(request);
 				requests.push(captured);
-				if (captured.url.includes("/auth/hub/pairing-status"))
-					return Response.json({
-						paired: false,
-						defaultPublicUrl: "https://pckg.test",
-						hubAvailable: true,
-						appRegistered: true,
-					});
-				if (captured.url.includes("/auth/hub/pair"))
-					return Response.json({ ok: true, alreadyPaired: false });
-				if (captured.url.includes("/admin/email-settings"))
-					return captured.method === "POST"
-						? new Response(null, { status: 200 })
-						: Response.json({
-							smtpHost: "smtp.example.test",
-							smtpPort: 587,
-							enableSsl: true,
-							username: "noreply",
-							password: "********",
-							fromEmail: "no-reply@beskid-lang.org",
-							fromName: "Beskid Pckg",
-						});
 				if (captured.url.includes("/admin/registry-activity"))
 					return Response.json([
 						{
@@ -304,53 +258,32 @@ describe("PckgApiClient", () => {
 				if (captured.url.includes("/admin/blocked-links"))
 					return captured.method === "POST"
 						? Response.json(
-							{
-								success: true,
-								message: "added",
-								item: {
+								{
+									success: true,
+									message: "added",
+									item: {
+										id: "111",
+										pattern: "https://bad.example/*",
+										note: "test",
+										createdAtUtc: "2026-07-27T00:00:00Z",
+									},
+								},
+								{ status: 200 },
+							)
+						: Response.json([
+								{
 									id: "111",
 									pattern: "https://bad.example/*",
 									note: "test",
 									createdAtUtc: "2026-07-27T00:00:00Z",
 								},
-							},
-							{ status: 200 },
-						)
-						: Response.json([
-							{
-								id: "111",
-								pattern: "https://bad.example/*",
-								note: "test",
-								createdAtUtc: "2026-07-27T00:00:00Z",
-							},
-						]);
-				if (captured.url.endsWith("/users/bootstrap-status"))
-					return Response.json({ hasUsers: true });
+							]);
 				if (captured.method === "DELETE")
 					return new Response(null, { status: 204 });
 				return Response.json({});
 			},
 		});
 
-		await expect(client.getAuthHubPairingStatus()).resolves.toMatchObject({
-			paired: false,
-		});
-		await expect(client.pairWithAuthHub({ code: "code", publicUrl: "https://pckg.test" })).resolves.toMatchObject({
-			ok: true,
-		});
-		await expect(
-			client.getEmailSettings(),
-		).resolves.toMatchObject({ smtpHost: "smtp.example.test" });
-		await expect(client.updateEmailSettings({
-			smtpHost: "smtp.example.test",
-			smtpPort: 587,
-			enableSsl: true,
-			username: "noreply",
-			password: "secret",
-			fromEmail: "no-reply@beskid-lang.org",
-			fromName: "Beskid",
-		})).resolves.toBeUndefined();
-		await expect(client.getBootstrapStatus()).resolves.toEqual({ hasUsers: true });
 		await expect(client.listRegistryActivity(50)).resolves.toHaveLength(1);
 		await expect(
 			client.addBlockedLink({ pattern: "https://bad.example/*", note: "test" }),
@@ -358,18 +291,18 @@ describe("PckgApiClient", () => {
 		await expect(client.deleteBlockedLink("111")).resolves.toBeUndefined();
 
 		expect(
-			requests.map((request) => `${request.method} ${new URL(request.url, "https://pckg.test").pathname}`),
+			requests.map(
+				(request) =>
+					`${request.method} ${new URL(request.url, "https://pckg.test").pathname}`,
+			),
 		).toEqual([
-			"GET /api/auth/hub/pairing-status",
-			"POST /api/auth/hub/pair",
-			"GET /api/admin/email-settings",
-			"POST /api/admin/email-settings",
-			"GET /users/bootstrap-status",
 			"GET /api/admin/registry-activity",
 			"POST /api/admin/blocked-links",
 			"DELETE /api/admin/blocked-links/111",
 		]);
-		expect(requests.every((request) => request.credentials === "include")).toBe(true);
+		expect(requests.every((request) => request.credentials === "include")).toBe(
+			true,
+		);
 	});
 
 	it("loads package details with metadata and a latest download URL", async () => {
@@ -433,35 +366,6 @@ describe("PckgApiClient", () => {
 		await expect(client.getSession()).resolves.toBeNull();
 	});
 
-	it("uploads an authenticated raw package artifact to its version endpoint", async () => {
-		const requests: Request[] = [];
-		const client = new PckgApiClient({
-			fetch: async (request) => {
-				requests.push(new Request(request));
-				return Response.json({ version: "1.2.3" }, { status: 201 });
-			},
-		});
-
-		await expect(
-			client.publishPackage({
-				packageName: "beskid.http",
-				version: "1.2.3",
-				artifact: new File(["package"], "beskid.http-1.2.3.bpk", {
-					type: "application/zip",
-				}),
-			}),
-		).resolves.toEqual({ version: "1.2.3" });
-
-		expect(new URL(requests[0].url, "https://pckg.test").pathname).toBe(
-			"/api/packages/beskid.http/versions/1.2.3/artifact",
-		);
-		expect(requests[0].credentials).toBe("include");
-		expect(requests[0].method).toBe("POST");
-		expect(requests[0].headers.get("content-type")).toBe("application/zip");
-		expect(await requests[0].text()).toBe("package");
-		expect(requests).toHaveLength(1);
-	});
-
 	it("builds a version-specific package download URL", () => {
 		const client = new PckgApiClient({ fetch: async () => Response.json({}) });
 
@@ -518,83 +422,5 @@ describe("PckgApiClient", () => {
 			"GET /api/packages/beskid.demo/versions/1.2.3/source/tree",
 			"GET /api/packages/beskid.demo/versions/1.2.3/source/file?path=src%2Fmain.bsk",
 		]);
-	});
-
-	it("uses the implemented community profile and notification contracts", async () => {
-		const requests: Request[] = [];
-		const client = new PckgApiClient({
-			fetch: async (request) => {
-				const captured = new Request(request);
-				requests.push(captured);
-				return captured.url.includes("notification-preferences")
-					? new Response(null, { status: 204 })
-					: Response.json([]);
-			},
-		});
-
-		await client.getCommunityProfile("github:42");
-		await client.updateMyCommunityProfile({
-			display_name: "Ada",
-			bio: "Compiler author",
-			social_links: ["https://example.test"],
-		});
-		await client.listNotifications();
-		await client.updateNotificationPreference("mentionsOnly");
-
-		expect(
-			requests.map(
-				(request) => new URL(request.url, "https://pckg.test").pathname,
-			),
-		).toEqual([
-			"/api/community/profiles/github%3A42",
-			"/api/community/profiles/me",
-			"/api/community/notifications",
-			"/api/community/notification-preferences",
-		]);
-		expect(requests[1].method).toBe("PUT");
-		expect(await requests[1].text()).toBe(
-			'{"displayName":"Ada","bio":"Compiler author","socialLinks":["https://example.test"]}',
-		);
-	});
-
-	it("uses typed community read and interaction endpoints", async () => {
-		const requests: Request[] = [];
-		const client = new PckgApiClient({
-			fetch: async (request) => {
-				const captured = new Request(request);
-				requests.push(captured);
-				return Response.json([]);
-			},
-		});
-
-		await client.listBoards();
-		await client.getBoard("general");
-		await client.listBoardPosts("general");
-		await client.setBoardLocked("general", true);
-		await client.getPost(7);
-		await client.listPostComments(7);
-		await client.togglePublisherFollow("github:42");
-		await client.voteOnPost(7, 1);
-		await client.createComment(7, { content: "Useful package." });
-
-		expect(
-			requests.map(
-				(request) =>
-					`${request.method} ${new URL(request.url, "https://pckg.test").pathname}`,
-			),
-		).toEqual([
-			"GET /api/community/boards",
-			"GET /api/community/boards/general",
-			"GET /api/community/boards/general/posts",
-			"POST /api/community/boards/general/moderation/lock",
-			"GET /api/community/boards/posts/7",
-			"GET /api/community/boards/posts/7/comments",
-			"POST /api/community/publisher-follows/github%3A42/toggle",
-			"POST /api/community/boards/posts/7/vote",
-			"POST /api/community/boards/posts/7/comments",
-		]);
-		expect(await requests[3].text()).toBe('{"locked":true}');
-		expect(await requests[7].text()).toBe('{"value":1}');
-		expect(await requests[8].text()).toBe('{"content":"Useful package."}');
 	});
 });
