@@ -24,7 +24,6 @@ COPY compiler/crates/beskid_pckg_artifacts ./crates/beskid_pckg_artifacts
 COPY compiler/crates/beskid_pckg_auth ./crates/beskid_pckg_auth
 COPY compiler/crates/beskid_pckg_contract ./crates/beskid_pckg_contract
 COPY compiler/crates/beskid_pckg_operations ./crates/beskid_pckg_operations
-COPY compiler/crates/beskid_pckg ./crates/beskid_pckg
 COPY compiler/crates/beskid_pckg_server ./crates/beskid_pckg_server
 COPY compiler/crates/beskid_pckg_store ./crates/beskid_pckg_store
 
@@ -36,7 +35,6 @@ RUN printf '%s\n' \
     '  "crates/beskid_pckg_auth",' \
     '  "crates/beskid_pckg_contract",' \
     '  "crates/beskid_pckg_operations",' \
-    '  "crates/beskid_pckg",' \
     '  "crates/beskid_pckg_server",' \
     '  "crates/beskid_pckg_store",' \
     ']' \
