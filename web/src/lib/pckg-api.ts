@@ -1,6 +1,18 @@
+export type PackageKind = "library" | "template" | "tool";
+
+export interface PackageTemplateSummary {
+	shortName?: string;
+	tags?: {
+		type?: string;
+		classifications?: string[];
+	};
+}
+
 export interface PackageSummary {
 	id: string;
 	name: string;
+	packageKind: PackageKind;
+	template: PackageTemplateSummary | null;
 	description: string;
 	category: string;
 	repositoryUrl: string | null;

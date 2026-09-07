@@ -8,7 +8,12 @@ import {
 	CardTitle,
 } from "@beskid/ui-react/ui/card";
 import { Input } from "@beskid/ui-react/ui/input";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	skipToken,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import {
 	createRoute,
 	Link,
@@ -19,7 +24,11 @@ import {
 import { useState } from "react";
 
 import { PackageSourceGraphPanel } from "../components/package-source-graph-panel";
-import { pckgApi } from "../lib/pckg-api";
+import {
+	type PackageKindPresentation,
+	packageKindPresentation,
+} from "../lib/package-kind-presentation";
+import { type PackageTemplateSummary, pckgApi } from "../lib/pckg-api";
 import { dashboardRoute } from "./dashboard";
 import { rootRoute } from "./shared";
 
@@ -69,34 +78,42 @@ function PackagesPage() {
 						</CardContent>
 					</Card>
 				) : (
-					packages.data.map((item) => (
-						<Card key={item.id}>
-							<CardHeader>
-								<CardTitle>
-									<Link
-										to="/packages/$packageName"
-										params={{ packageName: item.name }}
-										className="hover:underline"
-									>
-										{item.name}
-									</Link>
-								</CardTitle>
-								<CardDescription>{item.description}</CardDescription>
-							</CardHeader>
-							<CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-								<span>{item.category}</span>
-								<span>·</span>
-								<span>{item.totalDownloads.toLocaleString()} downloads</span>
-								<span>·</span>
-								<span>{item.ownerDisplayName}</span>
-								{item.tags.slice(0, 3).map((tag) => (
-									<Badge key={tag} variant="secondary">
-										{tag}
-									</Badge>
-								))}
-							</CardContent>
-						</Card>
-					))
+					packages.data.map((item) => {
+						const presentation = packageKindPresentation({
+							kind: item.packageKind,
+							packageName: item.name,
+							latestVersion: null,
+						});
+						return (
+							<Card key={item.id}>
+								<CardHeader>
+									<CardTitle>
+										<Link
+											to="/packages/$packageName"
+											params={{ packageName: item.name }}
+											className="hover:underline"
+										>
+											{item.name}
+										</Link>
+									</CardTitle>
+									<CardDescription>{item.description}</CardDescription>
+								</CardHeader>
+								<CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+									<Badge variant="secondary">{presentation.badge}</Badge>
+									<span>{item.category}</span>
+									<span>·</span>
+									<span>{item.totalDownloads.toLocaleString()} downloads</span>
+									<span>·</span>
+									<span>{item.ownerDisplayName}</span>
+									{item.tags.slice(0, 3).map((tag) => (
+										<Badge key={tag} variant="secondary">
+											{tag}
+										</Badge>
+									))}
+								</CardContent>
+							</Card>
+						);
+					})
 				)}
 			</div>
 		</section>
@@ -131,11 +148,22 @@ function PackageDetailsPage() {
 		return <p className="text-muted-foreground">Loading package…</p>;
 	if (details.isError) throw details.error;
 	const data = details.data;
+	const presentation = packageKindPresentation({
+		kind: data.package.packageKind,
+		packageName: data.package.name,
+		latestVersion: data.latestVersion,
+		templateShortName: data.package.template?.shortName,
+	});
 	return (
 		<section>
 			<div className="flex flex-wrap items-start justify-between gap-4">
 				<div>
-					<p className="text-sm font-medium text-primary">{data.package.category}</p>
+					<div className="flex flex-wrap items-center gap-2">
+						<Badge>{presentation.badge}</Badge>
+						<p className="text-sm font-medium text-primary">
+							{data.package.category}
+						</p>
+					</div>
 					<h1 className="mt-1 text-3xl font-bold">{data.package.name}</h1>
 					<p className="mt-3 max-w-2xl text-muted-foreground">
 						{data.package.description}
@@ -147,16 +175,34 @@ function PackageDetailsPage() {
 							Download latest{data.latestVersion ? ` ${data.latestVersion}` : ""}
 						</a>
 					)}
-					<Link
-						to="/packages/$packageName/docs"
-						params={{ packageName }}
-						search={{ version: data.latestVersion ?? "" }}
-						className={buttonVariants({ variant: "outline" })}
-					>
-						Documentation
-					</Link>
+					{presentation.showDocumentation && (
+						<Link
+							to="/packages/$packageName/docs"
+							params={{ packageName }}
+							search={{ version: data.latestVersion ?? "" }}
+							className={buttonVariants({ variant: "outline" })}
+						>
+							Documentation
+						</Link>
+					)}
 				</div>
 			</div>
+			<PackageKindInstructions
+				presentation={presentation}
+				template={data.package.template}
+			/>
+			{data.readme && (
+				<Card className="mt-6">
+					<CardHeader>
+						<CardTitle>README</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<pre className="overflow-x-auto whitespace-pre-wrap text-sm">
+							{data.readme}
+						</pre>
+					</CardContent>
+				</Card>
+			)}
 			<div className="mt-6 flex flex-wrap gap-2">
 				{data.package.tags.map((tag) => (
 					<Badge key={tag} variant="secondary">
@@ -278,6 +324,57 @@ function PackageDetailsPage() {
 		</section>
 	);
 }
+
+function PackageKindInstructions({
+	presentation,
+	template,
+}: {
+	presentation: PackageKindPresentation;
+	template: PackageTemplateSummary | null;
+}) {
+	if (!presentation.instructions) return null;
+
+	return (
+		<Card className="mt-6">
+			<CardHeader>
+				<CardTitle>{presentation.instructions.title}</CardTitle>
+				<CardDescription>{presentation.instructions.description}</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-3">
+				{presentation.kind === "template" && template && (
+					<div className="flex flex-wrap gap-2">
+						{template.shortName && (
+							<Badge variant="secondary">shortName: {template.shortName}</Badge>
+						)}
+						{template.tags?.type && (
+							<Badge variant="secondary">type: {template.tags.type}</Badge>
+						)}
+						{template.tags?.classifications?.map((classification) => (
+							<Badge key={classification} variant="secondary">
+								{classification}
+							</Badge>
+						))}
+					</div>
+				)}
+				{presentation.instructions.commands.length === 0 ? (
+					<p className="text-sm text-muted-foreground">
+						Publish a release before installing this package.
+					</p>
+				) : (
+					presentation.instructions.commands.map((command) => (
+						<pre
+							key={command}
+							className="overflow-x-auto rounded-md border border-border bg-muted p-3 text-sm"
+						>
+							<code>{command}</code>
+						</pre>
+					))
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
 export const packageDocsRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/packages/$packageName/docs",
@@ -301,43 +398,66 @@ function PackageDocumentationPage() {
 		details.data?.latestVersion ||
 		details.data?.versions.find((item) => !item.isYanked)?.version ||
 		"";
+	const showDocumentation = details.data?.package.packageKind === "library";
 	const docs = useQuery({
 		queryKey: ["package-docs", packageName, selectedVersion],
-		enabled: Boolean(selectedVersion),
+		enabled: Boolean(selectedVersion && showDocumentation),
 		queryFn: () => pckgApi.listPackageDocs(packageName, selectedVersion),
 	});
 	const source = useQuery({
 		queryKey: ["package-source", packageName, selectedVersion],
-		enabled: Boolean(selectedVersion),
+		enabled: Boolean(selectedVersion && showDocumentation),
 		queryFn: () => pckgApi.listPackageSource(packageName, selectedVersion),
 	});
 	const structured = useQuery({
 		queryKey: ["package-structured-docs", packageName, selectedVersion],
-		enabled: Boolean(selectedVersion),
+		enabled: Boolean(selectedVersion && showDocumentation),
 		queryFn: () => pckgApi.getStructuredPackageDocs(packageName, selectedVersion),
 	});
 	const readme = useQuery({
 		queryKey: ["package-readme", packageName, selectedVersion],
-		enabled: Boolean(selectedVersion),
+		enabled: Boolean(selectedVersion && showDocumentation),
 		retry: false,
 		queryFn: () => pckgApi.getPackageReadme(packageName, selectedVersion),
 	});
 	const doc = useQuery({
 		queryKey: ["package-doc", packageName, selectedVersion, docPath],
-		enabled: Boolean(selectedVersion && docPath),
-		queryFn: () => pckgApi.getPackageDoc(packageName, selectedVersion, docPath!),
+		queryFn:
+			selectedVersion && showDocumentation && docPath
+				? () => pckgApi.getPackageDoc(packageName, selectedVersion, docPath)
+				: skipToken,
 	});
 	const sourceFile = useQuery({
 		queryKey: ["package-source-file", packageName, selectedVersion, sourcePath],
-		enabled: Boolean(selectedVersion && sourcePath),
-		queryFn: () =>
-			pckgApi.getPackageSource(packageName, selectedVersion, sourcePath!),
+		queryFn:
+			selectedVersion && showDocumentation && sourcePath
+				? () => pckgApi.getPackageSource(packageName, selectedVersion, sourcePath)
+				: skipToken,
 	});
 	if (details.isPending)
 		return (
 			<p className="text-muted-foreground">Loading package documentation…</p>
 		);
 	if (details.isError) throw details.error;
+	const presentation = packageKindPresentation({
+		kind: details.data.package.packageKind,
+		packageName: details.data.package.name,
+		latestVersion: details.data.latestVersion,
+		templateShortName: details.data.package.template?.shortName,
+	});
+	if (!presentation.showDocumentation)
+		return (
+			<section>
+				<h1 className="text-3xl font-bold">{packageName}</h1>
+				<p className="mt-3 text-muted-foreground">
+					{presentation.badge} releases do not expose structured API documentation.
+				</p>
+				<PackageKindInstructions
+					presentation={presentation}
+					template={details.data.package.template}
+				/>
+			</section>
+		);
 	if (!selectedVersion)
 		return (
 			<section>

@@ -16,6 +16,10 @@ All notable changes to this project are documented in this file.
   and administration routes; align its session, publisher, and administrator
   response shapes with the Rust contracts. Package publication remains owned
   by the artifact-validating compiler CLI and GitHub release path.
+- Route package detail actions through the authoritative `packageKind`
+  discriminator: libraries expose structured documentation, templates show
+  `beskid new` install commands and metadata, and tools show exact-version
+  `beskid pckg download` instructions.
 
 ### Fixed
 
