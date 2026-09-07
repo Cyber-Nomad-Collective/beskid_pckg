@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Replace the retired .NET container with a root-context Rust registry image that bundles the pckg web client, preserves the `/app/packages` Compose volume contract, and drops to `pckg` after root-only volume initialization.
+
 ### Fixed
 
 - Serve Auth Hub pairing status and approval endpoints under the configured single `/api` prefix.

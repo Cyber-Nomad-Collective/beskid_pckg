@@ -7,51 +7,42 @@ configured artifact volume, and delegates all browser identity to
 
 ## Runtime
 
-- Server: `beskid_pckg_server` in [`compiler/`](../compiler/)
-- Client: React/Vite in [`web/`](web/), built with Bun and shared
+- Server: `beskid_pckg_server` in [`compiler/crates/beskid_pckg_server/`](../compiler/crates/beskid_pckg_server/)
+- Client: React/Vite in [`web/`](web/), built with pnpm and shared
   `@beskid/*` UI packages
 - Persistence: PostgreSQL plus the `pckg_packages` artifact volume
 - Identity: GitHub-only Auth Hub session handoff
 
-The legacy C# application is retained solely as the migration source while the
-transactional importer reaches complete data coverage. It is not an
-operational runtime and must not be started for local development or
-deployment. See [`CUTOVER.md`](CUTOVER.md) for the required reconciliation
-procedure.
+The legacy .NET registry is disposable and has been retired. This Rust-backed
+registry starts as a fresh store for corelib, templates, and future packages:
+do not import legacy registry rows or artifacts. The Rust service is the sole
+runtime, and no cutover procedure is supported from `pckg/`.
 
 ## Local Compose
 
-From `pckg/`, copy the environment template and set the two Auth Hub secrets:
+The local Compose stack (`docker-compose.yml`, `run-podman.sh`) was removed
+with the legacy backend. Build the Rust registry image from the repository
+root so it can include both `beskid_web_common` and `compiler`:
 
 ```bash
-cp .env.example .env
-# Set PCKG_AUTH_HUB_SERVICE_TOKEN and PCKG_SESSION_SECRET in .env.
-./run-podman.sh up
+docker build -f pckg/Dockerfile -t beskid-pckg .
 ```
 
-This starts PostgreSQL on `5432` and the registry on
-`http://localhost:8082`. The Rust service applies its SQL migrations on
-startup.
-
-Useful lifecycle commands:
-
-```bash
-./run-podman.sh logs
-./run-podman.sh ps
-./run-podman.sh down
-./run-podman.sh down --reset
-```
-
-`--reset` removes the PostgreSQL and artifact volumes for a clean local boot.
+The image preserves the established Compose contract: it listens on `8082`,
+serves the bundled client from `/app/web`, and uses the mountable
+`/app/packages` fresh-store artifact root. Its root entrypoint only creates
+and assigns that mounted directory, then starts the server as the `pckg`
+user. Set `PCKG_DATABASE_URL` and the Auth Hub environment before production
+use.
 
 ## Local development
 
 Build or test the React client:
 
 ```bash
-bun --cwd web run test
-bun --cwd web run typecheck
-bun --cwd web run build
+pnpm --dir web run test
+pnpm --dir web run typecheck
+pnpm --dir web run build
 ```
 
 Build or test the Rust service from the repository root:
@@ -79,8 +70,5 @@ notifications are shown in the registry UI.
 
 - **The service refuses to start:** set distinct values for
   `PCKG_AUTH_HUB_SERVICE_TOKEN` and `PCKG_SESSION_SECRET`.
-- **Stale local state:** run `./run-podman.sh down --reset`, then
-  `./run-podman.sh up`.
-- **Database connection failures:** confirm the Postgres service is healthy
-  with `./run-podman.sh ps` and that `PCKG_DATABASE_URL` has URL-safe
-  credentials when overriding the Compose defaults.
+- **Database connection failures:** confirm Postgres is reachable and that
+  `PCKG_DATABASE_URL` has URL-safe credentials.
