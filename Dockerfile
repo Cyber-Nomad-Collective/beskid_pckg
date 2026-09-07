@@ -41,7 +41,8 @@ RUN printf '%s\n' \
     '  "crates/beskid_pckg_store",' \
     ']' \
     '[workspace.dependencies]' \
-    'bsol = { path = "../beskid_bsol/crates/bsol" }' > Cargo.toml \
+    'bsol = { path = "../beskid_bsol/crates/bsol" }' \
+    'tracing = "0.1.37"' > Cargo.toml \
     && cargo build --release -p beskid_pckg_server
 
 FROM debian:bookworm-slim AS runtime
