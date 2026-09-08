@@ -78,3 +78,13 @@ identity headers directly.
 - **Database connection failures:** confirm Postgres is reachable and rerun
   the OpenBao seed path after changing any PostgreSQL user, password, database,
   host, or port value.
+
+## License
+
+The pckg service deployment and web client in this repository are licensed
+under the [GNU Affero General Public License v3.0 only](LICENSE). The Rust
+registry backend is maintained in the separate `beskid_compiler` repository
+and follows that repository's component-level licensing declarations.
+
+Third-party dependencies and components remain under their respective
+licenses.

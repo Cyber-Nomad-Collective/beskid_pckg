@@ -6,6 +6,9 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- License the hosted registry deployment and web client under
+  `AGPL-3.0-only`, declare the SPDX identifier in package and OCI metadata,
+  and include the license text in the runtime image.
 - Browser sign-in starts at the pckg origin's Authentik outpost and preserves
   only a same-origin dashboard return URL.
 

@@ -25,6 +25,8 @@ RUN cargo build --release -p beskid_pckg_server
 
 FROM debian:bookworm-slim AS runtime
 
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl util-linux \
     && rm -rf /var/lib/apt/lists/* \
@@ -36,6 +38,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=server-build --chown=pckg:pckg /src/compiler/target/release/beskid_pckg_server /app/beskid_pckg_server
 COPY --from=web-build --chown=pckg:pckg /src/pckg/web/dist /app/web
+COPY pckg/LICENSE /usr/share/licenses/beskid-pckg/LICENSE
 
 ENV PCKG_WEB_ROOT=/app/web \
     PCKG_ARTIFACT_ROOT=/app/packages \
