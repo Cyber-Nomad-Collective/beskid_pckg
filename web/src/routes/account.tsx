@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createRoute, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { buildAuthHubLoginUrl } from "../lib/auth-navigation";
+import { buildAuthentikLoginUrl } from "../lib/auth-navigation";
 import { pckgApi } from "../lib/pckg-api";
 import { dashboardRoute } from "./dashboard";
 import { rootRoute } from "./shared";
@@ -29,24 +29,20 @@ export const authRoute = createRoute({
 
 function AuthPage() {
 	const { next } = useSearch({ from: "/auth" });
-	const authHubUrl = import.meta.env.VITE_AUTH_HUB_PUBLIC_URL;
 	const startSignIn = () => {
-		if (authHubUrl) window.location.assign(buildAuthHubLoginUrl(authHubUrl));
+		window.location.assign(buildAuthentikLoginUrl(window.location.origin, next));
 	};
 	return (
 		<AuthPageShell
 			title="Sign in to pckg"
-			description="Continue with GitHub through Beskid Auth Hub to manage packages."
+			description="Continue with GitHub through Beskid Authentik to manage packages."
 		>
-			<Button onClick={startSignIn} disabled={!authHubUrl}>
+			<Button onClick={startSignIn}>
 				Continue with GitHub
 			</Button>
 			<p className="mt-4 text-sm text-muted-foreground">
 				You will return to {next} after authentication.
 			</p>
-			{!authHubUrl && (
-				<p className="mt-3 text-sm text-destructive">Auth Hub is not configured.</p>
-			)}
 		</AuthPageShell>
 	);
 }

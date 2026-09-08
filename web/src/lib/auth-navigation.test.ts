@@ -1,18 +1,24 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	buildAuthHubLoginUrl,
+	buildAuthentikLoginUrl,
 	toDashboardGuardDestination,
 } from "./auth-navigation";
 
 describe("pckg authentication navigation", () => {
-	it("redirects sign-in to the Auth Hub with the pckg app identifier", () => {
-		expect(buildAuthHubLoginUrl("https://auth.beskid.test/")).toBe(
-			"https://auth.beskid.test/login?app=pckg",
+	it("starts sign-in at the local Authentik outpost with a safe return URL", () => {
+		expect(buildAuthentikLoginUrl("https://pckg.beskid.test", "/dashboard/packages/my")).toBe(
+			"https://pckg.beskid.test/outpost.goauthentik.io/start?rd=https%3A%2F%2Fpckg.beskid.test%2Fdashboard%2Fpackages%2Fmy",
 		);
 	});
 
-	it("sends unauthenticated dashboard visitors through Auth Hub", () => {
+	it("does not allow an external return URL", () => {
+		expect(buildAuthentikLoginUrl("https://pckg.beskid.test", "https://untrusted.example/path")).toBe(
+			"https://pckg.beskid.test/outpost.goauthentik.io/start?rd=https%3A%2F%2Fpckg.beskid.test%2Fdashboard%2Fpackages%2Fmy",
+		);
+	});
+
+	it("sends unauthenticated dashboard visitors through the Authentik fallback", () => {
 		expect(toDashboardGuardDestination("/dashboard/packages/my")).toEqual({
 			to: "/auth",
 			search: { next: "/dashboard/packages/my" },
