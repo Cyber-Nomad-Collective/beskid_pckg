@@ -37,6 +37,9 @@ All notable changes to this project are documented in this file.
 
 ### Removed
 
+- Remove the retired Nox dependency manifest and Podman launcher left behind
+  by the C# service, keeping the Rust container workflow as the sole local
+  service launch path.
 - Purge the retired C# server, integration and unit test projects, Aspire host,
   service defaults, solution/build configuration, disabled .NET CI notes, and
   obsolete database-cutover tooling. The React client and compiler-owned Rust
