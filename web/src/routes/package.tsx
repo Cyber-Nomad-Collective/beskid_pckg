@@ -98,18 +98,26 @@ function PackagesPage() {
 									</CardTitle>
 									<CardDescription>{item.description}</CardDescription>
 								</CardHeader>
-								<CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+							<CardContent className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 									<Badge variant="secondary">{presentation.badge}</Badge>
 									<span>{item.category}</span>
 									<span>·</span>
 									<span>{item.totalDownloads.toLocaleString()} downloads</span>
 									<span>·</span>
 									<span>{item.ownerDisplayName}</span>
-									{item.tags.slice(0, 3).map((tag) => (
+								{item.tags.slice(0, 3).map((tag) => (
 										<Badge key={tag} variant="secondary">
 											{tag}
 										</Badge>
-									))}
+								))}
+								<Link
+									to="/packages/$packageName/docs"
+									params={{ packageName: item.name }}
+									search={{ version: "" }}
+									className="ml-auto font-medium text-primary hover:underline"
+								>
+									Docs
+								</Link>
 								</CardContent>
 							</Card>
 						);
