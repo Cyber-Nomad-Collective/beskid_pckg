@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Build the Rust registry image with the compiler workspace's Linux `clang`
+  and `mold` linker configuration to reduce release-link latency.
 - License the hosted registry deployment and web client under
   `AGPL-3.0-only`, declare the SPDX identifier in package and OCI metadata,
   and include the license text in the runtime image.

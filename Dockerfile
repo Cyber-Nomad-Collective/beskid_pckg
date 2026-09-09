@@ -15,6 +15,13 @@ RUN pnpm --dir /src/pckg/web run build
 
 FROM rust:1-bookworm AS server-build
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends clang mold \
+    && command -v clang \
+    && command -v mold \
+    && mold --version \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /src
 COPY beskid_bsol ./beskid_bsol
 
