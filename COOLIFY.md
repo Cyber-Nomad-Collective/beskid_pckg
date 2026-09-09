@@ -1,24 +1,23 @@
-# Coolify: pckg registry
+# Production: pckg registry
 
-pckg runs as **`pckg`** + **`postgres`** services in the platform Compose stack
-(profile `pckg`). GitHub Actions in the root repository builds the Rust-server
-image, publishes it to GHCR, renders the digest-pinned Compose manifest, and
-applies that manifest to Coolify.
+pckg runs as **`pckg`** plus **`pckg-postgresql`** in the standalone production
+Compose stack. The root AppVeyor `linux-platform` lane builds the Rust-server
+image and publishes immutable `sha-*` plus controlled `production` tags to
+`cr.beskid-lang.org/beskid/pckg`. Watchtower alone reconciles production.
 
 | Environment | Deployment source | Image reference |
 |-------------|-------------------|-----------------|
-| staging | root `platform-delivery.yml` | immutable `sha-<root commit>` tag rendered to a digest |
-| production | promoted root release | the same verified digest promoted by the delivery workflow |
+| production | Watchtower | `cr.beskid-lang.org/beskid/pckg:production`; retain the matching immutable `sha-*` tag as evidence |
 
 ## Compose entry
 
 | Mode | File |
 |------|------|
-| **Platform stack** | [`beskid_infra/compose/production/docker-compose.yml`](../beskid_infra/compose/production/docker-compose.yml) |
+| **Platform stack** | [`../beskid_sites/deploy/docker-compose.yml`](../beskid_sites/deploy/docker-compose.yml) |
 | **pckg + Postgres reference** | [`docker-compose.coolify.yml`](docker-compose.coolify.yml) |
 | **Local build** | [`docker-compose.yml`](docker-compose.yml) |
 
-Enable in production: set `compose_profiles` to `pckg` in `beskid_infra/config/coolify-production.json` and seed OpenBao `secret/beskid/production/pckg`.
+Seed OpenBao `secret/beskid/production/pckg`, then use the production deployment script to materialize the runtime environment.
 
 ## Runtime secrets
 
@@ -43,4 +42,4 @@ CLI publication continues through pckg-owned bearer keys stored in PostgreSQL.
 
 ## Platform matrix
 
-Cross-service URLs, OpenBao paths, and shared auth variables: [beskid_infra/docs/deploy-matrix.md](../beskid_infra/docs/deploy-matrix.md).
+Cross-service runtime and rollback guidance: [beskid_sites/deploy/README.md](../beskid_sites/deploy/README.md).
