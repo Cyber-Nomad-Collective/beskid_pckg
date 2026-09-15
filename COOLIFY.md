@@ -1,39 +1,40 @@
-# Coolify: pckg registry
+# Production: pckg registry
 
-pckg runs as **`pckg`** + **`postgres`** services in the platform compose stack (Compose profile `pckg`).
+pckg runs as **`pckg`** plus **`pckg-postgresql`** in the standalone production
+Compose stack. The root AppVeyor `linux-platform` lane builds the Rust-server
+image and publishes immutable `sha-*` plus controlled `production` tags to
+`cr.beskid-lang.org/beskid/pckg`. Watchtower alone reconciles production.
 
-| Environment | Branch | Image tag |
-|-------------|--------|-----------|
-| production | `main` | `main` |
-| staging | `stg` (phase 2) | `staging` |
+| Environment | Deployment source | Image reference |
+|-------------|-------------------|-----------------|
+| production | Watchtower | `cr.beskid-lang.org/beskid/pckg:production`; retain the matching immutable `sha-*` tag as evidence |
 
 ## Compose entry
 
 | Mode | File |
 |------|------|
-| **Platform stack** | [`beskid_infra/compose/production/docker-compose.yml`](../beskid_infra/compose/production/docker-compose.yml) |
+| **Platform stack** | [`../beskid_sites/deploy/docker-compose.yml`](../beskid_sites/deploy/docker-compose.yml) |
 | **pckg + Postgres reference** | [`docker-compose.coolify.yml`](docker-compose.coolify.yml) |
 | **Local build** | [`docker-compose.yml`](docker-compose.yml) |
 
-Enable in production: set `compose_profiles` to `pckg` in `beskid_infra/config/coolify-production.json` and seed OpenBao `secret/beskid/production/pckg`.
+Seed OpenBao `secret/beskid/production/pckg`, then use the production deployment script to materialize the runtime environment.
 
 ## Runtime secrets
 
-Store the pckg service token, session secret, and database password at
-`secret/beskid/production/pckg`. Auth Hub provisions the paired service token;
-pckg accepts GitHub-authenticated browser sessions only through that token and
-never stores a GitHub OAuth token or local password.
+Store the database inputs at `secret/beskid/production/pckg`. The deployment
+renderer supplies one canonical URL-encoded `PCKG_DATABASE_URL`; the service
+does not assemble credentials from legacy application settings.
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `PCKG_AUTH_HUB_SERVICE_TOKEN` | yes | Paired service token issued by Auth Hub for pckg |
-| `PCKG_SESSION_SECRET` | yes | Separate 32+ character pckg browser-session signing secret |
 | `POSTGRES_PASSWORD` | yes | Password used in the PostgreSQL connection URL |
-| `PCKG_COOKIE_SECURE` | yes in production | Keep `true` for HTTPS deployments |
-| `PCKG_ADMIN_BOOTSTRAP_SUBJECT` | one-time optional | Auth Hub GitHub subject granted the initial pckg superadmin role |
+| `PCKG_DATABASE_URL` | yes | Canonical URL rendered from the environment's PostgreSQL secret |
+| `PCKG_ARTIFACT_ROOT` | yes | Persistent artifact volume; normally `/app/packages` |
 
-Configure the Auth Hub application and its pckg service token before deploying;
-see [site/auth/COOLIFY.md](../site/auth/COOLIFY.md) for the hub deployment.
+Browser administration remains fail-closed when `SHELL_AUTH_MODE` is unset.
+Enabling `authelia` requires a trusted proxy that strips client `Remote-*`
+headers, completes forward authentication, and injects the verified identity.
+CLI publication continues through pckg-owned bearer keys stored in PostgreSQL.
 
 ## Health
 
@@ -41,4 +42,4 @@ see [site/auth/COOLIFY.md](../site/auth/COOLIFY.md) for the hub deployment.
 
 ## Platform matrix
 
-Cross-service URLs, OpenBao paths, and shared auth variables: [beskid_infra/docs/deploy-matrix.md](../beskid_infra/docs/deploy-matrix.md).
+Cross-service runtime and rollback guidance: [beskid_sites/deploy/README.md](../beskid_sites/deploy/README.md).

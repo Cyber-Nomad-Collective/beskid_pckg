@@ -1,13 +1,15 @@
 {
 	"name": "@beskid/pckg-web",
 	"private": true,
+	"license": "AGPL-3.0-only",
 	"type": "module",
 	"packageManager": "pnpm@10.17.1",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit",
+		"test:shared-ui-types": "tsc --noEmit -p tsconfig.shared-ui-types.json",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.shared-ui-types.json",
 		"sync:beskid-packages": "bash ../../scripts/sync-beskid-packages.sh pckg/web"
 	},
 	"dependencies": {

@@ -1,4 +1,4 @@
-# Local production-like Rust/Bun registry runtime.
+# Local production-like Rust/React registry runtime.
 services:
   postgres:
     image: postgres:16
@@ -24,19 +24,19 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PCKG_AUTH_HUB_SERVICE_TOKEN: ${PCKG_AUTH_HUB_SERVICE_TOKEN:?set the paired Auth Hub service token}
-      PCKG_SESSION_SECRET: ${PCKG_SESSION_SECRET:?set a separate session signing secret}
-      # HTTP-only local development may opt out; all HTTPS deployments must use true.
-      PCKG_COOKIE_SECURE: ${PCKG_COOKIE_SECURE:-false}
       PCKG_DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@${PCKG_DB_HOST:-postgres}:${PCKG_DB_PORT:-5432}/${POSTGRES_DB:-pckgdb}
       PCKG_ARTIFACT_ROOT: ${PCKG_ARTIFACT_ROOT:-/app/packages}
-      Storage__UploadsRootPath: ${Storage__UploadsRootPath:-/app/data/uploads}
+      PCKG_WEB_ROOT: /app/web
+      PCKG_BIND_ADDRESS: 0.0.0.0:8082
+      SHELL_AUTH_MODE: ${SHELL_AUTH_MODE:-mock}
+      SHELL_MOCK_SUBJECT: ${SHELL_MOCK_SUBJECT:-local-admin}
+      SHELL_MOCK_GROUPS: ${SHELL_MOCK_GROUPS:-pckg-admins}
+      SHELL_ADMIN_GROUP: ${SHELL_ADMIN_GROUP:-pckg-admins}
+      SHELL_MODERATOR_GROUP: ${SHELL_MODERATOR_GROUP:-pckg-moderators}
     expose:
       - "8082"
     volumes:
-      # The image entrypoint initializes these named volumes as uid/gid 10001.
       - pckg_packages:/app/packages
-      - pckg_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/health/ready"]
@@ -48,4 +48,3 @@ services:
 volumes:
   pckg_pg_data:
   pckg_packages:
-  pckg_data:

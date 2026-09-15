@@ -3,9 +3,14 @@ export interface DashboardGuardDestination {
 	search: { next: string };
 }
 
-export function buildAuthHubLoginUrl(authHubUrl: string): string {
-	const url = new URL("/login", authHubUrl);
-	url.searchParams.set("app", "pckg");
+export function buildAuthentikLoginUrl(origin: string, next: string): string {
+	const baseUrl = new URL(origin);
+	const returnUrl = new URL(next, baseUrl);
+	if (returnUrl.origin !== baseUrl.origin) {
+		returnUrl.href = new URL("/dashboard/packages/my", baseUrl).href;
+	}
+	const url = new URL("/outpost.goauthentik.io/start", baseUrl);
+	url.searchParams.set("rd", returnUrl.toString());
 	return url.toString();
 }
 

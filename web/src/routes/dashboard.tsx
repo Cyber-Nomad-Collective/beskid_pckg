@@ -19,13 +19,9 @@ function DashboardLayout() {
 			<aside className="space-y-1 rounded-lg border border-border p-3">
 				<p className="px-2 pb-2 text-sm font-semibold">Dashboard</p>
 				{[
-					["/dashboard/profile", "Profile"],
-					["/dashboard/notifications", "Notifications"],
 					["/dashboard/api-keys", "API keys"],
 					["/dashboard/packages/my", "My packages"],
-					["/dashboard/packages/upload", "Upload package"],
 					["/dashboard/admin", "Administration"],
-					["/dashboard/admin/email", "Email settings"],
 					["/dashboard/admin/registry-activity", "Registry activity"],
 					["/dashboard/admin/blocked-links", "Blocked links"],
 				].map(([to, label]) => (

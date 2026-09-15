@@ -15,31 +15,24 @@ RUN pnpm --dir /src/pckg/web run build
 
 FROM rust:1-bookworm AS server-build
 
-WORKDIR /src/compiler
-COPY compiler/Cargo.lock ./
-COPY compiler/crates/beskid_pckg_artifacts ./crates/beskid_pckg_artifacts
-COPY compiler/crates/beskid_pckg_auth ./crates/beskid_pckg_auth
-COPY compiler/crates/beskid_pckg_contract ./crates/beskid_pckg_contract
-COPY compiler/crates/beskid_pckg_operations ./crates/beskid_pckg_operations
-COPY compiler/crates/beskid_pckg ./crates/beskid_pckg
-COPY compiler/crates/beskid_pckg_server ./crates/beskid_pckg_server
-COPY compiler/crates/beskid_pckg_store ./crates/beskid_pckg_store
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends clang mold \
+    && command -v clang \
+    && command -v mold \
+    && mold --version \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN printf '%s\n' \
-    '[workspace]' \
-    'resolver = "3"' \
-    'members = [' \
-    '  "crates/beskid_pckg_artifacts",' \
-    '  "crates/beskid_pckg_auth",' \
-    '  "crates/beskid_pckg_contract",' \
-    '  "crates/beskid_pckg_operations",' \
-    '  "crates/beskid_pckg",' \
-    '  "crates/beskid_pckg_server",' \
-    '  "crates/beskid_pckg_store",' \
-    ']' > Cargo.toml \
-    && cargo build --release -p beskid_pckg_server
+WORKDIR /src
+COPY beskid_bsol ./beskid_bsol
+
+COPY compiler ./compiler
+
+WORKDIR /src/compiler
+RUN cargo build --release -p beskid_pckg_server
 
 FROM debian:bookworm-slim AS runtime
+
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl util-linux \
@@ -52,6 +45,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=server-build --chown=pckg:pckg /src/compiler/target/release/beskid_pckg_server /app/beskid_pckg_server
 COPY --from=web-build --chown=pckg:pckg /src/pckg/web/dist /app/web
+COPY pckg/LICENSE /usr/share/licenses/beskid-pckg/LICENSE
 
 ENV PCKG_WEB_ROOT=/app/web \
     PCKG_ARTIFACT_ROOT=/app/packages \

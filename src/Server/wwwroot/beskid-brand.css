@@ -1,6 +1,0 @@
-/**
- * Beskid Material tokens for pckg chrome (hub, custom CSS).
- * Canonical source: beskid_web_common/packages/beskid-ui/src/styles/theme.material.css
- * (vendored as beskid-material.css — keep in sync with @beskid/beskid-ui).
- */
-@import "beskid-material.css";
