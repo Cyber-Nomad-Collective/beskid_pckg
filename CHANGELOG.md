@@ -3,6 +3,10 @@
 All notable changes to this project are documented in this file.
 
 ## [Unreleased]
+### Changed
+
+- Apply canonical Emerald Ridge branding to application icons and browser assets.
+
 
 ### Changed
 

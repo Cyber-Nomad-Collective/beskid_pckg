@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:is([data-theme="dark"] *));
 
 @source "../node_modules/@beskid/ui-react/src";
 

@@ -43,7 +43,24 @@ function AppShell() {
 					aria-label="Primary navigation"
 				>
 					<BeskidHub />
-					<Link to="/" className="font-semibold tracking-tight">
+					<Link
+						to="/"
+						className="flex items-center gap-2 font-semibold tracking-tight"
+					>
+						<img
+							src="/logo.svg"
+							alt=""
+							width={32}
+							height={32}
+							className="block shrink-0 dark:hidden"
+						/>
+						<img
+							src="/logo-dark.svg"
+							alt=""
+							width={32}
+							height={32}
+							className="hidden shrink-0 dark:block"
+						/>
 						pckg
 					</Link>
 					<Link
@@ -78,20 +95,35 @@ function AppShell() {
 									<span>{accountLabel}</span>
 								</summary>
 								<div className="absolute right-0 z-10 mt-2 w-56 rounded-lg border border-border bg-background p-2 shadow-lg">
-									<p className="px-2 py-1 text-xs text-muted-foreground">Signed in through Authentik</p>
-									<Link to="/dashboard/packages/my" className="block rounded px-2 py-1.5 text-sm hover:bg-muted">
+									<p className="px-2 py-1 text-xs text-muted-foreground">
+										Signed in through Authentik
+									</p>
+									<Link
+										to="/dashboard/packages/my"
+										className="block rounded px-2 py-1.5 text-sm hover:bg-muted"
+									>
 										Dashboard
 									</Link>
-									<a href="https://auth.beskid-lang.org/if/user/" className="block rounded px-2 py-1.5 text-sm hover:bg-muted">
+									<a
+										href="https://auth.beskid-lang.org/if/user/"
+										className="block rounded px-2 py-1.5 text-sm hover:bg-muted"
+									>
 										Manage account
 									</a>
-									<a href="/outpost.goauthentik.io/sign_out" className="block rounded px-2 py-1.5 text-sm text-destructive hover:bg-muted">
+									<a
+										href="/outpost.goauthentik.io/sign_out"
+										className="block rounded px-2 py-1.5 text-sm text-destructive hover:bg-muted"
+									>
 										Log out
 									</a>
 								</div>
 							</details>
 						) : (
-							<Link to="/auth" search={{ next: "/dashboard/packages/my" }} className={buttonVariants({ variant: "outline" })}>
+							<Link
+								to="/auth"
+								search={{ next: "/dashboard/packages/my" }}
+								className={buttonVariants({ variant: "outline" })}
+							>
 								Sign in
 							</Link>
 						)}
