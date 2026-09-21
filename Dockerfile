@@ -9,6 +9,7 @@ RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
 WORKDIR /src
 
 COPY beskid_sites/package.json beskid_sites/pnpm-lock.yaml beskid_sites/pnpm-workspace.yaml /src/beskid_sites/
+COPY beskid_sites/tsconfig.base.json /src/beskid_sites/tsconfig.base.json
 COPY beskid_sites/packages/shell-core /src/beskid_sites/packages/shell-core
 COPY beskid_sites/apps/pckg /src/beskid_sites/apps/pckg
 COPY beskid_web_common/packages/beskid-ui-react /src/beskid_web_common/packages/beskid-ui-react
