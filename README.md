@@ -8,8 +8,8 @@ browser-session authentication.
 ## Runtime
 
 - Server: `beskid_pckg_server` in [`compiler/crates/beskid_pckg_server/`](../compiler/crates/beskid_pckg_server/)
-- Client: React/Vite in [`web/`](web/), built with pnpm and shared
-  `@beskid/*` UI packages
+- Client: TanStack Start in [`beskid_sites/apps/pckg/`](../beskid_sites/apps/pckg/),
+  built with pnpm and shared shell/UI packages
 - Persistence: PostgreSQL plus the `pckg_packages` artifact volume
 - Publication: active pckg bearer API keys; browser session routes require a
   separately deployed, trusted forward-auth boundary
@@ -33,7 +33,8 @@ the repository root. The local reference stack uses `SHELL_AUTH_MODE=mock`;
 never use mock authentication in a deployed environment.
 
 The image preserves the established Compose contract: it listens on `8082`,
-serves the bundled client from `/app/web`, and uses the mountable
+serves the bundled client from `/app/web`, proxies registry requests to the
+internal Rust listener on `8083`, and uses the mountable
 `/app/packages` fresh-store artifact root. Its root entrypoint only creates
 and assigns that mounted directory, then starts the server as the `pckg`
 user. Set the canonical `PCKG_DATABASE_URL` before production use. The OpenBao
@@ -42,12 +43,12 @@ components; Compose does not construct it from password fragments.
 
 ## Local development
 
-Build or test the React client:
+Build or test the web client:
 
 ```bash
-pnpm --dir web run test
-pnpm --dir web run typecheck
-pnpm --dir web run build
+pnpm --dir ../beskid_sites/apps/pckg run test
+pnpm --dir ../beskid_sites/apps/pckg run typecheck
+pnpm --dir ../beskid_sites/apps/pckg run build
 ```
 
 Build or test the Rust service from the repository root:
