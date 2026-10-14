@@ -41,6 +41,25 @@ user. Set the canonical `PCKG_DATABASE_URL` before production use. The OpenBao
 seed path derives it from one PostgreSQL configuration source with URL-encoded
 components; Compose does not construct it from password fragments.
 
+## NodeBB community linking
+
+Every public package can own one discussion category on the NodeBB community
+site. The registry creates the category when the package is created, stores
+its id and slug, and serves the public URL plus live counters to the web
+client. Configure all four variables or none; a partial set is a startup
+error:
+
+| Variable | Meaning |
+| --- | --- |
+| `PCKG_NODEBB_API_URL` | NodeBB origin for Write API calls |
+| `PCKG_NODEBB_ADMIN_TOKEN` | Bearer token from NodeBB Settings > API Access with category rights |
+| `PCKG_NODEBB_PACKAGES_PARENT_CID` | Parent category every package category is created under |
+| `PCKG_COMMUNITY_URL` | Public NodeBB origin used in links |
+
+NodeBB failures never block package creation; they are recorded as
+`community_sync_failed` registry activity and repaired by a super
+administrator with `POST /api/admin/community/reconcile`.
+
 ## Local development
 
 Build or test the web client:
