@@ -14,6 +14,7 @@ COPY beskid_sites/packages/shell-core /src/beskid_sites/packages/shell-core
 COPY beskid_sites/apps/pckg /src/beskid_sites/apps/pckg
 COPY beskid_web_common/packages/beskid-ui-react /src/beskid_web_common/packages/beskid-ui-react
 COPY beskid_web_common/packages/beskid-ui/src/styles /src/beskid_web_common/packages/beskid-ui/src/styles
+COPY beskid_web_common/packages/trudoc/grammars/beskid.tmLanguage.json /src/beskid_web_common/packages/trudoc/grammars/beskid.tmLanguage.json
 RUN pnpm install --dir /src/beskid_sites --frozen-lockfile --filter beskid-pckg...
 RUN pnpm --dir /src/beskid_sites/apps/pckg run build
 
