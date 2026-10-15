@@ -52,7 +52,7 @@ startup error:
 
 | Variable | Meaning |
 | --- | --- |
-| `PCKG_NODEBB_API_URL` | NodeBB origin for Write API calls |
+| `PCKG_NODEBB_API_URL` | NodeBB origin for server-to-server Write and Read API calls; in production the internal `http://beskid-community:4567` on the shared edge network |
 | `PCKG_NODEBB_BOT_TOKEN` | User-bound Write API token of the bot user that posts (NodeBB Settings > API Access; not a master token) |
 | `PCKG_NODEBB_PACKAGES_CID` | The "Packages" category every package thread is opened in |
 | `PCKG_COMMUNITY_URL` | Public NodeBB origin used in links |
