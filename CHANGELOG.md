@@ -5,10 +5,10 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 ### Added
 
-- Document the optional NodeBB community linking variables
-  (`PCKG_NODEBB_API_URL`, `PCKG_NODEBB_ADMIN_TOKEN`,
-  `PCKG_NODEBB_PACKAGES_PARENT_CID`, `PCKG_COMMUNITY_URL`) and the
-  administrator reconcile route.
+- Document the optional NodeBB community thread variables
+  (`PCKG_NODEBB_API_URL`, `PCKG_NODEBB_BOT_TOKEN`,
+  `PCKG_NODEBB_PACKAGES_CID`, `PCKG_COMMUNITY_URL`) and the administrator
+  reconcile route.
 
 ### Changed
 

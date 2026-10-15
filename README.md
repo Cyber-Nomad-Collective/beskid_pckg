@@ -43,22 +43,29 @@ components; Compose does not construct it from password fragments.
 
 ## NodeBB community linking
 
-Every public package can own one discussion category on the NodeBB community
-site. The registry creates the category when the package is created, stores
-its id and slug, and serves the public URL plus live counters to the web
-client. Configure all four variables or none; a partial set is a startup
-error:
+Every public package owns one discussion thread (NodeBB topic) in the
+"Packages" category of the community site. The registry opens the thread when
+the package is created, posts a reply for every published version, stores the
+topic id and slug, and serves the public URL plus live reply/view counters to
+the web client. Configure all four variables or none; a partial set is a
+startup error:
 
 | Variable | Meaning |
 | --- | --- |
 | `PCKG_NODEBB_API_URL` | NodeBB origin for Write API calls |
-| `PCKG_NODEBB_ADMIN_TOKEN` | Bearer token from NodeBB Settings > API Access with category rights |
-| `PCKG_NODEBB_PACKAGES_PARENT_CID` | Parent category every package category is created under |
+| `PCKG_NODEBB_BOT_TOKEN` | User-bound Write API token of the bot user that posts (NodeBB Settings > API Access; not a master token) |
+| `PCKG_NODEBB_PACKAGES_CID` | The "Packages" category every package thread is opened in |
 | `PCKG_COMMUNITY_URL` | Public NodeBB origin used in links |
 
-NodeBB failures never block package creation; they are recorded as
-`community_sync_failed` registry activity and repaired by a super
-administrator with `POST /api/admin/community/reconcile`.
+NodeBB failures never block package creation or publication; they are
+recorded as `community_sync_failed` registry activity. A post that NodeBB
+accepts into its moderation queue (HTTP 202) is treated the same way, so
+exempt the bot user from the post queue and posting delays. Missing threads
+are opened by a super administrator with
+`POST /api/admin/community/reconcile`. Bot writes are serialized (NodeBB
+rejects concurrent posts of one user) and thread counters plus the newest
+posts are read server-side from `GET /api/topic/{tid}` with a one-minute
+cache; browsers never call NodeBB.
 
 ## Local development
 
